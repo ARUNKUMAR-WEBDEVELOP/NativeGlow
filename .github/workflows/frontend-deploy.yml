@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build-and-publish-docs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -51,23 +51,21 @@ jobs:
       - name: Add nojekyll
         run: touch dist/.nojekyll
 
-      - name: Publish to gh-pages branch
+      - name: Publish build into docs/ on main
         run: |
           cd "$GITHUB_WORKSPACE"
+          rm -rf docs
+          mkdir -p docs
+          cp -r frontend/dist/. docs/
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          TMP_DIR="$(mktemp -d)"
-          cp -r frontend/dist/. "$TMP_DIR/"
+          if git diff --quiet -- docs; then
+            echo "No docs changes to commit."
+            exit 0
+          fi
 
-          git checkout --orphan gh-pages-temp
-          git rm -rf . >/dev/null 2>&1 || true
-          git clean -fdx
-          cp -r "$TMP_DIR"/. .
-          touch .nojekyll
-          git add .
-          git commit -m "deploy: frontend to gh-pages"
-          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages-temp:gh-pages
-          git checkout -f main
-          git branch -D gh-pages-temp
-          rm -rf "$TMP_DIR"
+          git add docs
+          git commit -m "deploy: update frontend site in docs [skip ci]"
+          git push
