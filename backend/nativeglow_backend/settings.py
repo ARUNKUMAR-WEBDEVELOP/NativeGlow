@@ -53,6 +53,16 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_hostname:
+    ALLOWED_HOSTS.append(render_hostname)
+
+if not DEBUG:
+    ALLOWED_HOSTS.append('.onrender.com')
+
+# Keep ordering stable while removing duplicates.
+ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
+
 
 # Application definition
 
