@@ -23,10 +23,12 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -47,9 +49,22 @@ jobs:
       - name: Add nojekyll
         run: touch dist/.nojekyll
 
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: frontend/dist
-          publish_branch: gh-pages
+      - name: Deploy to gh-pages branch (no JS action)
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -rf .gh-pages-tmp
+          mkdir .gh-pages-tmp
+          cp -r frontend/dist/* .gh-pages-tmp/
+
+          git checkout --orphan gh-pages-temp
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -r .gh-pages-tmp/* .
+          touch .nojekyll
+          git add .
+          git commit -m "deploy: frontend to gh-pages"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages-temp:gh-pages
+          git checkout -f main
+          git branch -D gh-pages-temp
