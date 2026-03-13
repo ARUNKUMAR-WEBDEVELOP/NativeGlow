@@ -55,16 +55,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          rm -rf .gh-pages-tmp
-          mkdir .gh-pages-tmp
-          cp -r frontend/dist/* .gh-pages-tmp/
+          TMP_DIR="$(mktemp -d)"
+          cp -r frontend/dist/. "$TMP_DIR/"
 
           git checkout --orphan gh-pages-temp
           git rm -rf . >/dev/null 2>&1 || true
-          cp -r .gh-pages-tmp/* .
+          git clean -fdx
+          cp -r "$TMP_DIR"/. .
           touch .nojekyll
           git add .
           git commit -m "deploy: frontend to gh-pages"
           git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages-temp:gh-pages
           git checkout -f main
           git branch -D gh-pages-temp
+          rm -rf "$TMP_DIR"
