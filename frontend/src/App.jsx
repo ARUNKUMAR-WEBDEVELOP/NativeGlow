@@ -168,13 +168,11 @@ function App() {
           <Route
             path="/vendor/apply"
             element={
-              <ProtectedRoute isAuthenticated={Boolean(tokens?.access)}>
-                <VendorApplyPage
-                  tokens={tokens}
-                  onTokensUpdate={onTokensUpdate}
-                  onAuthExpired={onAuthExpired}
-                />
-              </ProtectedRoute>
+              <VendorApplyPage
+                tokens={tokens}
+                onTokensUpdate={onTokensUpdate}
+                onAuthExpired={onAuthExpired}
+              />
             }
           />
           <Route path="/login" element={<LoginPage onLogin={onLogin} />} />

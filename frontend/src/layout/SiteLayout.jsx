@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router-dom';
+import ThreeBackground from '../components/ThreeBackground';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -14,7 +15,8 @@ const navLinks = [
 
 function SiteLayout({ isAuthenticated, onLogout }) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fffef8_0%,_#f5efe6_45%,_#efe2d1_100%)] pb-24">
+    <div className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,_#fffef8_0%,_#f5efe6_45%,_#efe2d1_100%)]">
+      <ThreeBackground />
       <div className="bg-zinc-900 px-4 py-2 text-center text-xs font-semibold tracking-wide text-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-4">
           <span>Today: 12% off on Herbal Skincare with code NATURAL12</span>
@@ -49,11 +51,11 @@ function SiteLayout({ isAuthenticated, onLogout }) {
         </div>
       </header>
 
-      <main className="mx-auto w-[94%] max-w-6xl py-6">
+      <main className="mx-auto w-[94%] max-w-6xl flex-1 py-6">
         <Outlet />
       </main>
 
-      <footer className="border-t border-zinc-200 bg-white/90">
+      <footer className="mt-auto border-t border-zinc-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex w-[94%] max-w-6xl flex-col items-start justify-between gap-3 py-5 text-sm text-zinc-600 md:flex-row md:items-center">
           <p>NativeGlow - Natural skincare and comfort essentials.</p>
           <div className="flex flex-wrap gap-3">

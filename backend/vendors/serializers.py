@@ -20,23 +20,25 @@ class VendorApplicationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        if not user or not user.is_authenticated:
-            return attrs
-
-        if Vendor.objects.filter(user=user).exists():
-            raise serializers.ValidationError(
-                'You are already an approved vendor on NativeGlow.'
-            )
-
-        if VendorApplication.objects.filter(user=user, status='pending').exists():
-            raise serializers.ValidationError(
-                'You already have a pending vendor application.'
-            )
 
         otp_code = attrs.get('otp_code', '').strip()
         contact_email = attrs.get('contact_email', '').strip().lower()
         if not contact_email:
             raise serializers.ValidationError('Contact email is required for OTP verification.')
+
+        if user and user.is_authenticated:
+            if Vendor.objects.filter(user=user).exists():
+                raise serializers.ValidationError(
+                    'You are already an approved vendor on NativeGlow.'
+                )
+
+        if user and user.is_authenticated and VendorApplication.objects.filter(user=user, status='pending').exists():
+            raise serializers.ValidationError(
+                'You already have a pending vendor application.'
+            )
+
+        if VendorApplication.objects.filter(contact_email__iexact=contact_email, status='pending').exists():
+            raise serializers.ValidationError('A pending application already exists for this contact email.')
 
         otp_record = EmailOTP.objects.filter(
             email=contact_email,

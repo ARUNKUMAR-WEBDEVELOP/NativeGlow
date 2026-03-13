@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.db.models import Sum
 from decimal import Decimal
+from django.contrib.auth.models import User
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -36,10 +37,26 @@ class ApplyAsVendorView(generics.CreateAPIView):
     collaborate with NativeGlow.
     """
     serializer_class = VendorApplicationSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.AllowAny,)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        user = self.request.user if self.request.user.is_authenticated else None
+        if not user:
+            contact_email = serializer.validated_data.get('contact_email', '').strip().lower()
+            username_base = contact_email.split('@')[0][:120] or 'seller'
+            username = username_base
+            index = 2
+            while User.objects.filter(username=username).exclude(email=contact_email).exists():
+                username = f'{username_base[:100]}_{index}'
+                index += 1
+            user, _ = User.objects.get_or_create(
+                email=contact_email,
+                defaults={'username': username},
+            )
+            if not user.has_usable_password():
+                user.set_unusable_password()
+                user.save(update_fields=['password'])
+        serializer.save(user=user)
 
 
 class AdminVendorApplicationListView(generics.ListAPIView):

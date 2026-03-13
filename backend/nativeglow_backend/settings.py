@@ -103,6 +103,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
 ]
 
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
 ROOT_URLCONF = 'nativeglow_backend.urls'
 
 TEMPLATES = [
