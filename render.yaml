@@ -26,7 +26,3 @@ services:
         value: https://nativeglow.onrender.com/api
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
