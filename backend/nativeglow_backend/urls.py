@@ -15,9 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
 
+
+def root_status(_request):
+    return JsonResponse({'service': 'nativeglow-backend', 'status': 'ok'})
+
 urlpatterns = [
+    path('', root_status, name='root-status'),
+    path('healthz/', root_status, name='healthz'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
     path('api/vendors/', include('vendors.urls')),
