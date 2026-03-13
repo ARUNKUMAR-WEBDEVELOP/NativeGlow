@@ -38,6 +38,21 @@ After frontend deployment, add your frontend URL to backend Render env:
 
 - `CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`
 
+## GitHub Actions Deployment (GitHub Pages)
+
+This repository includes workflow [ .github/workflows/frontend-deploy.yml ](.github/workflows/frontend-deploy.yml) that:
+
+1. builds frontend on every push to `main`
+2. deploys `frontend/dist` to GitHub Pages
+
+Required GitHub setting:
+
+- In repository Settings -> Pages -> Source, select `GitHub Actions`.
+
+Optional secret for Google login on Pages:
+
+- `VITE_GOOGLE_CLIENT_ID`
+
 ## API endpoints used by frontend
 
 - `/api/products/categories/`
