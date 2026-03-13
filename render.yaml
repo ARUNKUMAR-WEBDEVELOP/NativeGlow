@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: nativeglow-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py migrate; python manage.py collectstatic --noinput; gunicorn nativeglow_backend.wsgi:application
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
