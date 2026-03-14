@@ -29,7 +29,11 @@ function LoginPage({ onLogin }) {
           try {
             const tokens = await api.googleLogin(response.credential);
             onLogin(tokens);
-            const destination = location.state?.from || '/';
+            const savedDestination = sessionStorage.getItem('nativeglow_post_login_redirect');
+            if (savedDestination) {
+              sessionStorage.removeItem('nativeglow_post_login_redirect');
+            }
+            const destination = location.state?.from || savedDestination || '/';
             navigate(destination, { replace: true });
           } catch (err) {
             setError(err.message || 'Google login failed.');

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import SiteLayout from './layout/SiteLayout';
 import HomePage from './pages/home/HomePage';
@@ -18,8 +18,41 @@ import CartPage from './pages/cart/CartPage';
 import CheckoutPage from './pages/checkout/CheckoutPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
 
+function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+function getCartStorageKey(tokens) {
+  const payload = parseJwtPayload(tokens?.access);
+  const userId = payload?.user_id;
+  return userId ? `nativeglow_cart_${userId}` : null;
+}
+
 function App() {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const storedTokens = JSON.parse(localStorage.getItem('nativeglow_tokens')) || null;
+      const cartKey = getCartStorageKey(storedTokens);
+      if (!cartKey) {
+        return [];
+      }
+      return JSON.parse(localStorage.getItem(cartKey)) || [];
+    } catch {
+      return [];
+    }
+  });
   const [latestCartItem, setLatestCartItem] = useState(null);
   const [authMessage, setAuthMessage] = useState('');
   const [tokens, setTokens] = useState(() => {
@@ -36,6 +69,13 @@ function App() {
   );
 
   function onAddToCart(product) {
+    if (!tokens?.access) {
+      setAuthMessage('Please login to add products to cart.');
+      sessionStorage.setItem('nativeglow_post_login_redirect', window.location.pathname);
+      window.location.href = `${import.meta.env.BASE_URL}login`;
+      return;
+    }
+
     setLatestCartItem(product);
     setCartItems((prev) => {
       const found = prev.find((item) => item.id === product.id);
@@ -51,16 +91,37 @@ function App() {
   function onLogin(newTokens) {
     setTokens(newTokens);
     localStorage.setItem('nativeglow_tokens', JSON.stringify(newTokens));
+    const cartKey = getCartStorageKey(newTokens);
+    if (cartKey) {
+      try {
+        const savedCart = JSON.parse(localStorage.getItem(cartKey)) || [];
+        setCartItems(savedCart);
+      } catch {
+        setCartItems([]);
+      }
+    }
+    setAuthMessage('');
   }
 
   function onTokensUpdate(nextTokens) {
     setTokens(nextTokens);
     localStorage.setItem('nativeglow_tokens', JSON.stringify(nextTokens));
+
+    const cartKey = getCartStorageKey(nextTokens);
+    if (cartKey) {
+      try {
+        localStorage.setItem(cartKey, JSON.stringify(cartItems));
+      } catch {
+        // ignore storage write errors
+      }
+    }
   }
 
   function onLogout() {
     setTokens(null);
     localStorage.removeItem('nativeglow_tokens');
+    setCartItems([]);
+    setLatestCartItem(null);
   }
 
   function onAuthExpired() {
@@ -90,6 +151,19 @@ function App() {
     setCartItems((prev) => prev.filter((item) => item.id !== productId));
   }
 
+  const cartStorageKey = getCartStorageKey(tokens);
+
+  useEffect(() => {
+    if (!cartStorageKey) {
+      return;
+    }
+    try {
+      localStorage.setItem(cartStorageKey, JSON.stringify(cartItems));
+    } catch {
+      // ignore storage write errors
+    }
+  }, [cartItems, cartStorageKey]);
+
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
@@ -109,12 +183,14 @@ function App() {
           <Route
             path="/cart"
             element={
-              <CartPage
-                cartItems={cartItems}
-                onIncreaseQty={onIncreaseQty}
-                onDecreaseQty={onDecreaseQty}
-                onRemoveItem={onRemoveItem}
-              />
+              <ProtectedRoute isAuthenticated={Boolean(tokens?.access)}>
+                <CartPage
+                  cartItems={cartItems}
+                  onIncreaseQty={onIncreaseQty}
+                  onDecreaseQty={onDecreaseQty}
+                  onRemoveItem={onRemoveItem}
+                />
+              </ProtectedRoute>
             }
           />
           <Route
