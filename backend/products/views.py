@@ -54,12 +54,19 @@ class ProductListView(generics.ListAPIView):
         category = self.request.query_params.get('category')
         tag = self.request.query_params.get('tag')
         vendor_id = self.request.query_params.get('vendor')
+        brand = self.request.query_params.get('brand')
         if category:
             qs = qs.filter(category__slug=category)
         if tag:
             qs = qs.filter(tags__icontains=tag)
         if vendor_id:
             qs = qs.filter(vendor__id=vendor_id)
+        if brand:
+            normalized = brand.strip().lower()
+            if normalized == 'nativeglow':
+                qs = qs.filter(vendor__isnull=True)
+            else:
+                qs = qs.filter(vendor__brand_name__iexact=brand.strip())
         return qs
 
 

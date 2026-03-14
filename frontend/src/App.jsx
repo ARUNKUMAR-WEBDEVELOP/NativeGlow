@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import SiteLayout from './layout/SiteLayout';
 import HomePage from './pages/home/HomePage';
@@ -21,9 +21,6 @@ import MyOrdersPage from './pages/orders/MyOrdersPage';
 function App() {
   const [cartItems, setCartItems] = useState([]);
   const [latestCartItem, setLatestCartItem] = useState(null);
-  const [email, setEmail] = useState('');
-  const [isEmailPopupOpen, setEmailPopupOpen] = useState(false);
-  const [emailCaptured, setEmailCaptured] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
   const [tokens, setTokens] = useState(() => {
     try {
@@ -38,16 +35,6 @@ function App() {
     [cartItems]
   );
 
-  useEffect(() => {
-    const popupTimer = setTimeout(() => {
-      setEmailPopupOpen(true);
-    }, 2200);
-
-    return () => {
-      clearTimeout(popupTimer);
-    };
-  }, []);
-
   function onAddToCart(product) {
     setLatestCartItem(product);
     setCartItems((prev) => {
@@ -59,16 +46,6 @@ function App() {
       }
       return [...prev, { ...product, qty: 1 }];
     });
-  }
-
-  function onCaptureEmail(e) {
-    e.preventDefault();
-    if (!email.trim()) {
-      return;
-    }
-    setEmailCaptured(true);
-    setEmailPopupOpen(false);
-    setEmail('');
   }
 
   function onLogin(newTokens) {
@@ -186,46 +163,6 @@ function App() {
           <div className="flex items-center gap-3">
             <span>{authMessage}</span>
             <button type="button" onClick={() => setAuthMessage('')} className="rounded-md border border-amber-300 px-2 py-1 text-xs">Dismiss</button>
-          </div>
-        </div>
-      ) : null}
-
-      {isEmailPopupOpen ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="font-display text-3xl text-zinc-900">Get Launch Offers</h3>
-            <p className="mt-1 text-sm text-zinc-600">
-              Subscribe to receive discounts, shipping deals, and new arrivals.
-            </p>
-            <form onSubmit={onCaptureEmail} className="mt-4 space-y-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-700"
-                >
-                  Subscribe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEmailPopupOpen(false)}
-                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
-                >
-                  Close
-                </button>
-              </div>
-            </form>
-            {emailCaptured ? (
-              <p className="mt-2 text-xs text-emerald-700">
-                Email captured. Welcome to NativeGlow updates.
-              </p>
-            ) : null}
           </div>
         </div>
       ) : null}

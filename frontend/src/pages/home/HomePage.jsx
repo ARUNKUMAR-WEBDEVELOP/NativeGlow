@@ -4,6 +4,7 @@ import { api } from '../../api';
 
 function HomePage({ onAddToCart }) {
   const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -11,20 +12,21 @@ function HomePage({ onAddToCart }) {
 
     async function load() {
       try {
-        const allProducts = await api.getProducts();
+        const brandOnly = await api.getProducts({ brand: 'NativeGlow' });
         if (!active) {
           return;
         }
-        const brandProducts = allProducts.filter(
-          (item) => (item.vendor_name || 'NativeGlow') === 'NativeGlow'
-        );
-        setProducts(brandProducts.length ? brandProducts : allProducts);
+        setProducts(Array.isArray(brandOnly) ? brandOnly : []);
         setError('');
       } catch (err) {
         if (active) {
           const message = err?.message || 'Could not fetch data from backend API.';
           setError(message);
           setProducts([]);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
         }
       }
     }
@@ -49,10 +51,20 @@ function HomePage({ onAddToCart }) {
       <section className="mt-7">
         <h2 className="font-display text-3xl text-zinc-900">Products</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {products.length === 0 && !error ? (
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <article key={idx} className="animate-pulse rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 h-44 w-full rounded-xl bg-zinc-100" />
+                <div className="h-4 w-1/3 rounded bg-zinc-100" />
+                <div className="mt-3 h-6 w-2/3 rounded bg-zinc-200" />
+                <div className="mt-2 h-4 w-full rounded bg-zinc-100" />
+                <div className="mt-4 h-9 w-full rounded-xl bg-zinc-200" />
+              </article>
+            ))
+          ) : products.length === 0 && !error ? (
             <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <h3 className="font-semibold text-zinc-900">No products available</h3>
-              <p className="mt-1 text-sm text-zinc-600">Please add products in backend and refresh this page.</p>
+              <h3 className="font-semibold text-zinc-900">No products found in backend</h3>
+              <p className="mt-1 text-sm text-zinc-600">Your API connection is working. Add or seed products in the backend database, then refresh this page.</p>
             </article>
           ) : (
             products.map((product) => (

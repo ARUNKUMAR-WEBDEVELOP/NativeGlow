@@ -47,7 +47,16 @@ async function request(path, options = {}) {
 
 export const api = {
   // Products
-  getProducts: () => request('/products/'),
+  getProducts: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return request(query ? `/products/?${query}` : '/products/');
+  },
   getCategories: () => request('/products/categories/'),
   getFeaturedProducts: () => request('/products/featured/'),
   getBestSellers: () => request('/products/best-sellers/'),
