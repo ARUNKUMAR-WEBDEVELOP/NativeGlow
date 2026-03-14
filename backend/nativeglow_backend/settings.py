@@ -121,6 +121,10 @@ CORS_ALLOWED_ORIGINS = [
     'https://arunkumar-webdevelop.github.io',
 ]
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^https://[a-z0-9-]+\.github\.io$',
+]
+
 extra_cors = os.environ.get('CORS_ALLOWED_ORIGINS', '').strip()
 if extra_cors:
     CORS_ALLOWED_ORIGINS.extend([
