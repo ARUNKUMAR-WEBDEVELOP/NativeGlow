@@ -49,8 +49,8 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID }}
         run: |
           if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then
-            echo "Missing VITE_GOOGLE_CLIENT_ID in GitHub secrets/variables"
-            exit 1
+            echo "Warning: Missing VITE_GOOGLE_CLIENT_ID in GitHub secrets/variables"
+            echo "Google login button will not be available in deployed frontend."
           fi
 
       - name: Add SPA fallback

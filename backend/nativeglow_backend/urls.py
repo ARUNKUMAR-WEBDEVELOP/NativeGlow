@@ -14,13 +14,21 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
+
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
 
 
 def root_status(_request):
-    return JsonResponse({'service': 'nativeglow-backend', 'status': 'ok'})
+    return JsonResponse(
+        {
+            'service': 'nativeglow-backend',
+            'status': 'ok',
+            'google_login_configured': bool(os.environ.get('GOOGLE_CLIENT_ID', '').strip()),
+        }
+    )
 
 urlpatterns = [
     path('', root_status, name='root-status'),
