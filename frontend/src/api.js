@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://nativeglow.onrender.com/api';
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV
+    ? 'http://127.0.0.1:8000/api'
+    : 'https://nativeglow.onrender.com/api');
 
 async function request(path, options = {}) {
   const headers = {
@@ -18,7 +22,15 @@ async function request(path, options = {}) {
       payload = await res.json();
       detail = payload.detail || JSON.stringify(payload);
     } catch {
-      // use fallback detail
+      try {
+        const text = await res.text();
+        if (text) {
+          const condensed = text.replace(/\s+/g, ' ').trim().slice(0, 180);
+          detail = `${detail} ${condensed}`;
+        }
+      } catch {
+        // keep default detail
+      }
     }
     const error = new Error(detail);
     error.status = res.status;
