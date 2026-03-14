@@ -71,8 +71,6 @@ function App() {
   function onAddToCart(product) {
     if (!tokens?.access) {
       setAuthMessage('Please login to add products to cart.');
-      sessionStorage.setItem('nativeglow_post_login_redirect', window.location.pathname);
-      window.location.href = `${import.meta.env.BASE_URL}login`;
       return;
     }
 
@@ -168,10 +166,10 @@ function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route element={<SiteLayout isAuthenticated={Boolean(tokens?.access)} onLogout={onLogout} />}>
-          <Route path="/" element={<HomePage onAddToCart={onAddToCart} />} />
+          <Route path="/" element={<HomePage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />} />
           <Route
             path="/products/:slug"
-            element={<ProductDetailPage onAddToCart={onAddToCart} />}
+            element={<ProductDetailPage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />}
           />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />

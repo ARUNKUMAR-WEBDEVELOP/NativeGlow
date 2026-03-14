@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import ProductCard from '../../components/ProductCard';
 import { api } from '../../api';
 
-function HomePage({ onAddToCart }) {
+function HomePage({ onAddToCart, isAuthenticated }) {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,7 +68,12 @@ function HomePage({ onAddToCart }) {
             </article>
           ) : (
             products.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAddToCart={onAddToCart}
+                isAuthenticated={isAuthenticated}
+              />
             ))
           )}
         </div>

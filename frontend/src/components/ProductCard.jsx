@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-function ProductCard({ product, onAddToCart }) {
+function ProductCard({ product, onAddToCart, isAuthenticated }) {
   return (
     <article className="rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
       {product.primary_image ? (
@@ -30,13 +30,22 @@ function ProductCard({ product, onAddToCart }) {
         >
           View Details
         </Link>
-        <button
-          type="button"
-          onClick={() => onAddToCart(product)}
-          className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700"
-        >
-          Add to Cart
-        </button>
+        {isAuthenticated ? (
+          <button
+            type="button"
+            onClick={() => onAddToCart(product)}
+            className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700"
+          >
+            Add to Cart
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
+          >
+            Login to Add Cart
+          </Link>
+        )}
       </div>
     </article>
   );

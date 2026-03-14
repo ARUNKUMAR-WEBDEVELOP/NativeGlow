@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api';
 
 function ProductImagePanel({ product }) {
@@ -39,7 +39,7 @@ function ProductImagePanel({ product }) {
   );
 }
 
-function ProductDetailPage({ onAddToCart }) {
+function ProductDetailPage({ onAddToCart, isAuthenticated }) {
   const { slug } = useParams();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
@@ -93,13 +93,22 @@ function ProductDetailPage({ onAddToCart }) {
           <p className="text-2xl font-extrabold text-sage">${product.price}</p>
           <p className="text-xs text-zinc-500">SKU: {product.sku} | Vendor: {product.vendor_name || 'NativeGlow'}</p>
 
-          <button
-            type="button"
-            onClick={() => onAddToCart(product)}
-            className="hidden rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 md:inline-flex"
-          >
-            Add to Cart
-          </button>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => onAddToCart(product)}
+              className="hidden rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 md:inline-flex"
+            >
+              Add to Cart
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="hidden rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 md:inline-flex"
+            >
+              Login to Add Cart
+            </Link>
+          )}
 
           <div className="grid gap-3 md:grid-cols-2">
             <article className="rounded-2xl border border-zinc-200 bg-cream p-3">
@@ -154,13 +163,22 @@ function ProductDetailPage({ onAddToCart }) {
                 ) : null}
                 <h3 className="mt-2 text-sm font-semibold text-zinc-900">{item.title}</h3>
                 <p className="mt-1 text-xs text-zinc-600">{item.short_description}</p>
-                <button
-                  type="button"
-                  onClick={() => onAddToCart(item)}
-                  className="mt-2 rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white"
-                >
-                  Add to Cart
-                </button>
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart(item)}
+                    className="mt-2 rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white"
+                  >
+                    Add to Cart
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="mt-2 inline-block rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white"
+                  >
+                    Login to Add
+                  </Link>
+                )}
               </article>
             ))}
           </div>
@@ -168,13 +186,22 @@ function ProductDetailPage({ onAddToCart }) {
       ) : null}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-900 p-3 text-white md:hidden">
-        <button
-          type="button"
-          onClick={() => onAddToCart(product)}
-          className="w-full rounded-xl bg-sage px-4 py-3 text-sm font-semibold text-white"
-        >
-          Add to Cart - ${product.price}
-        </button>
+        {isAuthenticated ? (
+          <button
+            type="button"
+            onClick={() => onAddToCart(product)}
+            className="w-full rounded-xl bg-sage px-4 py-3 text-sm font-semibold text-white"
+          >
+            Add to Cart - ${product.price}
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="block w-full rounded-xl bg-sage px-4 py-3 text-center text-sm font-semibold text-white"
+          >
+            Login to Add Cart
+          </Link>
+        )}
       </div>
     </section>
   );
