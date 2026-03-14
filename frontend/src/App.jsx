@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import SiteLayout from './layout/SiteLayout';
 import HomePage from './pages/home/HomePage';
 import ProductDetailPage from './pages/product/ProductDetailPage';
@@ -163,7 +163,7 @@ function App() {
   }, [cartItems, cartStorageKey]);
 
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <HashRouter>
       <Routes>
         <Route element={<SiteLayout isAuthenticated={Boolean(tokens?.access)} onLogout={onLogout} />}>
           <Route path="/" element={<HomePage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />} />
@@ -242,7 +242,7 @@ function App() {
       ) : null}
 
       <StickyCartBar totalItems={totalItems} latestCartItem={latestCartItem} />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
