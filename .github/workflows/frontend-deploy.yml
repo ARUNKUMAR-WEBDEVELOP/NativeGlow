@@ -41,12 +41,12 @@ jobs:
       - name: Build
         env:
           VITE_API_BASE: https://nativeglow.onrender.com/api
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID || '274029474770-51e9uv9shgk1m61vo8bt6iu5h5556p8u.apps.googleusercontent.com' }}
         run: npm run build -- --base=/NativeGlow/
 
       - name: Validate Google client id was provided
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID || '274029474770-51e9uv9shgk1m61vo8bt6iu5h5556p8u.apps.googleusercontent.com' }}
         run: |
           if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then
             echo "Warning: Missing VITE_GOOGLE_CLIENT_ID in GitHub secrets/variables"
