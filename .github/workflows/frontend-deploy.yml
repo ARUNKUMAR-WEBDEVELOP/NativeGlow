@@ -59,6 +59,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    environment:
+      name: github-pages
+      url: https://arunkumar-webdevelop.github.io/NativeGlow/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,3 +90,9 @@ jobs:
           git add docs
           git commit -m "deploy: update frontend site in docs [skip ci]"
           git push
+
+      - name: Show deployed frontend URL
+        run: |
+          echo "Frontend URL: https://arunkumar-webdevelop.github.io/NativeGlow/"
+          echo "## Frontend Deploy URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://arunkumar-webdevelop.github.io/NativeGlow/" >> "$GITHUB_STEP_SUMMARY"
