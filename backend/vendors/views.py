@@ -3,16 +3,26 @@ from django.utils.text import slugify
 from django.db.models import Sum
 from decimal import Decimal
 from django.contrib.auth.models import User
-from rest_framework import generics, permissions, status
+from django.core.mail import send_mail
+from django.conf import settings
+from rest_framework import generics, permissions, status, exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Vendor, VendorApplication
 from orders.models import OrderItem
+from admins.models import MaintenanceFee
 from .serializers import (
     VendorSerializer,
     VendorApplicationSerializer,
     VendorApplicationReviewSerializer,
+    VendorRegisterSerializer,
+    VendorLoginSerializer,
+    VendorProfileSerializer,
+    MaintenanceFeeListSerializer,
+    MaintenancePaymentSubmitSerializer,
 )
 
 
@@ -20,14 +30,14 @@ class VendorListView(generics.ListAPIView):
     """GET /api/vendors/  — list all active approved vendors."""
     serializer_class = VendorSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Vendor.objects.filter(status='approved')
+    queryset = Vendor.objects.filter(is_approved=True, is_active=True)
 
 
 class VendorDetailView(generics.RetrieveAPIView):
     """GET /api/vendors/<pk>/  — public vendor profile."""
     serializer_class = VendorSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Vendor.objects.filter(status='approved')
+    queryset = Vendor.objects.filter(is_approved=True, is_active=True)
 
 
 class ApplyAsVendorView(generics.CreateAPIView):
@@ -201,3 +211,420 @@ class MyVendorAnalyticsView(APIView):
                 'top_products': top_products,
             }
         )
+
+
+# ============================================================================
+# VENDOR AUTHENTICATION VIEWS
+# ============================================================================
+
+class VendorRegisterView(generics.CreateAPIView):
+    """
+    POST /api/vendor/register/
+    Register a new vendor account.
+    
+    Request body:
+    {
+        "full_name": "John Doe",
+        "email": "vendor@example.com",
+        "password": "securepass123",
+        "confirm_password": "securepass123",
+        "business_name": "Organic Farms",
+        "whatsapp_number": "+919876543210",
+        "city": "Mumbai",
+        "upi_id": "john@upi",
+        "bank_account_number": "1234567890",
+        "bank_ifsc": "SBIN0001234",
+        "account_holder_name": "John Doe"
+    }
+    
+    Response (201):
+    {
+        "id": 1,
+        "full_name": "John Doe",
+        "email": "vendor@example.com",
+        "business_name": "Organic Farms",
+        "vendor_slug": "organic-farms",
+        "is_approved": false,
+        "message": "Registration successful. Your account is pending admin approval."
+    }
+    """
+    serializer_class = VendorRegisterSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def create(self, request, *args, **kwargs):
+        """Handle registration with custom response."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        vendor = serializer.save()
+
+        return Response(
+            {
+                'id': vendor.id,
+                'full_name': vendor.full_name,
+                'email': vendor.email,
+                'business_name': vendor.business_name,
+                'vendor_slug': vendor.vendor_slug,
+                'city': vendor.city,
+                'is_approved': vendor.is_approved,
+                'message': 'Registration successful! Your account is pending admin approval. You will receive an email once approved.',
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class VendorLoginView(APIView):
+    """
+    POST /api/vendor/login/
+    Authenticate a vendor and return JWT tokens.
+    
+    Request body:
+    {
+        "email": "vendor@example.com",
+        "password": "securepass123"
+    }
+    
+    Response (200):
+    {
+        "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+        "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+        "vendor": {
+            "id": 1,
+            "full_name": "John Doe",
+            "email": "vendor@example.com",
+            "business_name": "Organic Farms",
+            "vendor_slug": "organic-farms"
+        }
+    }
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        """Authenticate vendor and issue JWT tokens."""
+        serializer = VendorLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vendor = serializer.validated_data.get('vendor')
+
+        # Generate JWT tokens
+        refresh = RefreshToken.from_user(vendor)
+        
+        # Note: RefreshToken.from_user() is designed for Django User model
+        # For custom model, we'll use a manual approach:
+        try:
+            refresh = RefreshToken()
+            refresh['user_id'] = vendor.id
+            refresh['email'] = vendor.email
+            refresh['is_vendor'] = True
+        except:
+            # Fallback if the above doesn't work with custom model
+            refresh = RefreshToken()
+            refresh['vendor_id'] = vendor.id
+
+        return Response(
+            {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'vendor': {
+                    'id': vendor.id,
+                    'full_name': vendor.full_name,
+                    'email': vendor.email,
+                    'business_name': vendor.business_name,
+                    'vendor_slug': vendor.vendor_slug,
+                    'city': vendor.city,
+                    'is_approved': vendor.is_approved,
+                }
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class VendorProfileView(generics.RetrieveUpdateAPIView):
+    """
+    GET /api/vendor/me/
+    Get the authenticated vendor's profile.
+    
+    Headers:
+    Authorization: Bearer <access_token>
+    
+    Response (200):
+    {
+        "id": 1,
+        "full_name": "John Doe",
+        "email": "vendor@example.com",
+        "business_name": "Organic Farms",
+        "vendor_slug": "organic-farms",
+        "city": "Mumbai",
+        "whatsapp_number": "+919876543210",
+        "upi_id": "john@upi",
+        "bank_account_number": "1234567890",
+        "bank_ifsc": "SBIN0001234",
+        "account_holder_name": "John Doe",
+        "is_approved": true,
+        "is_active": true,
+        "maintenance_due": false,
+        "maintenance_due_status": "No outstanding maintenance fee",
+        "created_at": "2026-03-23T10:30:00Z",
+        "updated_at": "2026-03-23T10:30:00Z"
+    }
+    """
+    serializer_class = VendorProfileSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_object(self):
+        """
+        Get the authenticated Vendor object.
+        Expects vendor_id in JWT token or extract from request.
+        """
+        # Try to get from request (in case custom middleware sets it)
+        vendor = getattr(self.request, 'vendor', None)
+        if vendor:
+            return vendor
+
+        # Extract vendor_id from JWT token
+        try:
+            from rest_framework_simplejwt.utils import decode_complete_token
+            from rest_framework_simplejwt.settings import api_settings
+            
+            # Get token from request
+            if not hasattr(self.request, 'auth') or self.request.auth is None:
+                raise exceptions.NotAuthenticated('No JWT token provided')
+            
+            # The token has already been validated by JWTAuthentication
+            # Try to access vendor_id or user_id from validated_data
+            try:
+                vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            except:
+                # If token doesn't contain vendor_id, we need another way
+                # For now, assume the vendor information is in the request
+                raise exceptions.NotAuthenticated('Invalid token')
+
+            return Vendor.objects.get(id=vendor_id)
+        except Vendor.DoesNotExist:
+            raise exceptions.NotFound('Vendor profile not found')
+        except Exception as e:
+            # Fallback: return 401 if token validation fails
+            raise exceptions.NotAuthenticated('Authentication failed')
+
+
+# ============================================================================
+# VENDOR MAINTENANCE FEE ENDPOINTS
+# ============================================================================
+
+class VendorMaintenanceListView(APIView):
+    """
+    GET /api/vendor/maintenance/
+    
+    JWT protected (vendor only).
+    Return all maintenance fee records for the authenticated vendor.
+    Response includes month, amount, is_paid, payment_mode, verified_by_admin, submitted_at.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_vendor(self):
+        """Extract Vendor object from JWT token."""
+        try:
+            # Check if vendor object is attached to request (from middleware)
+            vendor = getattr(self.request, 'vendor', None)
+            if vendor:
+                return vendor
+
+            # Otherwise, try to get vendor_id from JWT token
+            if not hasattr(self.request, 'auth') or self.request.auth is None:
+                raise exceptions.NotAuthenticated('No JWT token provided')
+
+            # Access vendor_id from validated token
+            vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            if not vendor_id:
+                raise exceptions.NotAuthenticated('Token missing vendor_id')
+
+            vendor = Vendor.objects.get(id=vendor_id)
+            return vendor
+        except Vendor.DoesNotExist:
+            raise exceptions.NotFound('Vendor not found')
+        except Exception as e:
+            raise exceptions.NotAuthenticated('Authentication failed')
+
+    def get(self, request):
+        """List all maintenance fees for this vendor."""
+        try:
+            vendor = self.get_vendor()
+            
+            # Get all maintenance fees for this vendor
+            fees = MaintenanceFee.objects.filter(vendor=vendor).order_by('-month')
+
+            # Serialize using manual serializer
+            serializer = MaintenanceFeeListSerializer(fees, many=True)
+            
+            # Separate paid and unpaid for clarity
+            unpaid_fees = [f for f in serializer.data if not f['is_paid']]
+            paid_fees = [f for f in serializer.data if f['is_paid']]
+
+            return Response({
+                'total_fees': fees.count(),
+                'unpaid_count': len(unpaid_fees),
+                'paid_count': len(paid_fees),
+                'unpaid': unpaid_fees,
+                'paid': paid_fees,
+            }, status=status.HTTP_200_OK)
+
+        except (exceptions.NotAuthenticated, exceptions.NotFound) as e:
+            return Response(
+                {'detail': str(e.detail)},
+                status=e.status_code
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'Error fetching maintenance fees: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class VendorMaintenancePayView(APIView):
+    """
+    POST /api/vendor/maintenance/<fee_id>/pay/
+    
+    JWT protected (vendor only).
+    Vendor submits payment proof after paying to NativeGlow UPI/Bank.
+    
+    Accepts multipart/form-data:
+      - payment_mode: 'upi' or 'net_banking' (required)
+      - upi_transaction_id: required if payment_mode='upi'
+      - bank_reference_number: required if payment_mode='net_banking'
+      - payment_screenshot: image file (required)
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_vendor(self):
+        """Extract Vendor object from JWT token."""
+        try:
+            # Check if vendor object is attached to request (from middleware)
+            vendor = getattr(self.request, 'vendor', None)
+            if vendor:
+                return vendor
+
+            # Otherwise, try to get vendor_id from JWT token
+            if not hasattr(self.request, 'auth') or self.request.auth is None:
+                raise exceptions.NotAuthenticated('No JWT token provided')
+
+            # Access vendor_id from validated token
+            vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            if not vendor_id:
+                raise exceptions.NotAuthenticated('Token missing vendor_id')
+
+            vendor = Vendor.objects.get(id=vendor_id)
+            return vendor
+        except Vendor.DoesNotExist:
+            raise exceptions.NotFound('Vendor not found')
+        except Exception as e:
+            raise exceptions.NotAuthenticated('Authentication failed')
+
+    def post(self, request, fee_id):
+        """Submit payment proof for a maintenance fee."""
+        try:
+            vendor = self.get_vendor()
+
+            # Get the maintenance fee record
+            try:
+                fee = MaintenanceFee.objects.get(id=fee_id)
+            except MaintenanceFee.DoesNotExist:
+                return Response(
+                    {'detail': 'Maintenance fee record not found.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Verify vendor owns this fee
+            if fee.vendor_id != vendor.id:
+                return Response(
+                    {'detail': 'You can only submit payment for your own maintenance fees.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Check if already verified
+            if fee.verified_by_admin:
+                return Response(
+                    {'detail': 'This fee has already been verified by admin. Cannot resubmit.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validate submission using serializer
+            serializer = MaintenancePaymentSubmitSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Extract validated data
+            validated_data = serializer.validated_data
+            payment_mode = validated_data.get('payment_mode')
+            upi_transaction_id = validated_data.get('upi_transaction_id', '').strip()
+            bank_reference_number = validated_data.get('bank_reference_number', '').strip()
+            payment_screenshot = validated_data.get('payment_screenshot')
+
+            # Update maintenance fee with payment proof
+            fee.payment_mode = payment_mode
+            if payment_mode == 'upi':
+                fee.upi_transaction_id = upi_transaction_id
+            elif payment_mode == 'net_banking':
+                fee.bank_reference_number = bank_reference_number
+
+            fee.payment_screenshot = payment_screenshot
+            fee.submitted_at = timezone.now()
+            fee.is_paid = True  # Mark as paid, pending verification
+            fee.save()
+
+            # Send email to admin
+            try:
+                subject = f'Maintenance Payment Submitted - {vendor.business_name}'
+                message = f"""
+Hello Admin,
+
+Vendor {vendor.business_name} has submitted maintenance payment proof for {fee.month}.
+
+Vendor Details:
+- Business Name: {vendor.business_name}
+- Email: {vendor.email}
+- Phone: {vendor.whatsapp_number}
+
+Payment Details:
+- Month: {fee.month}
+- Amount: Rs. {fee.amount}
+- Payment Mode: {payment_mode.upper()}
+
+Transaction ID: {upi_transaction_id or bank_reference_number}
+
+Please verify the payment and update the admin panel.
+
+Regards,
+NativeGlow Platform
+                """
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    ['admin@nativeglow.com'],  # Admin email - update as needed
+                    fail_silently=True
+                )
+            except Exception as e:
+                # Log but don't fail the response if email fails
+                print(f"Error sending admin email: {str(e)}")
+
+            return Response({
+                'message': 'Payment submitted successfully. Awaiting admin verification.',
+                'fee_id': fee.id,
+                'status': 'PENDING VERIFICATION'
+            }, status=status.HTTP_200_OK)
+
+        except (exceptions.NotAuthenticated, exceptions.NotFound) as e:
+            return Response(
+                {'detail': str(e.detail)},
+                status=e.status_code
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'Error processing payment: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

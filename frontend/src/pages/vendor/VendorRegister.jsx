@@ -1,0 +1,264 @@
+import { useMemo, useState } from 'react';
+import { api } from '../../api';
+
+const CATEGORY_OPTIONS = [
+  { value: 'face_wash', label: 'Face Wash' },
+  { value: 'soap', label: 'Soap' },
+  { value: 'serum', label: 'Serum' },
+  { value: 'moisturizer', label: 'Moisturizer' },
+  { value: 'hair_oil', label: 'Hair Oil' },
+  { value: 'other', label: 'Other' },
+];
+
+const INITIAL_FORM = {
+  full_name: '',
+  email: '',
+  password: '',
+  confirm_password: '',
+  whatsapp_number: '',
+  city: '',
+  business_name: '',
+  product_category: [],
+  natural_only_confirmed: false,
+  terms_accepted: false,
+  upi_id: '',
+  bank_account_number: '',
+  bank_ifsc: '',
+  account_holder_name: '',
+};
+
+function VendorRegister() {
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
+
+  const onInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const onCategoryChange = (e) => {
+    const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+    setForm((prev) => ({ ...prev, product_category: selected }));
+  };
+
+  const validateStep = (currentStep) => {
+    if (currentStep === 1) {
+      if (!form.full_name || !form.email || !form.password || !form.confirm_password || !form.whatsapp_number || !form.city) {
+        return 'Please complete all personal info fields.';
+      }
+      if (form.password.length < 8) {
+        return 'Password must be at least 8 characters.';
+      }
+      if (form.password !== form.confirm_password) {
+        return 'Passwords do not match.';
+      }
+      return '';
+    }
+
+    if (currentStep === 2) {
+      if (!form.business_name) {
+        return 'Business name is required.';
+      }
+      if (form.product_category.length === 0) {
+        return 'Please select at least one product category.';
+      }
+      if (!form.natural_only_confirmed) {
+        return 'Please confirm that you sell only 100% natural cosmetic products.';
+      }
+      if (!form.terms_accepted) {
+        return 'Please accept NativeGlow platform terms and disclaimer.';
+      }
+      return '';
+    }
+
+    if (!form.upi_id || !form.bank_account_number || !form.bank_ifsc || !form.account_holder_name) {
+      return 'Please complete all payment details.';
+    }
+    return '';
+  };
+
+  const goNext = () => {
+    const validationError = validateStep(step);
+    setError(validationError);
+    if (validationError) {
+      return;
+    }
+    setStep((prev) => Math.min(3, prev + 1));
+  };
+
+  const goBack = () => {
+    setError('');
+    setStep((prev) => Math.max(1, prev - 1));
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSuccess('');
+    const validationError = validateStep(3);
+    setError(validationError);
+    if (validationError) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await api.vendorRegister({
+        full_name: form.full_name,
+        email: form.email,
+        password: form.password,
+        confirm_password: form.confirm_password,
+        whatsapp_number: form.whatsapp_number,
+        city: form.city,
+        business_name: form.business_name,
+        product_category: form.product_category,
+        upi_id: form.upi_id,
+        bank_account_number: form.bank_account_number,
+        bank_ifsc: form.bank_ifsc,
+        account_holder_name: form.account_holder_name,
+      });
+
+      setSuccess('Registration submitted. Await admin approval.');
+      setForm(INITIAL_FORM);
+      setStep(1);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please check your details and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="max-w-3xl">
+      <div className="rounded-3xl border border-sage/20 bg-gradient-to-br from-[#f7f6ee] via-[#ecf0e2] to-[#e5d9c7] p-6 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Onboarding</p>
+        <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Become a NativeGlow Vendor</h1>
+        <p className="mt-2 text-sm text-zinc-700">Complete all 3 steps to submit your seller registration for admin review.</p>
+
+        <div className="mt-5">
+          <div className="h-2 w-full rounded-full bg-white/70">
+            <div className="h-full rounded-full bg-sage transition-all duration-300" style={{ width: progress }} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs font-semibold text-zinc-600">
+            <span className={step >= 1 ? 'text-sage' : ''}>Step 1 Personal</span>
+            <span className={step >= 2 ? 'text-sage' : ''}>Step 2 Business</span>
+            <span className={step >= 3 ? 'text-sage' : ''}>Step 3 Payment</span>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={onSubmit} className="mt-5 space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        {step === 1 ? (
+          <>
+            <h2 className="text-lg font-semibold text-zinc-900">Step 1 - Personal Info</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input name="full_name" value={form.full_name} onChange={onInputChange} placeholder="Full name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input type="email" name="email" value={form.email} onChange={onInputChange} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input type="password" name="password" value={form.password} onChange={onInputChange} placeholder="Password" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input type="password" name="confirm_password" value={form.confirm_password} onChange={onInputChange} placeholder="Confirm password" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input name="whatsapp_number" value={form.whatsapp_number} onChange={onInputChange} placeholder="WhatsApp number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input name="city" value={form.city} onChange={onInputChange} placeholder="City" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            </div>
+          </>
+        ) : null}
+
+        {step === 2 ? (
+          <>
+            <h2 className="text-lg font-semibold text-zinc-900">Step 2 - Business Info</h2>
+            <div className="space-y-3">
+              <input name="business_name" value={form.business_name} onChange={onInputChange} placeholder="Business name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+
+              <div>
+                <label htmlFor="product_category" className="mb-1 block text-sm font-semibold text-zinc-800">Product category (multi-select)</label>
+                <select
+                  id="product_category"
+                  multiple
+                  value={form.product_category}
+                  onChange={onCategoryChange}
+                  className="h-36 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
+                >
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-zinc-500">Hold Ctrl or Cmd to select multiple categories.</p>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-[#f4f7ed] px-3 py-2 text-sm text-zinc-800">
+                <input
+                  type="checkbox"
+                  name="natural_only_confirmed"
+                  checked={form.natural_only_confirmed}
+                  onChange={onInputChange}
+                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-sage focus:ring-sage"
+                />
+                <span>I confirm I sell only 100% natural cosmetic products</span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-[#f8f2e8] px-3 py-2 text-sm text-zinc-800">
+                <input
+                  type="checkbox"
+                  name="terms_accepted"
+                  checked={form.terms_accepted}
+                  onChange={onInputChange}
+                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-sage focus:ring-sage"
+                />
+                <span>I accept NativeGlow platform terms and disclaimer</span>
+              </label>
+            </div>
+          </>
+        ) : null}
+
+        {step === 3 ? (
+          <>
+            <h2 className="text-lg font-semibold text-zinc-900">Step 3 - Payment Details</h2>
+            <div className="rounded-xl border border-sage/25 bg-[#eef5ea] px-3 py-2 text-xs font-semibold text-sage">
+              Buyers will pay directly to your UPI/Bank. NativeGlow does not process payments.
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <input name="upi_id" value={form.upi_id} onChange={onInputChange} placeholder="UPI ID" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input name="bank_account_number" value={form.bank_account_number} onChange={onInputChange} placeholder="Bank account number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input name="bank_ifsc" value={form.bank_ifsc} onChange={onInputChange} placeholder="Bank IFSC" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input name="account_holder_name" value={form.account_holder_name} onChange={onInputChange} placeholder="Account holder name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            </div>
+          </>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={goBack}
+            disabled={step === 1 || isSubmitting}
+            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Back
+          </button>
+
+          {step < 3 ? (
+            <button type="button" onClick={goNext} className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white">
+              Next
+            </button>
+          ) : (
+            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+              {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+            </button>
+          )}
+        </div>
+      </form>
+
+      {success ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
+      {error ? <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+    </section>
+  );
+}
+
+export default VendorRegister;

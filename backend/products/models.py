@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 class Category(models.Model):
@@ -30,6 +31,7 @@ class Product(models.Model):
         Category, on_delete=models.SET_NULL, null=True, related_name='products'
     )
     title = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, blank=True)
     slug = models.SlugField(unique=True)
     description = models.TextField()
     short_description = models.CharField(max_length=500, blank=True)
@@ -48,21 +50,51 @@ class Product(models.Model):
     )
     tags = models.CharField(max_length=300, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
+    discount_price = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True
+    )
     compare_price = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True
     )
     sku = models.CharField(max_length=50, unique=True)
     inventory_qty = models.PositiveIntegerField(default=0)
+    available_quantity = models.PositiveIntegerField(default=0)
+    unit = models.CharField(
+        max_length=10,
+        choices=[
+            ('ml', 'ML'),
+            ('gm', 'GM'),
+            ('pcs', 'PCS'),
+        ],
+        default='pcs',
+    )
+    is_natural_certified = models.BooleanField(default=False)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
+    category_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('face_wash', 'Face Wash'),
+            ('soap', 'Soap'),
+            ('serum', 'Serum'),
+            ('moisturizer', 'Moisturizer'),
+            ('hair_oil', 'Hair Oil'),
+            ('other', 'Other'),
+        ],
+        default='other',
+    )
     status = models.CharField(
         max_length=20,
         choices=[
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+            ('rejected', 'Rejected'),
             ('active', 'Active'),
             ('draft', 'Draft'),
             ('out_of_stock', 'Out of Stock'),
         ],
-        default='active',
+        default='pending',
     )
+    admin_rejection_reason = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     is_bestseller = models.BooleanField(default=False)
     is_new_arrival = models.BooleanField(default=False)
@@ -80,8 +112,23 @@ class Product(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+    def clean(self):
+        if self.status == 'approved' and not self.is_natural_certified:
+            raise ValidationError(
+                {'is_natural_certified': 'Only natural certified products can be approved/listed.'}
+            )
+
+    def save(self, *args, **kwargs):
+        if not self.name:
+            self.name = self.title
+        if self.available_quantity == 0 and self.inventory_qty:
+            self.available_quantity = self.inventory_qty
+        if self.inventory_qty == 0 and self.available_quantity:
+            self.inventory_qty = self.available_quantity
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.title
+        return self.name or self.title
 
 
 class ProductImage(models.Model):

@@ -1,22 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import SiteLayout from './layout/SiteLayout';
-import HomePage from './pages/home/HomePage';
-import ProductDetailPage from './pages/product/ProductDetailPage';
+import AdminLayout from './layout/AdminLayout';
+import HomePage from './pages/buyer/HomePage';
+import ProductDetailPage from './pages/buyer/ProductDetailPage';
 import VendorApplyPage from './pages/vendor/VendorApplyPage';
+import VendorRegister from './pages/vendor/VendorRegister';
+import VendorLogin from './pages/vendor/VendorLogin';
+import VendorDashboard from './pages/vendor/VendorDashboard';
+import VendorProducts from './pages/vendor/VendorProducts';
+import VendorOrders from './pages/vendor/VendorOrders';
+import VendorMaintenance from './pages/vendor/VendorMaintenance';
+import AddProduct from './pages/vendor/AddProduct';
+import VendorStorePage from './pages/buyer/VendorStorePage';
 import LoginPage from './pages/auth/LoginPage';
-import AboutPage from './pages/about/AboutPage';
-import ContactPage from './pages/contact/ContactPage';
-import FAQPage from './pages/faq/FAQPage';
-import ShippingPage from './pages/shipping/ShippingPage';
-import ReturnsPage from './pages/returns/ReturnsPage';
-import PrivacyPolicyPage from './pages/privacy/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/terms/TermsOfServicePage';
+import AboutUsPage from './pages/AboutUsPage';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminVendors from './pages/admin/AdminVendors';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminMaintenance from './pages/admin/AdminMaintenance';
 import StickyCartBar from './components/StickyCartBar';
 import ProtectedRoute from './components/ProtectedRoute';
 import CartPage from './pages/cart/CartPage';
 import CheckoutPage from './pages/checkout/CheckoutPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
+import OrderTrackPage from './pages/buyer/OrderTrackPage';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -171,13 +181,15 @@ function App() {
             path="/products/:slug"
             element={<ProductDetailPage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />}
           />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/shipping" element={<ShippingPage />} />
-          <Route path="/returns" element={<ReturnsPage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route
+            path="/store/:vendor_slug/products/:product_id"
+            element={<ProductDetailPage />}
+          />
+          <Route
+            path="/store/:vendor_slug/product/:product_id"
+            element={<ProductDetailPage />}
+          />
+          <Route path="/about" element={<AboutUsPage />} />
           <Route
             path="/cart"
             element={
@@ -226,10 +238,61 @@ function App() {
               />
             }
           />
+          <Route path="/vendor/register" element={<VendorRegister />} />
+          <Route path="/vendor/login" element={<VendorLogin />} />
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/dashboard/products" element={<VendorProducts />} />
+          <Route path="/vendor/dashboard/orders" element={<VendorOrders />} />
+          <Route path="/vendor/dashboard/maintenance" element={<VendorMaintenance />} />
+          <Route path="/vendor/dashboard/products/new" element={<AddProduct />} />
+          <Route path="/store/:vendor_slug" element={<VendorStorePage />} />
+          <Route path="/track" element={<OrderTrackPage />} />
+          <Route path="/track/:order_code" element={<OrderTrackPage />} />
           <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
           <Route path="/register" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/vendors"
+          element={
+            <AdminLayout>
+              <AdminVendors />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <AdminLayout>
+              <AdminProducts />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <AdminLayout>
+              <AdminOrders />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/maintenance"
+          element={
+            <AdminLayout>
+              <AdminMaintenance />
+            </AdminLayout>
+          }
+        />
       </Routes>
 
       {authMessage ? (

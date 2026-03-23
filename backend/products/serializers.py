@@ -123,3 +123,244 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'Massage in circular motion until absorbed.',
             'Use consistently in morning or night routine.',
         ]
+
+
+# ============================================================================
+# VENDOR PRODUCT MANAGEMENT SERIALIZERS
+# ============================================================================
+
+class VendorProductCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for vendor adding new products.
+    POST /api/vendor/products/add/
+    """
+    class Meta:
+        model = Product
+        fields = (
+            'title', 'name', 'description', 'short_description',
+            'Category_type', 'ingredients', 'price', 'available_quantity',
+            'image', 'is_natural_certified', 'sku', 'tags',
+            'product_type', 'unit'
+        )
+
+    def create(self, validated_data):
+        """Create product with vendor from request and set status to pending."""
+        from django.utils.text import slugify
+        
+        vendor = self.context['request'].vendor  # Vendor extracted from JWT
+        
+        # Auto-generate slug from title
+        title = validated_data.get('title', '')
+        slug = slugify(title)
+        
+        # Ensure unique slug
+        base_slug = slug
+        counter = 2
+        while Product.objects.filter(slug=slug).exists():
+            slug = f'{base_slug}-{counter}'
+            counter += 1
+        
+        validated_data['slug'] = slug
+        validated_data['vendor'] = vendor
+        validated_data['status'] = 'pending'  # Always pending initially
+        validated_data['admin_rejection_reason'] = ''
+        
+        # Auto-set inventory_qty from available_quantity
+        if not validated_data.get('inventory_qty'):
+            validated_data['inventory_qty'] = validated_data.get('available_quantity', 0)
+        
+        return super().create(validated_data)
+
+
+class VendorProductListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for vendor product list.
+    GET /api/vendor/products/
+    """
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    image = serializers.SerializerMethodField()
+    rejection_reason = serializers.CharField(source='admin_rejection_reason', read_only=True)
+    available = serializers.BooleanField(source='is_active', read_only=True)
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if not obj.image:
+            return None
+        if request:
+            return request.build_absolute_uri(obj.image.url)
+        return obj.image.url
+    
+    class Meta:
+        model = Product
+        fields = (
+            'id', 'title', 'name', 'description', 'category_type', 'ingredients',
+            'price', 'available_quantity', 'image',
+            'status', 'status_display', 'available', 'is_active',
+            'is_natural_certified', 'rejection_reason',
+            'created_at', 'updated_at'
+        )
+        read_only_fields = fields
+
+
+class VendorProductUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for vendor updating their products.
+    PUT /api/vendor/products/<id>/edit/
+    """
+    class Meta:
+        model = Product
+        fields = (
+            'title', 'name', 'description', 'short_description',
+            'category_type', 'ingredients', 'price', 'available_quantity',
+            'image', 'is_natural_certified', 'tags', 'unit'
+        )
+
+    def update(self, instance, validated_data):
+        """Reset approval_status to pending if product was previously approved."""
+        # If product was approved, reset to pending on edit
+        if instance.status == 'approved':
+            instance.status = 'pending'
+            instance.admin_rejection_reason = ''
+        
+        # Update all provided fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
+
+
+class VendorProductStatusSerializer(serializers.Serializer):
+    """
+    Serializer for toggling product availability.
+    PATCH /api/vendor/products/<id>/status/
+    """
+    is_available = serializers.BooleanField()
+
+    def update(self, instance, validated_data):
+        """Toggle is_active status."""
+        instance.is_active = validated_data.get('is_available', instance.is_active)
+        instance.save()
+        return instance
+
+
+class VendorProductQuantitySerializer(serializers.Serializer):
+    """
+    Serializer for updating product quantity.
+    PATCH /api/vendor/products/<id>/quantity/
+    """
+    available_quantity = serializers.IntegerField(min_value=0)
+
+    def update(self, instance, validated_data):
+        """Update available_quantity and sync inventory_qty."""
+        qty = validated_data.get('available_quantity')
+        instance.available_quantity = qty
+        instance.inventory_qty = qty  # Keep in sync
+        instance.save()
+        return instance
+
+
+# ============================================================================
+# PUBLIC BUYER STORE APIS - NO AUTHENTICATION REQUIRED
+# ============================================================================
+
+class PublicProductSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for products in public store.
+    Includes vendor slug for navigation.
+    """
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    vendor_slug = serializers.CharField(source='vendor.vendor_slug', read_only=True)
+    primary_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = (
+            'id', 'name', 'slug', 'description', 'price',
+            'available_quantity', 'is_natural_certified',
+            'category_name', 'vendor_slug',
+            'primary_image',
+        )
+
+    def get_primary_image(self, obj):
+        """Get first image from related ProductImage or fallback to image field."""
+        img = obj.images.first()
+        if img:
+            return img.image_url
+        if obj.image:
+            return obj.image.url
+        return None
+
+
+class PublicVendorSerializer(serializers.ModelSerializer):
+    """
+    Serialize vendor public profile for store page.
+    GET /api/store/<vendor_slug>/
+    """
+    total_products = serializers.SerializerMethodField()
+    member_since = serializers.SerializerMethodField()
+
+    class Meta:
+        model = 'vendors.Vendor'
+        fields = (
+            'business_name', 'city', 'whatsapp_number',
+            'total_products', 'member_since',
+        )
+
+    def get_total_products(self, obj):
+        """Count: approved + available products from this vendor."""
+        from django.db.models import Q
+        return obj.products.filter(
+            Q(status='approved') & 
+            Q(available_quantity__gt=0) &
+            Q(is_active=True)
+        ).count()
+
+    def get_member_since(self, obj):
+        """Return year when vendor joined."""
+        return obj.created_at.year
+
+
+class PublicProductDetailSerializer(serializers.ModelSerializer):
+    """
+    Full product detail with vendor payment info.
+    GET /api/store/<vendor_slug>/products/<product_id>/
+    """
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    vendor_business_name = serializers.CharField(
+        source='vendor.business_name', read_only=True, default='NativeGlow'
+    )
+    vendor_whatsapp = serializers.CharField(
+        source='vendor.whatsapp_number', read_only=True, default=None
+    )
+    vendor_upi = serializers.CharField(
+        source='vendor.upi_id', read_only=True, default=None
+    )
+    images = ProductImageSerializer(many=True, read_only=True)
+    ingredients_list = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = (
+            'id', 'name', 'slug', 'description', 'price',
+            'available_quantity', 'is_natural_certified',
+            'ingredients', 'ingredients_list',
+            'category_name', 'vendor_business_name',
+            'vendor_whatsapp', 'vendor_upi',
+            'images', 'created_at',
+        )
+
+    def get_ingredients_list(self, obj):
+        """Parse ingredients string into list."""
+        if obj.ingredients:
+            return [item.strip() for item in obj.ingredients.split(',') if item.strip()]
+        return []
+
+
+class StoreCategoryWithCountSerializer(serializers.Serializer):
+    """
+    Serialize category with product count.
+    GET /api/store/categories/
+    """
+    category = serializers.CharField()
+    count = serializers.IntegerField()

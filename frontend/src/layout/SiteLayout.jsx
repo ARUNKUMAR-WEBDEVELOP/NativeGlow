@@ -10,7 +10,7 @@ const navLinks = [
   { to: '/returns', label: 'Returns' },
   { to: '/privacy', label: 'Privacy Policy' },
   { to: '/terms', label: 'Terms' },
-  { to: '/vendor/apply', label: 'Sell on NativeGlow' },
+  { to: '/vendor/register', label: 'Sell on NativeGlow' },
 ];
 
 function SiteLayout({ isAuthenticated, onLogout }) {

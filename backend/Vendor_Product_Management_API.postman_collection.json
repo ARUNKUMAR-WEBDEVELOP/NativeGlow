@@ -1,0 +1,288 @@
+{
+  "info": {
+    "_postman_id": "vendor-products-api-collection",
+    "name": "NativeGlow Vendor Product Management API",
+    "description": "Collection for testing vendor product management endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Add Product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Organic Face Wash\",\n  \"name\": \"Organic Face Wash\",\n  \"description\": \"A gentle natural face wash with herbal ingredients for daily use\",\n  \"short_description\": \"Natural face wash for all skin types\",\n  \"category_type\": \"face_wash\",\n  \"ingredients\": \"Neem, Turmeric, Aloe Vera, Rose Water\",\n  \"price\": \"299.00\",\n  \"available_quantity\": 50,\n  \"is_natural_certified\": true,\n  \"sku\": \"OFWASH-001\",\n  \"tags\": \"organic,herbal,natural,skincare\",\n  \"product_type\": \"skincare\",\n  \"unit\": \"ml\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/add/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", "add", ""]
+        },
+        "description": "Add new product to vendor inventory. Status automatically set to pending."
+      },
+      "response": []
+    },
+    {
+      "name": "2. List My Products",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", ""]
+        },
+        "description": "Get list of authenticated vendor's products with status and quantity"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Edit Product",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Premium Organic Face Wash\",\n  \"description\": \"Improved formula with additional herbal ingredients\",\n  \"price\": \"349.00\",\n  \"ingredients\": \"Neem, Turmeric, Aloe Vera, Rose Water, Cucumber Extract\",\n  \"is_natural_certified\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/1/edit/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", "1", "edit", ""]
+        },
+        "description": "Edit product details. If approved, status resets to pending."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Toggle Availability",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"is_available\": false\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/1/status/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", "1", "status", ""]
+        },
+        "description": "Toggle product availability (out of stock situations)"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Update Quantity",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"available_quantity\": 150\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/1/quantity/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", "1", "quantity", ""]
+        },
+        "description": "Update product quantity"
+      },
+      "response": []
+    },
+    {
+      "name": "6. Delete Product",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8000/api/vendor/products/1/delete/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vendor", "products", "1", "delete", ""]
+        },
+        "description": "Delete product (only if no active orders)"
+      },
+      "response": []
+    },
+    {
+      "name": "Test Cases",
+      "item": [
+        {
+          "name": "Add Product - Missing Title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Missing title field\",\n  \"category_type\": \"face_wash\",\n  \"price\": \"299.00\",\n  \"available_quantity\": 50\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/vendor/products/add/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "vendor", "products", "add", ""]
+            },
+            "description": "Test: Should fail with 400 - title required"
+          },
+          "response": []
+        },
+        {
+          "name": "List Products - No Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/vendor/products/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "vendor", "products", ""]
+            },
+            "description": "Test: Should fail with 401 - token required"
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Non-existent Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Title\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/vendor/products/99999/edit/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "vendor", "products", "99999", "edit", ""]
+            },
+            "description": "Test: Should fail with 404 - product not found"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Quantity - Negative Value",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available_quantity\": -10\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/vendor/products/1/quantity/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "vendor", "products", "1", "quantity", ""]
+            },
+            "description": "Test: Should fail with 400 - quantity must be non-negative"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

@@ -19,6 +19,16 @@ import os
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
+from orders.views import PublicOrderPlaceView, VendorOrderListView, VendorOrderStatusUpdateView
+from vendors.views import VendorRegisterView, VendorLoginView, VendorProfileView
+from products.views import (
+    VendorProductCreateView,
+    VendorProductListView,
+    VendorProductEditView,
+    VendorProductDeleteView,
+    VendorProductStatusView,
+    VendorProductQuantityView,
+)
 
 
 def root_status(_request):
@@ -35,6 +45,19 @@ urlpatterns = [
     path('healthz/', root_status, name='healthz'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
+    path('api/vendor/register/', VendorRegisterView.as_view(), name='vendor-register-public'),
+    path('api/vendor/login/', VendorLoginView.as_view(), name='vendor-login-public'),
+    path('api/vendor/me/', VendorProfileView.as_view(), name='vendor-me-public'),
+    path('api/vendor/products/add/', VendorProductCreateView.as_view(), name='vendor-product-create-public'),
+    path('api/vendor/products/', VendorProductListView.as_view(), name='vendor-products-list-public'),
+    path('api/vendor/products/<int:id>/edit/', VendorProductEditView.as_view(), name='vendor-product-edit-public'),
+    path('api/vendor/products/<int:id>/delete/', VendorProductDeleteView.as_view(), name='vendor-product-delete-public'),
+    path('api/vendor/products/<int:id>/status/', VendorProductStatusView.as_view(), name='vendor-product-status-public'),
+    path('api/vendor/products/<int:id>/quantity/', VendorProductQuantityView.as_view(), name='vendor-product-quantity-public'),
+    path('api/order/place/', PublicOrderPlaceView.as_view(), name='order-place-public'),
+    path('api/vendor/orders/', VendorOrderListView.as_view(), name='vendor-orders-list'),
+    path('api/vendor/orders/<int:id>/status/', VendorOrderStatusUpdateView.as_view(), name='vendor-order-status-update'),
+    path('api/admin/', include('admins.urls')),
     path('api/vendors/', include('vendors.urls')),
     path('api/products/', include('products.urls')),
     path('api/orders/', include('orders.urls')),

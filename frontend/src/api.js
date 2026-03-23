@@ -46,6 +46,9 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Backward compatibility for existing admin pages
+  request: (path, options = {}) => adminRequest(path, options),
+
   // Products
   getProducts: (params = {}) => {
     const qs = new URLSearchParams();
@@ -77,6 +80,92 @@ export const api = {
   getMyVendorAnalytics: async (tokens, onTokensUpdate, onAuthExpired) => {
     return authRequest('/vendors/my-analytics/', {}, tokens, onTokensUpdate, onAuthExpired);
   },
+  vendorRegister: (data) => request('/vendor/register/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  vendorLogin: (data) => request('/vendor/login/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Admin
+  adminLogin: (data) => request('/admin/login/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getAdminProfile: async (tokens, onTokensUpdate, onAuthExpired) => {
+    return authRequest('/admin/me/', {}, tokens, onTokensUpdate, onAuthExpired);
+  },
+  getAdminDashboardStats: () => adminRequest('/admin/dashboard/stats/'),
+  getAdminMonthlySales: () => adminRequest('/admin/sales/monthly/'),
+  getAdminVendors: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return adminRequest(query ? `/admin/vendors/?${query}` : '/admin/vendors/');
+  },
+  getAdminProducts: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return adminRequest(query ? `/admin/products/?${query}` : '/admin/products/');
+  },
+  getAdminProductDetail: (productId) => adminRequest(`/admin/products/${productId}/`),
+  approveAdminProduct: (productId, payload) =>
+    adminRequest(`/admin/products/${productId}/approve/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  getAdminOrders: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return adminRequest(query ? `/admin/orders/?${query}` : '/admin/orders/');
+  },
+  getAdminOrderDetail: (orderId) => adminRequest(`/admin/orders/${orderId}/`),
+  getAdminMaintenanceFees: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return adminRequest(query ? `/admin/maintenance/?${query}` : '/admin/maintenance/');
+  },
+  getAdminMaintenanceSummary: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+    return adminRequest(query ? `/admin/maintenance/summary/?${query}` : '/admin/maintenance/summary/');
+  },
+  generateAdminMaintenanceFees: (payload) =>
+    adminRequest('/admin/maintenance/generate/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  markAdminMaintenancePaid: (feeId, payload) =>
+    adminRequest(`/admin/maintenance/${feeId}/mark-paid/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 
   // Auth
   register: (data) => request('/auth/register/', {
@@ -126,6 +215,28 @@ export const api = {
   getOrderDetail: async (orderId, tokens, onTokensUpdate, onAuthExpired) => {
     return authRequest(`/orders/my-orders/${orderId}/`, {}, tokens, onTokensUpdate, onAuthExpired);
   },
+
+  // Public Store APIs (no authentication required)
+  getStoreCategories: () => request('/products/store/categories/'),
+  getStoreFeaturedProducts: () => request('/products/store/featured/'),
+  getStoreSearch: (query, category, city) => {
+    const qs = new URLSearchParams();
+    if (query) qs.set('q', query);
+    if (category) qs.set('category', category);
+    if (city) qs.set('city', city);
+    const queryString = qs.toString();
+    return request(queryString ? `/products/store/search/?${queryString}` : '/products/store/search/');
+  },
+  getVendorStore: (vendorSlug) => request(`/products/store/${vendorSlug}/`),
+  getProductDetail: (vendorSlug, productId) => request(`/products/store/${vendorSlug}/products/${productId}/`),
+
+  // Public Order APIs (no authentication required)
+  placeOrder: (data) => request('/orders/place/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  trackOrderByPhone: (phone) => request(`/orders/track/?phone=${encodeURIComponent(phone)}`),
+  trackOrderByCode: (orderCode) => request(`/orders/track/${orderCode}/`),
 };
 
 async function authRequest(path, options, tokens, onTokensUpdate, onAuthExpired) {
@@ -174,3 +285,29 @@ async function authRequest(path, options, tokens, onTokensUpdate, onAuthExpired)
     });
   }
 }
+
+function getAdminTokens() {
+  const access = localStorage.getItem('admin_token');
+  const refresh = localStorage.getItem('admin_refresh_token');
+  if (!access) {
+    return null;
+  }
+  return { access, refresh };
+}
+
+async function adminRequest(path, options = {}) {
+  const adminTokens = getAdminTokens();
+  if (!adminTokens?.access) {
+    throw new Error('Admin authentication required.');
+  }
+
+  return request(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${adminTokens.access}`,
+    },
+  });
+}
+
+export default api;

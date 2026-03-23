@@ -1,79 +1,113 @@
 from django.db import models
-from django.conf import settings
-
-
-APPLICATION_STATUS = [
-    ('pending', 'Pending'),
-    ('approved', 'Approved'),
-    ('rejected', 'Rejected'),
-]
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils.text import slugify
+from django.utils import timezone
 
 
 class Vendor(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vendor_profile'
+    """
+    Vendor account model with standalone authentication.
+    Direct vendor login without relying on Django User model.
+    """
+    # Authentication
+    full_name = models.CharField(max_length=255, default='')
+    email = models.EmailField(unique=True, db_index=True, null=True, blank=True)
+    password = models.CharField(max_length=255, default='')  # Hashed password
+
+    # Business Details
+    business_name = models.CharField(max_length=255, default='')
+    vendor_slug = models.SlugField(unique=True, help_text='Used for product page URL', null=True, blank=True)
+    city = models.CharField(max_length=100, default='')
+    whatsapp_number = models.CharField(max_length=20, default='')
+
+    # Payment & Banking
+    upi_id = models.CharField(max_length=100, blank=True)
+    bank_account_number = models.CharField(max_length=50, blank=True)
+    bank_ifsc = models.CharField(max_length=20, blank=True)
+    account_holder_name = models.CharField(max_length=255, blank=True)
+
+    # Status & Approval
+    is_approved = models.BooleanField(default=False, help_text='Admin approval required')
+    is_active = models.BooleanField(default=True)
+    maintenance_due = models.BooleanField(default=False, help_text='Monthly maintenance fee pending')
+
+    # Metadata
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        # Auto-hash password if it's not already hashed
+        if self.password and not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
+        # Auto-generate vendor_slug from business_name
+        if not self.vendor_slug:
+            self.vendor_slug = slugify(self.business_name)
+        super().save(*args, **kwargs)
+
+    def check_password(self, raw_password):
+        """Check if provided password matches stored hashed password"""
+        return check_password(raw_password, self.password)
+
+    def __str__(self):
+        return f"{self.business_name} ({self.email})"
+
+
+class MaintenancePayment(models.Model):
+    vendor = models.ForeignKey(
+        Vendor, on_delete=models.CASCADE, related_name='maintenance_payments'
     )
-    brand_name = models.CharField(max_length=150)
-    slug = models.SlugField(unique=True)
-    description = models.TextField()
-    product_types = models.CharField(
-        max_length=300, help_text='Types of natural products you sell'
-    )
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20)
-    logo = models.ImageField(upload_to='vendors/', blank=True, null=True)
-    is_natural_certified = models.BooleanField(
-        default=False,
-        help_text='Vendor confirms products are natural and chemical-free',
-    )
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveIntegerField()
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField(null=True, blank=True)
+    payment_reference = models.CharField(max_length=120, blank=True)
     status = models.CharField(
         max_length=20,
         choices=[
-            ('pending', 'Pending Review'),
-            ('approved', 'Approved'),
-            ('rejected', 'Rejected'),
-            ('suspended', 'Suspended'),
+            ('paid', 'Paid'),
+            ('pending', 'Pending'),
+            ('overdue', 'Overdue'),
         ],
         default='pending',
     )
-    joined_at = models.DateTimeField(auto_now_add=True)
-    total_sales = models.PositiveIntegerField(default=0)
-    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=12.00)
-    payout_terms = models.CharField(max_length=200, default='Monthly settlement after service commission.')
-    website = models.URLField(blank=True)
-    contact_email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-joined_at']
+        ordering = ['-year', '-month']
+        unique_together = ('vendor', 'month', 'year')
 
     def __str__(self):
-        return self.brand_name
+        return f"{self.vendor} - {self.month}/{self.year} ({self.status})"
 
 
 class VendorApplication(models.Model):
     """
-    Submitted by natural product sellers who want to collaborate with NativeGlow.
+    Submitted by vendors who want to join NativeGlow.
     Admin reviews and approves or rejects applications.
     """
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='vendor_applications',
-    )
-    brand_name = models.CharField(max_length=255)
+    APPLICATION_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    full_name = models.CharField(max_length=255, default='')
+    email = models.EmailField(null=True, blank=True)
+    phone = models.CharField(max_length=20, default='')
+    business_name = models.CharField(max_length=255, default='')
     product_types = models.TextField(
-        help_text='Describe the types of natural products you sell (e.g. herbal oils, bath powders, cotton wear).'
+        help_text='Describe the types of natural products you sell', default=''
     )
     why_collaborate = models.TextField(
-        help_text='Why do you want to partner with NativeGlow?'
+        help_text='Why do you want to partner with NativeGlow?', default=''
     )
     current_sales_channels = models.TextField(
         blank=True,
         help_text='Where do you currently sell? (e.g. local market, Instagram, own website)'
     )
-    contact_email = models.EmailField()
-    contact_phone = models.CharField(max_length=20, blank=True)
     status = models.CharField(
         max_length=20, choices=APPLICATION_STATUS, default='pending'
     )
@@ -85,4 +119,4 @@ class VendorApplication(models.Model):
         ordering = ['-applied_at']
 
     def __str__(self):
-        return f"{self.brand_name} ({self.get_status_display()})"
+        return f"{self.business_name} ({self.get_status_display()})"
