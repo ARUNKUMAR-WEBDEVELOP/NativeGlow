@@ -1,0 +1,556 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "!N7LRRUfrhho7XnKA64dVEqXRh1rMVULdrGL7qdcz",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "vendor_siddha_botanics",
+    "first_name": "",
+    "last_name": "",
+    "email": "hello@siddhabotanics.example",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-14T16:19:13.680Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "!FrKJM3xBjDj8nrJJVnJz3AMb5Jo00uK5koDoPYU1",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "vendor_earthloom",
+    "first_name": "",
+    "last_name": "",
+    "email": "care@earthloom.example",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-03-14T16:19:13.702Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "vendors.vendor",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "vendor_siddha_botanics"
+    ],
+    "brand_name": "Siddha Botanics",
+    "slug": "siddha-botanics",
+    "description": "Siddha Botanics verified natural product partner.",
+    "product_types": "Herbal skincare, oils, powders",
+    "city": "Chennai",
+    "state": "Tamil Nadu",
+    "phone": "+91-9000000000",
+    "logo": "",
+    "is_natural_certified": true,
+    "status": "approved",
+    "joined_at": "2026-03-14T16:19:13.696Z",
+    "total_sales": 0,
+    "commission_rate": "12.00",
+    "payout_terms": "Monthly settlement after service commission.",
+    "website": "",
+    "contact_email": "hello@siddhabotanics.example"
+  }
+},
+{
+  "model": "vendors.vendor",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "vendor_earthloom"
+    ],
+    "brand_name": "EarthLoom Naturals",
+    "slug": "earthloom-naturals",
+    "description": "EarthLoom Naturals verified natural product partner.",
+    "product_types": "Natural dyed clothing, cotton wear, linen wear",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "phone": "+91-9000000000",
+    "logo": "",
+    "is_natural_certified": true,
+    "status": "approved",
+    "joined_at": "2026-03-14T16:19:13.712Z",
+    "total_sales": 0,
+    "commission_rate": "12.00",
+    "payout_terms": "Monthly settlement after service commission.",
+    "website": "",
+    "contact_email": "care@earthloom.example"
+  }
+},
+{
+  "model": "products.category",
+  "pk": 1,
+  "fields": {
+    "name": "Herbal Skincare",
+    "slug": "herbal-skincare",
+    "description": "Traditional herb-inspired skincare essentials.",
+    "image": ""
+  }
+},
+{
+  "model": "products.category",
+  "pk": 2,
+  "fields": {
+    "name": "Everyday Clothing",
+    "slug": "everyday-clothing",
+    "description": "Comfort-focused cotton and linen daily wear.",
+    "image": ""
+  }
+},
+{
+  "model": "products.product",
+  "pk": 9,
+  "fields": {
+    "vendor": null,
+    "category": 1,
+    "title": "Herbal Turmeric Face Pack",
+    "slug": "herbal-turmeric-face-pack",
+    "description": "A brightening turmeric-rich herbal face pack for tan reduction and healthy glow. How to use: Mix with rose water, apply for 10-12 minutes, rinse gently.",
+    "short_description": "Turmeric herbal pack for glow, clarity, and tan care.",
+    "ingredients": "Wild turmeric, Sandalwood, Rose petals, Vetiver, Green gram",
+    "product_type": "skincare",
+    "tags": "nativeglow,herbal,turmeric,face-pack,glow",
+    "price": "12.99",
+    "compare_price": "17.99",
+    "sku": "NG-SK-100",
+    "inventory_qty": 70,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": true,
+    "is_new_arrival": false,
+    "is_featured": true,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Herbal Turmeric Face Pack | NativeGlow",
+    "seo_description": "Natural turmeric face pack for brighter skin and reduced dullness.",
+    "created_at": "2026-03-14T16:19:13.715Z",
+    "updated_at": "2026-03-14T16:20:30.941Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 10,
+  "fields": {
+    "vendor": null,
+    "category": 1,
+    "title": "Neem & Tulsi Face Wash",
+    "slug": "neem-tulsi-face-wash",
+    "description": "Gentle daily herbal cleanser for acne-prone and oily skin. How to use: Massage on wet face for 30 seconds and rinse.",
+    "short_description": "Neem-Tulsi cleanser for acne control and fresh skin.",
+    "ingredients": "Neem extract, Tulsi extract, Aloe base, Licorice, Tea tree",
+    "product_type": "skincare",
+    "tags": "nativeglow,herbal,face-wash,neem,tulsi",
+    "price": "10.99",
+    "compare_price": "14.99",
+    "sku": "NG-SK-101",
+    "inventory_qty": 90,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": true,
+    "is_new_arrival": false,
+    "is_featured": true,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Neem & Tulsi Face Wash | NativeGlow",
+    "seo_description": "Natural neem and tulsi face wash for acne-prone skin and oil control.",
+    "created_at": "2026-03-14T16:19:13.731Z",
+    "updated_at": "2026-03-14T16:20:30.957Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 11,
+  "fields": {
+    "vendor": null,
+    "category": 1,
+    "title": "Sandalwood Glow Cream",
+    "slug": "sandalwood-glow-cream",
+    "description": "Rich sandalwood cream that supports soft, radiant skin and even tone. How to use: Apply a thin layer after cleansing, morning and night.",
+    "short_description": "Sandalwood hydration cream for smooth radiant skin.",
+    "ingredients": "Sandalwood extract, Saffron, Aloe vera, Almond oil, Shea butter",
+    "product_type": "skincare",
+    "tags": "nativeglow,sandalwood,glow-cream,hydration,skincare",
+    "price": "15.99",
+    "compare_price": "21.99",
+    "sku": "NG-SK-102",
+    "inventory_qty": 65,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": true,
+    "is_new_arrival": false,
+    "is_featured": false,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Sandalwood Glow Cream | NativeGlow",
+    "seo_description": "Sandalwood glow cream for hydration, softness, and brighter-looking skin.",
+    "created_at": "2026-03-14T16:19:13.749Z",
+    "updated_at": "2026-03-14T16:20:30.977Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 12,
+  "fields": {
+    "vendor": 1,
+    "category": 1,
+    "title": "Herbal Hair Growth Oil",
+    "slug": "herbal-hair-growth-oil",
+    "description": "Traditional scalp oil blend crafted to nourish roots and reduce dryness. How to use: Apply to scalp, massage for 3-5 minutes, leave overnight and wash.",
+    "short_description": "Root-nourishing herbal hair oil for healthier growth.",
+    "ingredients": "Bhringraj, Amla, Fenugreek, Hibiscus, Coconut oil",
+    "product_type": "bodycare",
+    "tags": "siddha-botanics,herbal,hair-oil,growth,scalp-care",
+    "price": "13.99",
+    "compare_price": "18.99",
+    "sku": "SB-SK-201",
+    "inventory_qty": 80,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": false,
+    "is_new_arrival": false,
+    "is_featured": true,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Herbal Hair Growth Oil | Siddha Botanics",
+    "seo_description": "Natural hair growth oil with bhringraj and amla for stronger roots.",
+    "created_at": "2026-03-14T16:19:13.765Z",
+    "updated_at": "2026-03-14T16:20:30.994Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 13,
+  "fields": {
+    "vendor": 1,
+    "category": 1,
+    "title": "Aloe Vera Skin Gel",
+    "slug": "aloe-vera-skin-gel",
+    "description": "Cooling aloe gel for hydration, after-sun calm, and lightweight daily moisture. How to use: Apply on clean skin and leave on.",
+    "short_description": "Cooling aloe gel for instant hydration and calm skin.",
+    "ingredients": "Aloe vera juice, Cucumber extract, Vitamin E, Basil water",
+    "product_type": "skincare",
+    "tags": "siddha-botanics,aloe-vera,skin-gel,hydration,soothing",
+    "price": "8.99",
+    "compare_price": "12.99",
+    "sku": "SB-SK-202",
+    "inventory_qty": 110,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": false,
+    "is_new_arrival": true,
+    "is_featured": false,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Aloe Vera Skin Gel | Siddha Botanics",
+    "seo_description": "Soothing aloe vera gel for hydration and skin comfort.",
+    "created_at": "2026-03-14T16:19:13.771Z",
+    "updated_at": "2026-03-14T16:20:31.012Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 14,
+  "fields": {
+    "vendor": 2,
+    "category": 2,
+    "title": "Organic Cotton Daily T-Shirt",
+    "slug": "organic-cotton-daily-t-shirt",
+    "description": "Breathable organic cotton tee designed for all-day comfort. How to use: Style as a daily base layer and machine wash on gentle cycle.",
+    "short_description": "Organic cotton t-shirt for breathable daily wear.",
+    "ingredients": "Organic combed cotton, enzyme-soft finish, breathable knit",
+    "product_type": "clothing",
+    "tags": "earthloom,organic-cotton,tshirt,daily-wear,clothing",
+    "price": "19.99",
+    "compare_price": "26.99",
+    "sku": "EL-CL-301",
+    "inventory_qty": 120,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": true,
+    "is_new_arrival": false,
+    "is_featured": false,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Organic Cotton Daily T-Shirt | EarthLoom Naturals",
+    "seo_description": "Organic cotton daily t-shirt built for comfort and breathability.",
+    "created_at": "2026-03-14T16:19:13.794Z",
+    "updated_at": "2026-03-14T16:20:31.030Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 15,
+  "fields": {
+    "vendor": 2,
+    "category": 2,
+    "title": "Natural Dye Cotton Shirt",
+    "slug": "natural-dye-cotton-shirt",
+    "description": "Natural-dye cotton shirt for minimal styling and skin-friendly wear. How to use: Wear casually or semi-formally; wash in cold water.",
+    "short_description": "Natural dye cotton shirt with soft breathable feel.",
+    "ingredients": "Cotton fabric, plant-based dyes, low-irritation finish",
+    "product_type": "clothing",
+    "tags": "earthloom,natural-dye,cotton-shirt,minimal,clothing",
+    "price": "24.99",
+    "compare_price": "32.99",
+    "sku": "EL-CL-302",
+    "inventory_qty": 75,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": false,
+    "is_new_arrival": false,
+    "is_featured": false,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Natural Dye Cotton Shirt | EarthLoom Naturals",
+    "seo_description": "Plant-dyed cotton shirt for breathable comfort and natural style.",
+    "created_at": "2026-03-14T16:19:13.809Z",
+    "updated_at": "2026-03-14T16:20:31.049Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 16,
+  "fields": {
+    "vendor": 2,
+    "category": 2,
+    "title": "Herbal Dyed Kurta",
+    "slug": "herbal-dyed-kurta",
+    "description": "Traditional-inspired kurta made with herbal dyes and breathable fabric. How to use: Pair with cotton bottoms for daily or festive wear.",
+    "short_description": "Herbal dyed kurta for natural comfort and style.",
+    "ingredients": "Cotton-linen weave, herbal dye bath, soft finish",
+    "product_type": "clothing",
+    "tags": "earthloom,herbal-dye,kurta,ethnic,clothing",
+    "price": "29.99",
+    "compare_price": "39.99",
+    "sku": "EL-CL-303",
+    "inventory_qty": 55,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": false,
+    "is_new_arrival": true,
+    "is_featured": false,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Herbal Dyed Kurta | EarthLoom Naturals",
+    "seo_description": "Herbal dyed breathable kurta for natural everyday comfort.",
+    "created_at": "2026-03-14T16:19:13.821Z",
+    "updated_at": "2026-03-14T16:20:31.069Z"
+  }
+},
+{
+  "model": "products.product",
+  "pk": 17,
+  "fields": {
+    "vendor": 2,
+    "category": 2,
+    "title": "Minimal Cotton Hoodie",
+    "slug": "minimal-cotton-hoodie",
+    "description": "Clean-design cotton hoodie with soft brushed interior for everyday layering. How to use: Wear over tees or kurtas in cool weather.",
+    "short_description": "Minimal cotton hoodie with soft cozy comfort.",
+    "ingredients": "Cotton fleece, brushed lining, breathable rib cuffs",
+    "product_type": "clothing",
+    "tags": "earthloom,cotton-hoodie,minimal,casual,clothing",
+    "price": "31.99",
+    "compare_price": "42.99",
+    "sku": "EL-CL-304",
+    "inventory_qty": 48,
+    "image": "",
+    "status": "active",
+    "is_active": true,
+    "is_bestseller": false,
+    "is_new_arrival": false,
+    "is_featured": true,
+    "shipping_info": "Processing 1-2 days, delivery 5-8 business days",
+    "seo_title": "Minimal Cotton Hoodie | EarthLoom Naturals",
+    "seo_description": "Minimal cotton hoodie for cozy, breathable everyday layering.",
+    "created_at": "2026-03-14T16:19:13.840Z",
+    "updated_at": "2026-03-14T16:20:31.081Z"
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 115,
+  "fields": {
+    "product": 9,
+    "image_url": "https://placehold.co/1200x900/f6ead6/374151?text=Herbal+Turmeric+Face+Pack",
+    "alt_text": "Herbal Turmeric Face Pack image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 116,
+  "fields": {
+    "product": 9,
+    "image_url": "https://placehold.co/1200x900/f8f0e3/374151?text=Turmeric+Sandalwood+Rose",
+    "alt_text": "Herbal Turmeric Face Pack image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 117,
+  "fields": {
+    "product": 10,
+    "image_url": "https://placehold.co/1200x900/e7f2df/374151?text=Neem+Tulsi+Face+Wash",
+    "alt_text": "Neem & Tulsi Face Wash image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 118,
+  "fields": {
+    "product": 10,
+    "image_url": "https://placehold.co/1200x900/f1f8eb/374151?text=Daily+Acne+Control+Cleanse",
+    "alt_text": "Neem & Tulsi Face Wash image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 119,
+  "fields": {
+    "product": 11,
+    "image_url": "https://placehold.co/1200x900/f5e9dc/374151?text=Sandalwood+Glow+Cream",
+    "alt_text": "Sandalwood Glow Cream image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 120,
+  "fields": {
+    "product": 11,
+    "image_url": "https://placehold.co/1200x900/faefe5/374151?text=Sandalwood+Saffron+Aloe",
+    "alt_text": "Sandalwood Glow Cream image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 121,
+  "fields": {
+    "product": 12,
+    "image_url": "https://placehold.co/1200x900/e6efe2/374151?text=Herbal+Hair+Growth+Oil",
+    "alt_text": "Herbal Hair Growth Oil image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 122,
+  "fields": {
+    "product": 12,
+    "image_url": "https://placehold.co/1200x900/f0f6ee/374151?text=Bhringraj+Amla+Hibiscus",
+    "alt_text": "Herbal Hair Growth Oil image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 123,
+  "fields": {
+    "product": 13,
+    "image_url": "https://placehold.co/1200x900/e8f7ec/374151?text=Aloe+Vera+Skin+Gel",
+    "alt_text": "Aloe Vera Skin Gel image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 124,
+  "fields": {
+    "product": 13,
+    "image_url": "https://placehold.co/1200x900/f2fbf5/374151?text=Hydrate+Calm+Refresh",
+    "alt_text": "Aloe Vera Skin Gel image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 125,
+  "fields": {
+    "product": 14,
+    "image_url": "https://placehold.co/1200x900/e8eef2/374151?text=Organic+Cotton+Daily+T-Shirt",
+    "alt_text": "Organic Cotton Daily T-Shirt image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 126,
+  "fields": {
+    "product": 14,
+    "image_url": "https://placehold.co/1200x900/f1f6f9/374151?text=Breathable+Organic+Cotton",
+    "alt_text": "Organic Cotton Daily T-Shirt image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 127,
+  "fields": {
+    "product": 15,
+    "image_url": "https://placehold.co/1200x900/e6ece8/374151?text=Natural+Dye+Cotton+Shirt",
+    "alt_text": "Natural Dye Cotton Shirt image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 128,
+  "fields": {
+    "product": 15,
+    "image_url": "https://placehold.co/1200x900/f0f5f2/374151?text=Plant+Dyed+Cotton+Texture",
+    "alt_text": "Natural Dye Cotton Shirt image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 129,
+  "fields": {
+    "product": 16,
+    "image_url": "https://placehold.co/1200x900/ece6df/374151?text=Herbal+Dyed+Kurta",
+    "alt_text": "Herbal Dyed Kurta image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 130,
+  "fields": {
+    "product": 16,
+    "image_url": "https://placehold.co/1200x900/f5f0eb/374151?text=Breathable+Kurta+Fabric",
+    "alt_text": "Herbal Dyed Kurta image 2",
+    "position": 2
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 131,
+  "fields": {
+    "product": 17,
+    "image_url": "https://placehold.co/1200x900/e7ebef/374151?text=Minimal+Cotton+Hoodie",
+    "alt_text": "Minimal Cotton Hoodie image 1",
+    "position": 1
+  }
+},
+{
+  "model": "products.productimage",
+  "pk": 132,
+  "fields": {
+    "product": 17,
+    "image_url": "https://placehold.co/1200x900/f1f4f7/374151?text=Soft+Brushed+Cotton+Fleece",
+    "alt_text": "Minimal Cotton Hoodie image 2",
+    "position": 2
+  }
+}
+]

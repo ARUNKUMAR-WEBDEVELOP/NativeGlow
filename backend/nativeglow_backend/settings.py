@@ -13,26 +13,10 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-def _load_env_file(path):
-    if not path.exists():
-        return
-    for raw in path.read_text(encoding='utf-8').splitlines():
-        line = raw.strip()
-        if not line or line.startswith('#') or '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
-
-
-_load_env_file(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -45,11 +29,11 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True').strip().lower() == 'true'
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
     if host.strip()
 ]
 
@@ -125,11 +109,9 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^https://[a-z0-9-]+\.github\.io$',
 ]
 
-extra_cors = os.environ.get('CORS_ALLOWED_ORIGINS', '').strip()
+extra_cors = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
 if extra_cors:
-    CORS_ALLOWED_ORIGINS.extend([
-        origin.strip() for origin in extra_cors.split(',') if origin.strip()
-    ])
+    CORS_ALLOWED_ORIGINS.extend(extra_cors)
 
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(CORS_ALLOWED_ORIGINS))
 
@@ -160,8 +142,12 @@ WSGI_APPLICATION = 'nativeglow_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME', default='nativeglow_db'),
+        'USER': config('DB_USER', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default=5432, cast=int),
     }
 }
 
@@ -204,4 +190,4 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Auth integrations
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')

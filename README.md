@@ -30,7 +30,7 @@ Use the `backend/` folder as your Render service root.
 ### 3. Optional but Recommended
 
 - Configure SMTP credentials for OTP emails.
-- Use PostgreSQL in Render for production instead of SQLite.
+- Use PostgreSQL in Render for production.
 
 ## Local Development
 

@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.sqlite3
 
 # Virtual environments
 venv/
