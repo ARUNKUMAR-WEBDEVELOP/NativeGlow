@@ -25,7 +25,9 @@ function HomePage() {
           setCategories(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        console.error('Failed to load categories:', err);
+        if (err?.status !== 404) {
+          console.error('Failed to load categories:', err);
+        }
         if (active) setCategories([]);
       } finally {
         if (active) setCategoriesLoading(false);
@@ -47,7 +49,9 @@ function HomePage() {
           setFeaturedProducts(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        console.error('Failed to load featured products:', err);
+        if (err?.status !== 404) {
+          console.error('Failed to load featured products:', err);
+        }
         if (active) setFeaturedProducts([]);
       } finally {
         if (active) setProductsLoading(false);

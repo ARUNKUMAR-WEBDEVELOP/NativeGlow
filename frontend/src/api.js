@@ -4,17 +4,14 @@ const API_BASE =
     ? 'http://127.0.0.1:8000/api'
     : 'https://nativeglow.onrender.com/api');
 
-async function request(path, options = {}) {
-  const headers = {
+function getHeaders(options = {}) {
+  return {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
+}
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-
+async function handleResponse(res) {
   if (!res.ok) {
     let payload = null;
     let detail = `API request failed: ${res.status}`;
@@ -45,11 +42,42 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+async function requestByUrl(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: getHeaders(options),
+  });
+  return handleResponse(res);
+}
+
+function getAlternateBase() {
+  return API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : null;
+}
+
+async function request(path, options = {}) {
+  return requestByUrl(`${API_BASE}${path}`, options);
+}
+
+async function requestWithBaseFallback(path, options = {}) {
+  try {
+    return await request(path, options);
+  } catch (error) {
+    if (error?.status !== 404) {
+      throw error;
+    }
+    const alternateBase = getAlternateBase();
+    if (!alternateBase) {
+      throw error;
+    }
+    return requestByUrl(`${alternateBase}${path}`, options);
+  }
+}
+
 async function requestWithFallback(paths, options = {}) {
   let lastError = null;
   for (const path of paths) {
     try {
-      return await request(path, options);
+      return await requestWithBaseFallback(path, options);
     } catch (error) {
       lastError = error;
       if (error?.status !== 404) {
@@ -96,7 +124,7 @@ export const api = {
     return authRequest('/vendors/my-analytics/', {}, tokens, onTokensUpdate, onAuthExpired);
   },
   vendorRegister: (data) =>
-    requestWithFallback(['/vendor/register/', '/vendors/register/'], {
+    requestWithBaseFallback('/vendor/register/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -234,8 +262,10 @@ export const api = {
   },
 
   // Public Store APIs (no authentication required)
-  getStoreCategories: () => request('/products/store/categories/'),
-  getStoreFeaturedProducts: () => request('/products/store/featured/'),
+  getStoreCategories: () =>
+    requestWithFallback(['/products/categories/', '/products/store/categories/']),
+  getStoreFeaturedProducts: () =>
+    requestWithFallback(['/products/featured/', '/products/store/featured/']),
   getStoreSearch: (query, category, city) => {
     const qs = new URLSearchParams();
     if (query) qs.set('q', query);

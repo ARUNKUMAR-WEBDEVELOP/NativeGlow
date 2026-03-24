@@ -165,6 +165,10 @@ function VendorRegister() {
       setStep(1);
       setError('');
     } catch (err) {
+      if (err?.status === 404) {
+        setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');
+        return;
+      }
       setError(err.message || 'Registration failed. Please check your details and try again.');
     } finally {
       setIsSubmitting(false);
