@@ -129,16 +129,10 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create vendor with hashed password and auto-generated slug."""
         from django.contrib.auth.hashers import make_password
-        from django.utils.text import slugify
 
         # Hash the password
         password = validated_data.pop('password')
         validated_data['password'] = make_password(password)
-
-        # Auto-generate vendor_slug from business_name if not provided
-        if not validated_data.get('vendor_slug'):
-            business_name = validated_data.get('business_name', '')
-            validated_data['vendor_slug'] = slugify(business_name)
 
         vendor = Vendor.objects.create(**validated_data)
         return vendor

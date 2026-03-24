@@ -41,13 +41,23 @@ class Vendor(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+    def _build_unique_vendor_slug(self):
+        """Generate a unique slug from business name, appending numeric suffix if needed."""
+        base = slugify(self.business_name or 'vendor') or 'vendor'
+        candidate = base
+        suffix = 1
+        while Vendor.objects.filter(vendor_slug=candidate).exclude(pk=self.pk).exists():
+            suffix += 1
+            candidate = f"{base}-{suffix}"
+        return candidate
+
     def save(self, *args, **kwargs):
         # Auto-hash password if it's not already hashed
         if self.password and not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
-        # Auto-generate vendor_slug from business_name
+        # Auto-generate vendor_slug from business_name with collision-safe suffixing
         if not self.vendor_slug:
-            self.vendor_slug = slugify(self.business_name)
+            self.vendor_slug = self._build_unique_vendor_slug()
         super().save(*args, **kwargs)
 
     def check_password(self, raw_password):
