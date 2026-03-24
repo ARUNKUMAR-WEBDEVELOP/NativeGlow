@@ -267,12 +267,12 @@ function HomePage() {
               <h4 className="font-semibold text-zinc-900 mb-3">Company</h4>
               <ul className="space-y-2">
                 <li>
-                  <a href="/about" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
+                  <a href="#/about" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
                     About Us
                   </a>
                 </li>
                 <li>
-                  <a href="/terms" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
+                  <a href="#/terms" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
                     Terms of Service
                   </a>
                 </li>
@@ -299,7 +299,7 @@ function HomePage() {
             <div>
               <h4 className="font-semibold text-zinc-900 mb-3">For Sellers</h4>
               <a
-                href="/vendor/register"
+                href="#/vendor/register"
                 className="inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
               >
                 Register as Seller →
