@@ -45,6 +45,21 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+async function requestWithFallback(paths, options = {}) {
+  let lastError = null;
+  for (const path of paths) {
+    try {
+      return await request(path, options);
+    } catch (error) {
+      lastError = error;
+      if (error?.status !== 404) {
+        throw error;
+      }
+    }
+  }
+  throw lastError || new Error('API request failed');
+}
+
 export const api = {
   // Backward compatibility for existing admin pages
   request: (path, options = {}) => adminRequest(path, options),
@@ -80,14 +95,16 @@ export const api = {
   getMyVendorAnalytics: async (tokens, onTokensUpdate, onAuthExpired) => {
     return authRequest('/vendors/my-analytics/', {}, tokens, onTokensUpdate, onAuthExpired);
   },
-  vendorRegister: (data) => request('/vendor/register/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  vendorLogin: (data) => request('/vendor/login/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  vendorRegister: (data) =>
+    requestWithFallback(['/vendor/register/', '/vendors/register/'], {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  vendorLogin: (data) =>
+    requestWithFallback(['/vendor/login/', '/vendors/login/'], {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Admin
   adminLogin: (data) => request('/admin/login/', {
