@@ -25,13 +25,18 @@ class AdminJWTAuthentication(JWTAuthentication):
         Raises:
             AuthenticationFailed: If token is missing, invalid, or not an admin token
         """
-        # Call parent JWTAuthentication to get the validated token
-        result = super().authenticate(request)
-
-        if result is None:
+        header = self.get_header(request)
+        if header is None:
             return None
 
-        user, validated_token = result
+        raw_token = self.get_raw_token(header)
+        if raw_token is None:
+            return None
+
+        try:
+            validated_token = self.get_validated_token(raw_token)
+        except InvalidToken as e:
+            raise AuthenticationFailed(str(e))
 
         # Check if token has role == "admin"
         token_role = validated_token.get('role')
@@ -50,4 +55,6 @@ class AdminJWTAuthentication(JWTAuthentication):
         except AdminUser.DoesNotExist:
             raise AuthenticationFailed('Admin user not found.')
 
-        return (user, validated_token)
+        # Mark as authenticated for DRF IsAuthenticated permission checks.
+        setattr(admin_user, 'is_authenticated', True)
+        return (admin_user, validated_token)
