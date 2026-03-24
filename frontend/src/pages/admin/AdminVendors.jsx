@@ -69,7 +69,7 @@ export default function AdminVendors() {
       } else if (statusFilter === 'inactive') {
         filtered = filtered.filter((v) => v.status === 'inactive');
       } else if (statusFilter === 'maintenance') {
-        filtered = filtered.filter((v) => v.maintenance_due && v.maintenance_due > 0);
+        filtered = filtered.filter((v) => Boolean(v.maintenance_due));
       }
     }
 
@@ -78,8 +78,8 @@ export default function AdminVendors() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (v) =>
-          v.business_name.toLowerCase().includes(query) ||
-          v.owner_name.toLowerCase().includes(query) ||
+          (v.business_name || '').toLowerCase().includes(query) ||
+          (v.full_name || '').toLowerCase().includes(query) ||
           (v.email && v.email.toLowerCase().includes(query))
       );
     }
@@ -93,11 +93,11 @@ export default function AdminVendors() {
       setActionLoading(`approve-${vendorId}`);
       await api.request(`/admin/vendors/${vendorId}/approve/`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'approved' }),
+        body: JSON.stringify({ approved: true }),
       });
       // Refresh vendors list
       const updated = vendors.map((v) =>
-        v.id === vendorId ? { ...v, status: 'approved' } : v
+        v.id === vendorId ? { ...v, status: 'approved', is_approved: true } : v
       );
       setVendors(updated);
     } catch (err) {
@@ -113,10 +113,10 @@ export default function AdminVendors() {
       setActionLoading(`reject-${vendorId}`);
       await api.request(`/admin/vendors/${vendorId}/approve/`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'rejected', rejection_reason: rejectReason }),
+        body: JSON.stringify({ approved: false, reason: rejectReason }),
       });
       const updated = vendors.map((v) =>
-        v.id === vendorId ? { ...v, status: 'rejected' } : v
+        v.id === vendorId ? { ...v, status: 'pending', is_approved: false } : v
       );
       setVendors(updated);
       setShowRejectModal(false);
@@ -306,13 +306,13 @@ export default function AdminVendors() {
               filteredVendors.map((vendor) => (
                 <tr key={vendor.id} className="border-b border-slate-700 hover:bg-slate-800/30">
                   <td className="px-6 py-4 text-sm text-white font-medium">{vendor.business_name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-300">{vendor.owner_name}</td>
+                  <td className="px-6 py-4 text-sm text-slate-300">{vendor.full_name}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.city || '-'}</td>
                   <td className="px-6 py-4 text-sm text-right text-slate-300">
                     {vendor.total_products || 0}
                   </td>
                   <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
-                    ₹{(vendor.monthly_revenue || 0).toLocaleString('en-IN')}
+                    ₹{(vendor.this_month_revenue || 0).toLocaleString('en-IN')}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <span
@@ -324,12 +324,10 @@ export default function AdminVendors() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    {vendor.maintenance_due > 0 ? (
-                      <span className="text-orange-400 font-medium">
-                        ₹{vendor.maintenance_due.toLocaleString('en-IN')}
-                      </span>
+                    {vendor.maintenance_due ? (
+                      <span className="text-orange-400 font-medium">Due</span>
                     ) : (
-                      <span className="text-green-400">✓ Paid</span>
+                      <span className="text-green-400">Clear</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm space-x-2">
@@ -373,7 +371,7 @@ export default function AdminVendors() {
                         Deactivate
                       </button>
                     )}
-                    {vendor.maintenance_due > 0 && (
+                    {vendor.maintenance_due && (
                       <button
                         onClick={() => handleMarkFeePaid(vendor.id)}
                         disabled={actionLoading === `maintain-${vendor.id}`}
@@ -448,9 +446,13 @@ function VendorDetailModal({ vendor, onClose }) {
     const fetchVendorDetails = async () => {
       try {
         setIsLoading(true);
-        // Fetch vendor products
-        const productsRes = await api.request(`/admin/vendors/${vendor.id}/products/`, {});
-        setProducts(Array.isArray(productsRes) ? productsRes : productsRes.results || []);
+        // Fetch detailed vendor profile (includes products and computed metrics)
+        const detailRes = await api.request(`/admin/vendors/${vendor.id}/`, {});
+        const normalizedDetail = Array.isArray(detailRes)
+          ? detailRes[0] || vendor
+          : detailRes || vendor;
+        setVendorDetail(normalizedDetail);
+        setProducts(Array.isArray(normalizedDetail.products) ? normalizedDetail.products : []);
 
         // Fetch maintenance history
         const maintenanceRes = await api.request(
@@ -464,11 +466,15 @@ function VendorDetailModal({ vendor, onClose }) {
           `/admin/sales/vendor/${vendor.id}/monthly/`,
           {}
         );
-        const formattedSales = Array.isArray(salesRes.results)
+        const rawSales = Array.isArray(salesRes.results)
           ? salesRes.results
           : Array.isArray(salesRes)
           ? salesRes
           : [];
+        const formattedSales = rawSales.map((item) => ({
+          ...item,
+          revenue: Number(item.total_revenue || 0),
+        }));
         setSalesData(formattedSales);
       } catch (err) {
         console.error('Failed to fetch vendor details:', err);
@@ -485,7 +491,7 @@ function VendorDetailModal({ vendor, onClose }) {
       <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-slate-700 bg-slate-900 p-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between border-b border-slate-700 pb-4">
-          <h2 className="text-2xl font-bold text-white">{vendor.business_name}</h2>
+          <h2 className="text-2xl font-bold text-white">{vendorDetail.business_name}</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white text-xl"
@@ -523,24 +529,24 @@ function VendorDetailModal({ vendor, onClose }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <p className="text-xs text-slate-400 mb-1">Owner Name</p>
-                <p className="text-white font-semibold">{vendor.owner_name}</p>
+                <p className="text-white font-semibold">{vendorDetail.full_name}</p>
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <p className="text-xs text-slate-400 mb-1">Email</p>
-                <p className="text-white font-semibold">{vendor.email}</p>
+                <p className="text-white font-semibold">{vendorDetail.email}</p>
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <p className="text-xs text-slate-400 mb-1">Phone</p>
-                <p className="text-white font-semibold">{vendor.phone || '-'}</p>
+                <p className="text-white font-semibold">{vendorDetail.whatsapp_number || '-'}</p>
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
                 <p className="text-xs text-slate-400 mb-1">Status</p>
                 <span
                   className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
-                    STATUS_BADGES[vendor.status]?.bg
-                  } ${STATUS_BADGES[vendor.status]?.text}`}
+                    STATUS_BADGES[vendorDetail.status]?.bg
+                  } ${STATUS_BADGES[vendorDetail.status]?.text}`}
                 >
-                  {STATUS_BADGES[vendor.status]?.label || vendor.status}
+                  {STATUS_BADGES[vendorDetail.status]?.label || vendorDetail.status}
                 </span>
               </div>
             </div>
@@ -549,23 +555,22 @@ function VendorDetailModal({ vendor, onClose }) {
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">Payment Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {vendor.payment_method === 'upi' ? (
-                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                    <p className="text-xs text-slate-400 mb-1">UPI ID</p>
-                    <p className="text-white font-semibold">{vendor.upi_id || '-'}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                      <p className="text-xs text-slate-400 mb-1">Bank Account</p>
-                      <p className="text-white font-semibold">{vendor.account_number || '-'}</p>
-                    </div>
-                    <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-                      <p className="text-xs text-slate-400 mb-1">IFSC Code</p>
-                      <p className="text-white font-semibold">{vendor.ifsc_code || '-'}</p>
-                    </div>
-                  </>
-                )}
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <p className="text-xs text-slate-400 mb-1">UPI ID</p>
+                  <p className="text-white font-semibold">{vendorDetail.upi_id || '-'}</p>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <p className="text-xs text-slate-400 mb-1">Bank Account</p>
+                  <p className="text-white font-semibold">{vendorDetail.bank_account_number || '-'}</p>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <p className="text-xs text-slate-400 mb-1">IFSC Code</p>
+                  <p className="text-white font-semibold">{vendorDetail.bank_ifsc || '-'}</p>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                  <p className="text-xs text-slate-400 mb-1">Account Holder</p>
+                  <p className="text-white font-semibold">{vendorDetail.account_holder_name || '-'}</p>
+                </div>
               </div>
             </div>
 
@@ -615,14 +620,14 @@ function VendorDetailModal({ vendor, onClose }) {
                       <span className="text-white font-medium">{product.name}</span>
                       <span
                         className={`text-xs font-semibold px-2 py-1 rounded ${
-                          product.approval_status === 'approved'
+                          product.status === 'approved' && product.is_active
                             ? 'bg-green-500/20 text-green-400'
-                            : product.approval_status === 'pending'
+                            : product.status === 'pending'
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'bg-red-500/20 text-red-400'
                         }`}
                       >
-                        {product.approval_status}
+                        {product.status}
                       </span>
                     </div>
                   ))}
