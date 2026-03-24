@@ -119,6 +119,8 @@ function VendorRegister() {
         city: form.city,
         business_name: form.business_name,
         product_category: form.product_category,
+        natural_only_confirmed: form.natural_only_confirmed,
+        terms_accepted: form.terms_accepted,
         upi_id: form.upi_id,
         bank_account_number: form.bank_account_number,
         bank_ifsc: form.bank_ifsc,

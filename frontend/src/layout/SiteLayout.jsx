@@ -4,12 +4,6 @@ import ThreeBackground from '../components/ThreeBackground';
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
-  { to: '/faq', label: 'FAQ' },
-  { to: '/shipping', label: 'Shipping' },
-  { to: '/returns', label: 'Returns' },
-  { to: '/privacy', label: 'Privacy Policy' },
-  { to: '/terms', label: 'Terms' },
   { to: '/vendor/register', label: 'Sell on NativeGlow' },
 ];
 
@@ -69,7 +63,7 @@ function SiteLayout({ isAuthenticated, onLogout }) {
         <div className="mx-auto flex w-[94%] max-w-6xl flex-col items-start justify-between gap-3 py-5 text-sm text-zinc-600 md:flex-row md:items-center">
           <p>NativeGlow - Natural skincare and comfort essentials.</p>
           <div className="flex flex-wrap gap-3">
-            {navLinks.slice(1, 8).map((item) => (
+            {navLinks.slice(1).map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-zinc-900">{item.label}</Link>
             ))}
           </div>

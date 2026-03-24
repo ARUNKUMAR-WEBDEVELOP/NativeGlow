@@ -19,6 +19,9 @@ class Vendor(models.Model):
     vendor_slug = models.SlugField(unique=True, help_text='Used for product page URL', null=True, blank=True)
     city = models.CharField(max_length=100, default='')
     whatsapp_number = models.CharField(max_length=20, default='')
+    product_category = models.JSONField(default=list, blank=True)
+    natural_only_confirmed = models.BooleanField(default=False)
+    terms_accepted = models.BooleanField(default=False)
 
     # Payment & Banking
     upi_id = models.CharField(max_length=100, blank=True)

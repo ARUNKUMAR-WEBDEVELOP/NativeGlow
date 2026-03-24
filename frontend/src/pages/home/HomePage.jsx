@@ -271,22 +271,12 @@ function HomePage() {
                     About Us
                   </a>
                 </li>
-                <li>
-                  <a href="/terms" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
-                    Terms of Service
-                  </a>
-                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-zinc-900 mb-3">Support</h4>
               <ul className="space-y-2">
-                <li>
-                  <a href="#/disclaimer" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
-                    Disclaimer
-                  </a>
-                </li>
                 <li>
                   <a href="#/track" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
                     Track Order

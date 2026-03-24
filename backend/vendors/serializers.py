@@ -106,6 +106,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         fields = (
             'full_name', 'email', 'password', 'confirm_password',
             'business_name', 'whatsapp_number', 'city',
+            'product_category', 'natural_only_confirmed', 'terms_accepted',
             'upi_id', 'bank_account_number', 'bank_ifsc', 'account_holder_name'
         )
 
