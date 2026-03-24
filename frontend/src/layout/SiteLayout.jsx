@@ -7,6 +7,12 @@ const navLinks = [
   { to: '/vendor/register', label: 'Sell on NativeGlow' },
 ];
 
+const footerLinks = [
+  { to: '/about', label: 'About Us' },
+  { to: '/vendor/register', label: 'Register as Seller' },
+  { to: '/terms', label: 'Terms of Service' },
+];
+
 function SiteLayout({ isAuthenticated, onLogout }) {
   return (
     <div className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,_#fffef8_0%,_#f5efe6_45%,_#efe2d1_100%)]">
@@ -63,7 +69,7 @@ function SiteLayout({ isAuthenticated, onLogout }) {
         <div className="mx-auto flex w-[94%] max-w-6xl flex-col items-start justify-between gap-3 py-5 text-sm text-zinc-600 md:flex-row md:items-center">
           <p>NativeGlow - Natural skincare and comfort essentials.</p>
           <div className="flex flex-wrap gap-3">
-            {navLinks.slice(1).map((item) => (
+            {footerLinks.map((item) => (
               <Link key={item.to} to={item.to} className="hover:text-zinc-900">{item.label}</Link>
             ))}
           </div>

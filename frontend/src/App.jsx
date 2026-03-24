@@ -27,6 +27,7 @@ import CartPage from './pages/cart/CartPage';
 import CheckoutPage from './pages/checkout/CheckoutPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
 import OrderTrackPage from './pages/buyer/OrderTrackPage';
+import TermsOfServicePage from './pages/terms/TermsOfServicePage';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -190,6 +191,7 @@ function App() {
             element={<ProductDetailPage />}
           />
           <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           <Route
             path="/cart"
             element={

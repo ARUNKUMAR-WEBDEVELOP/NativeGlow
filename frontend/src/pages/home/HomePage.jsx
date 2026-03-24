@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 
 function HomePage() {
@@ -262,38 +262,25 @@ function HomePage() {
               </p>
             </div>
 
-            {/* Links */}
             <div>
-              <h4 className="font-semibold text-zinc-900 mb-3">Company</h4>
+              <h4 className="font-semibold text-zinc-900 mb-3">Quick Links</h4>
               <ul className="space-y-2">
                 <li>
-                  <a href="/about" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
+                  <Link to="/about" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
                     About Us
-                  </a>
+                  </Link>
                 </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-zinc-900 mb-3">Support</h4>
-              <ul className="space-y-2">
                 <li>
-                  <a href="#/track" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
-                    Track Order
-                  </a>
+                  <Link to="/vendor/register" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
+                    Register as Seller
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
+                    Terms of Service
+                  </Link>
                 </li>
               </ul>
-            </div>
-
-            {/* Seller CTA */}
-            <div>
-              <h4 className="font-semibold text-zinc-900 mb-3">For Sellers</h4>
-              <a
-                href="/vendor/register"
-                className="inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-              >
-                Register as Seller →
-              </a>
             </div>
           </div>
 

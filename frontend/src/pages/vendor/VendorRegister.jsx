@@ -99,6 +99,39 @@ function VendorRegister() {
     setStep((prev) => Math.max(1, prev - 1));
   };
 
+  const fillDummyPayment = () => {
+    setForm((prev) => ({
+      ...prev,
+      upi_id: 'demo.vendor@upi',
+      bank_account_number: '123456789012',
+      bank_ifsc: 'SBIN0001234',
+      account_holder_name: 'Demo Vendor',
+    }));
+    setError('');
+  };
+
+  const fillDummyAllSteps = () => {
+    const ts = Date.now();
+    setForm({
+      full_name: 'Demo Vendor',
+      email: `demo.vendor.${ts}@nativeglow.test`,
+      password: 'Demo@12345',
+      confirm_password: 'Demo@12345',
+      whatsapp_number: '9876543210',
+      city: 'Chennai',
+      business_name: 'Demo Herbal Store',
+      product_category: ['face_wash', 'serum'],
+      natural_only_confirmed: true,
+      terms_accepted: true,
+      upi_id: 'demo.vendor@upi',
+      bank_account_number: '123456789012',
+      bank_ifsc: 'SBIN0001234',
+      account_holder_name: 'Demo Vendor',
+    });
+    setStep(3);
+    setError('');
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setSuccess('');
@@ -144,6 +177,16 @@ function VendorRegister() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Onboarding</p>
         <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Become a NativeGlow Vendor</h1>
         <p className="mt-2 text-sm text-zinc-700">Complete all 3 steps to submit your seller registration for admin review.</p>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={fillDummyAllSteps}
+            className="rounded-xl border border-sage/30 bg-white/70 px-3 py-1.5 text-xs font-semibold text-sage hover:bg-white"
+          >
+            Use Full Dummy Data
+          </button>
+        </div>
 
         <div className="mt-5">
           <div className="h-2 w-full rounded-full bg-white/70">
@@ -221,7 +264,16 @@ function VendorRegister() {
 
         {step === 3 ? (
           <>
-            <h2 className="text-lg font-semibold text-zinc-900">Step 3 - Payment Details</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-zinc-900">Step 3 - Payment Details</h2>
+              <button
+                type="button"
+                onClick={fillDummyPayment}
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+              >
+                Fill Dummy Payment Data
+              </button>
+            </div>
             <div className="rounded-xl border border-sage/25 bg-[#eef5ea] px-3 py-2 text-xs font-semibold text-sage">
               Buyers will pay directly to your UPI/Bank. NativeGlow does not process payments.
             </div>
