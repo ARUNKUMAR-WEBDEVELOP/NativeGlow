@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import urlparse
 from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -141,16 +142,35 @@ WSGI_APPLICATION = 'nativeglow_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='nativeglow_db'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default=5432, cast=int),
+database_url = os.environ.get('DATABASE_URL', '').strip()
+
+if database_url:
+    parsed_db = urlparse(database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed_db.path.lstrip('/'),
+            'USER': parsed_db.username,
+            'PASSWORD': parsed_db.password,
+            'HOST': parsed_db.hostname,
+            'PORT': parsed_db.port or 5432,
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'OPTIONS': {
+                'sslmode': config('DB_SSLMODE', default='require'),
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='nativeglow_db'),
+            'USER': config('DB_USER', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default='postgres'),
+            'HOST': config('DB_HOST', default='localhost'),
+            'PORT': config('DB_PORT', default=5432, cast=int),
+        }
+    }
 
 
 # Password validation
