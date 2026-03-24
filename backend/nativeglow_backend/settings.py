@@ -143,22 +143,31 @@ WSGI_APPLICATION = 'nativeglow_backend.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 database_url = os.environ.get('DATABASE_URL', '').strip()
+db_host = config('DB_HOST', default='localhost').strip()
+
+
+def build_db_from_url(raw_url):
+    parsed_db = urlparse(raw_url)
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': parsed_db.path.lstrip('/'),
+        'USER': parsed_db.username,
+        'PASSWORD': parsed_db.password,
+        'HOST': parsed_db.hostname,
+        'PORT': parsed_db.port or 5432,
+        'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+        'OPTIONS': {
+            'sslmode': config('DB_SSLMODE', default='require'),
+        },
+    }
 
 if database_url:
-    parsed_db = urlparse(database_url)
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': parsed_db.path.lstrip('/'),
-            'USER': parsed_db.username,
-            'PASSWORD': parsed_db.password,
-            'HOST': parsed_db.hostname,
-            'PORT': parsed_db.port or 5432,
-            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
-            'OPTIONS': {
-                'sslmode': config('DB_SSLMODE', default='require'),
-            },
-        }
+        'default': build_db_from_url(database_url)
+    }
+elif db_host.startswith('postgres://') or db_host.startswith('postgresql://'):
+    DATABASES = {
+        'default': build_db_from_url(db_host)
     }
 else:
     DATABASES = {
@@ -167,7 +176,7 @@ else:
             'NAME': config('DB_NAME', default='nativeglow_db'),
             'USER': config('DB_USER', default='postgres'),
             'PASSWORD': config('DB_PASSWORD', default='postgres'),
-            'HOST': config('DB_HOST', default='localhost'),
+            'HOST': db_host,
             'PORT': config('DB_PORT', default=5432, cast=int),
         }
     }
