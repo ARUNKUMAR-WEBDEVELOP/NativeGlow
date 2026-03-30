@@ -146,14 +146,12 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
         allow_blank=True,
-        min_length=8,
         help_text='Optional. If not provided, a secure password will be auto-generated.'
     )
     confirm_password = serializers.CharField(
         write_only=True,
         required=False,
-        allow_blank=True,
-        min_length=8
+        allow_blank=True
     )
     google_token = serializers.CharField(write_only=True, required=True)
 
@@ -172,13 +170,21 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         password = (attrs.get('password') or '').strip()
         confirm_password = (attrs.get('confirm_password') or '').strip()
         
-        # Only validate if password is provided
-        if password and password != confirm_password:
-            raise serializers.ValidationError({
-                'confirm_password': 'Passwords do not match.'
-            })
+        # Only validate if password is provided (not empty, not None)
+        if password:
+            if password != confirm_password:
+                raise serializers.ValidationError({
+                    'confirm_password': 'Passwords do not match.'
+                })
+            if len(password) < 8:
+                raise serializers.ValidationError({
+                    'password': 'Password must be at least 8 characters.'
+                })
 
+        # Remove empty password fields before processing
+        attrs.pop('password', None)
         attrs.pop('confirm_password', None)
+        
         google_token = (attrs.get('google_token') or '').strip()
         if not google_token:
             raise serializers.ValidationError({'google_token': 'Google verification is required.'})
