@@ -385,24 +385,28 @@ class VendorLoginView(APIView):
 
         vendor = serializer.validated_data.get('vendor')
 
-        # Generate JWT tokens
-        refresh = RefreshToken.from_user(vendor)
-        
-        # Note: RefreshToken.from_user() is designed for Django User model
-        # For custom model, we'll use a manual approach:
+        # Generate JWT tokens for custom Vendor model
+        # Creating RefreshToken with custom claims for Vendor authentication
         try:
             refresh = RefreshToken()
-            refresh['user_id'] = vendor.id
+            refresh['vendor_id'] = vendor.id
             refresh['email'] = vendor.email
             refresh['is_vendor'] = True
-        except:
-            # Fallback if the above doesn't work with custom model
-            refresh = RefreshToken()
-            refresh['vendor_id'] = vendor.id
+            refresh['role'] = 'vendor'  # Add role field for endpoint authorization
+            access_token = refresh.access_token
+        except Exception as e:
+            # Log error for debugging purposes
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'JWT token generation failed for vendor {vendor.id}: {str(e)}')
+            return Response(
+                {'detail': 'Authentication failed. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         return Response(
             {
-                'access': str(refresh.access_token),
+                'access': str(access_token),
                 'refresh': str(refresh),
                 'vendor': {
                     'id': vendor.id,

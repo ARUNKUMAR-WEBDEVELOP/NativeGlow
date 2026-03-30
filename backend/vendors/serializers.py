@@ -228,17 +228,32 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """Create vendor with auto-generated password if not provided, and auto-generated slug."""
-        import secrets
+        """Create vendor with smart auto-generated password from email + phone."""
         from django.contrib.auth.hashers import make_password
 
         # Generate or use provided password
         password = (validated_data.pop('_raw_password', '') or '').strip()
         
         if not password:
-            # Generate a strong random password: 12 chars alphanumeric + special chars
-            # Format: e.g., "aBc123!@Def456"
-            password = secrets.token_urlsafe(12)[:12]  # 12 random chars from URL-safe alphabet
+            # Smart auto-password generation:
+            # First 4 letters of email + last 4 digits of phone number
+            email = (validated_data.get('email') or '').strip().lower()
+            phone = (validated_data.get('whatsapp_number') or '').strip()
+            
+            # Extract first 4 letters from email (before @)
+            email_part = email.split('@')[0] if email else 'user'
+            email_prefix = ''.join([c for c in email_part if c.isalpha()])[:4].lower()
+            
+            # Extract last 4 digits from phone
+            phone_digits = ''.join([c for c in phone if c.isdigit()])[-4:] if phone else '0000'
+            
+            # Combine: email_prefix + phone_last4
+            password = f"{email_prefix}{phone_digits}"
+            
+            # Ensure password is at least 8 characters (fallback if we got too few chars)
+            if len(password) < 8:
+                import secrets
+                password = secrets.token_urlsafe(12)[:12]
         
         # Store the plain password to return in response
         plain_password = password
