@@ -9,6 +9,7 @@ import VendorRegister from './pages/vendor/VendorRegister';
 import VendorLogin from './pages/vendor/VendorLogin';
 import VendorActivate from './pages/vendor/VendorActivate';
 import VendorSetupWizard from './pages/vendor/VendorSetupWizard';
+import VendorApprovalPending from './pages/vendor/VendorApprovalPending';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import VendorProducts from './pages/vendor/VendorProducts';
 import VendorOrders from './pages/vendor/VendorOrders';
@@ -260,6 +261,7 @@ function App() {
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/activate" element={<VendorActivate />} />
+          <Route path="/vendor/pending-approval" element={<VendorApprovalPending />} />
           <Route path="/vendor/dashboard/setup" element={<VendorSetupWizard />} />
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
           <Route path="/vendor/dashboard/products" element={<VendorProducts />} />

@@ -20,7 +20,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
 from orders.views import PublicOrderPlaceView, VendorOrderListView, VendorOrderStatusUpdateView, BuyerOrderConfirmView
-from vendors.views import VendorRegisterView, VendorLoginView, VendorProfileView, VendorActivateView
+from vendors.views import VendorRegisterView, VendorLoginView, VendorProfileView, VendorActivateView, VendorApprovalStatusView
 from products.views import (
     VendorProductCreateView,
     VendorProductListView,
@@ -55,6 +55,7 @@ urlpatterns = [
     path('api/vendor/register/', VendorRegisterView.as_view(), name='vendor-register-public'),
     path('api/vendor/login/', VendorLoginView.as_view(), name='vendor-login-public'),
     path('api/vendor/activate/', VendorActivateView.as_view(), name='vendor-activate-public'),
+    path('api/vendor/approval-status/', VendorApprovalStatusView.as_view(), name='vendor-approval-status-public'),
     path('api/vendor/me/', VendorProfileView.as_view(), name='vendor-me-public'),
     path('api/vendor/products/add/', VendorProductCreateView.as_view(), name='vendor-product-create-public'),
     path('api/vendor/products/', VendorProductListView.as_view(), name='vendor-products-list-public'),

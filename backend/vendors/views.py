@@ -267,6 +267,8 @@ class VendorRegisterView(generics.CreateAPIView):
                 'vendor_slug': vendor.vendor_slug,
                 'city': vendor.city,
                 'is_approved': vendor.is_approved,
+                'approval_status': 'approved' if vendor.is_approved else 'pending',
+                'next_step': 'wait_for_admin_approval',
                 'message': 'Registration successful! Your account is pending admin approval. You will receive an email once approved.',
             },
             status=status.HTTP_201_CREATED
@@ -302,7 +304,36 @@ class VendorLoginView(APIView):
     def post(self, request):
         """Authenticate vendor and issue JWT tokens."""
         serializer = VendorLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            message = ''
+            if isinstance(serializer.errors, dict):
+                non_field = serializer.errors.get('non_field_errors')
+                if isinstance(non_field, list) and non_field:
+                    message = str(non_field[0])
+                elif isinstance(serializer.errors.get('detail'), str):
+                    message = serializer.errors.get('detail')
+
+            pending_phrase = 'pending admin approval'
+            if pending_phrase in message.lower():
+                email = (request.data.get('email') or '').strip().lower()
+                vendor = Vendor.objects.filter(email__iexact=email).first()
+                payload = {
+                    'detail': message,
+                    'approval_status': 'pending',
+                }
+                if vendor:
+                    payload['vendor'] = {
+                        'id': vendor.id,
+                        'full_name': vendor.full_name,
+                        'email': vendor.email,
+                        'business_name': vendor.business_name,
+                        'vendor_slug': vendor.vendor_slug,
+                        'created_at': vendor.created_at,
+                        'is_approved': vendor.is_approved,
+                    }
+                return Response(payload, status=status.HTTP_403_FORBIDDEN)
+
+            raise exceptions.ValidationError(serializer.errors)
 
         vendor = serializer.validated_data.get('vendor')
 
@@ -336,6 +367,49 @@ class VendorLoginView(APIView):
                 }
             },
             status=status.HTTP_200_OK
+        )
+
+
+class VendorApprovalStatusView(APIView):
+    """
+    GET /api/vendor/approval-status/?email=vendor@example.com
+    Public endpoint for pending vendors to poll approval state.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        email = (request.query_params.get('email') or '').strip().lower()
+        if not email:
+            return Response(
+                {'detail': 'Email is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vendor = Vendor.objects.filter(email__iexact=email).first()
+        if not vendor:
+            return Response(
+                {'detail': 'Vendor account not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        approval_status = 'approved' if vendor.is_approved else 'pending'
+        redirect_url = f"/site/{vendor.vendor_slug}" if vendor.is_approved and vendor.vendor_slug else ''
+
+        return Response(
+            {
+                'id': vendor.id,
+                'email': vendor.email,
+                'full_name': vendor.full_name,
+                'business_name': vendor.business_name,
+                'vendor_slug': vendor.vendor_slug,
+                'approval_status': approval_status,
+                'is_approved': vendor.is_approved,
+                'site_status': vendor.site_status,
+                'is_active': vendor.is_active,
+                'registered_at': vendor.created_at,
+                'redirect_url': redirect_url,
+            },
+            status=status.HTTP_200_OK,
         )
 
 

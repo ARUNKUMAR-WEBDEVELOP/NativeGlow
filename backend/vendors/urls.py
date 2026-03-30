@@ -9,6 +9,7 @@ from .views import (
     ReviewApplicationView,
     VendorRegisterView,
     VendorLoginView,
+    VendorApprovalStatusView,
     VendorProfileView,
     VendorMaintenanceListView,
     VendorMaintenancePayView,
@@ -30,6 +31,7 @@ urlpatterns = [
     # Vendor Authentication
     path('register/', VendorRegisterView.as_view(), name='vendor-register'),
     path('login/', VendorLoginView.as_view(), name='vendor-login'),
+    path('approval-status/', VendorApprovalStatusView.as_view(), name='vendor-approval-status'),
     path('me/', VendorProfileView.as_view(), name='vendor-me'),
 
     # Vendor Maintenance Fees

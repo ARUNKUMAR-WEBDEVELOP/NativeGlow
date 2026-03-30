@@ -231,7 +231,9 @@ class AdminVendorApproveView(APIView):
                 {
                     'message': f'Vendor {vendor.business_name} approved successfully.',
                     'vendor_id': vendor.id,
-                    'is_approved': True
+                    'is_approved': True,
+                    'vendor_slug': vendor.vendor_slug,
+                    'redirect_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
                 },
                 status=status.HTTP_200_OK
             )

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 
 const CATEGORY_OPTIONS = [
@@ -28,6 +29,7 @@ const INITIAL_FORM = {
 };
 
 function VendorRegister() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
@@ -143,7 +145,7 @@ function VendorRegister() {
 
     setIsSubmitting(true);
     try {
-      await api.vendorRegister({
+      const response = await api.vendorRegister({
         full_name: form.full_name,
         email: form.email,
         password: form.password,
@@ -160,10 +162,17 @@ function VendorRegister() {
         account_holder_name: form.account_holder_name,
       });
 
-      setSuccess('Registration submitted. Await admin approval.');
+      const pendingEmail = response?.email || form.email;
+      const pendingBusiness = response?.business_name || form.business_name;
+
+      setSuccess('Registration submitted. Redirecting to approval status page...');
       setForm(INITIAL_FORM);
       setStep(1);
       setError('');
+      navigate(
+        `/vendor/pending-approval?email=${encodeURIComponent(pendingEmail)}&business=${encodeURIComponent(pendingBusiness)}`,
+        { replace: true }
+      );
     } catch (err) {
       if (err?.status === 404) {
         setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');

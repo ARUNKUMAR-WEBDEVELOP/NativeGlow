@@ -133,6 +133,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getVendorApprovalStatus: (email) =>
+    requestWithBaseFallback(`/vendor/approval-status/?email=${encodeURIComponent(email || '')}`),
 
   // Admin
   adminLogin: (data) => request('/admin/login/', {

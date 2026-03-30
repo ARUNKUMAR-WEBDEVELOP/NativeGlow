@@ -64,6 +64,12 @@ function VendorLogin() {
       const message = getErrorMessage(err);
       if (message.toLowerCase().includes('pending admin approval')) {
         setWarning(message);
+        const pendingEmail = err?.payload?.vendor?.email || form.email;
+        const pendingBusiness = err?.payload?.vendor?.business_name || '';
+        navigate(
+          `/vendor/pending-approval?email=${encodeURIComponent(pendingEmail)}&business=${encodeURIComponent(pendingBusiness)}`,
+          { replace: true }
+        );
       } else {
         setError(message || 'Wrong credentials.');
       }

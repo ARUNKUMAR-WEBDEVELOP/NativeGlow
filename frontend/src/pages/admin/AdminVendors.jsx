@@ -279,7 +279,9 @@ export default function AdminVendors() {
                 Business Name
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Owner</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account Email</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">City</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Registered On</th>
               <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">
                 Products
               </th>
@@ -298,7 +300,7 @@ export default function AdminVendors() {
           <tbody>
             {filteredVendors.length === 0 ? (
               <tr>
-                <td colSpan="8" className="px-6 py-8 text-center text-slate-400">
+                <td colSpan="10" className="px-6 py-8 text-center text-slate-400">
                   No vendors found
                 </td>
               </tr>
@@ -307,7 +309,11 @@ export default function AdminVendors() {
                 <tr key={vendor.id} className="border-b border-slate-700 hover:bg-slate-800/30">
                   <td className="px-6 py-4 text-sm text-white font-medium">{vendor.business_name}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.full_name}</td>
+                  <td className="px-6 py-4 text-sm text-slate-300">{vendor.email || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.city || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-300">
+                    {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : '-'}
+                  </td>
                   <td className="px-6 py-4 text-sm text-right text-slate-300">
                     {vendor.total_products || 0}
                   </td>
