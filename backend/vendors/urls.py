@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     VendorListView,
     VendorDetailView,
+    VendorSiteDirectoryView,
     ApplyAsVendorView,
     MyApplicationView,
     MyVendorAnalyticsView,
@@ -28,6 +29,8 @@ from products.views import (
 )
 
 urlpatterns = [
+    path('site-urls/', VendorSiteDirectoryView.as_view(), name='vendor-site-urls'),
+
     # Vendor Authentication
     path('register/', VendorRegisterView.as_view(), name='vendor-register'),
     path('login/', VendorLoginView.as_view(), name='vendor-login'),

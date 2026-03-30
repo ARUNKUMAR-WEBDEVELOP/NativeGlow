@@ -41,6 +41,44 @@ class VendorDetailView(generics.RetrieveAPIView):
     queryset = Vendor.objects.filter(is_approved=True, is_active=True)
 
 
+class VendorSiteDirectoryView(APIView):
+    """
+    GET /api/vendors/site-urls/
+    Public endpoint listing approved active vendor store/manage URLs.
+    Useful for quickly verifying each vendor storefront.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        vendors = Vendor.objects.filter(is_approved=True, is_active=True).order_by('business_name', 'id')
+
+        data = [
+            {
+                'id': vendor.id,
+                'business_name': vendor.business_name,
+                'vendor_slug': vendor.vendor_slug,
+                'store_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
+                'products_url': f'/site/{vendor.vendor_slug}/products' if vendor.vendor_slug else '',
+                'about_url': f'/site/{vendor.vendor_slug}/about' if vendor.vendor_slug else '',
+                'track_url': f'/site/{vendor.vendor_slug}/track' if vendor.vendor_slug else '',
+                'manage_url': '/vendor/dashboard',
+                'site_status': vendor.site_status,
+                'approved': vendor.is_approved,
+                'active': vendor.is_active,
+            }
+            for vendor in vendors
+            if vendor.vendor_slug
+        ]
+
+        return Response(
+            {
+                'count': len(data),
+                'results': data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class ApplyAsVendorView(generics.CreateAPIView):
     """
     POST /api/vendors/apply/

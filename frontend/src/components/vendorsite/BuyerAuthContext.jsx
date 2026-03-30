@@ -7,6 +7,33 @@ const BuyerAuthContext = createContext({
   logout: () => {},
 });
 
+function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+function isValidBuyerToken(token, vendorSlug) {
+  const payload = parseJwtPayload(token);
+  if (!payload?.exp || payload?.role !== 'buyer') {
+    return false;
+  }
+  if (vendorSlug && payload?.vendor_slug && payload.vendor_slug !== vendorSlug) {
+    return false;
+  }
+  return payload.exp * 1000 > Date.now();
+}
+
 function getTokenKey(vendorSlug) {
   return `buyer_token_${vendorSlug}`;
 }
@@ -25,7 +52,9 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
     }
 
     const token = localStorage.getItem(getTokenKey(vendorSlug));
-    if (!token) {
+    if (!token || !isValidBuyerToken(token, vendorSlug)) {
+      localStorage.removeItem(getTokenKey(vendorSlug));
+      localStorage.removeItem(getProfileKey(vendorSlug));
       setBuyer(null);
       return;
     }
@@ -46,7 +75,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
   }, [vendorSlug]);
 
   function login(payload) {
-    if (!vendorSlug || !payload?.accessToken) {
+    if (!vendorSlug || !payload?.accessToken || !isValidBuyerToken(payload.accessToken, vendorSlug)) {
       return;
     }
 
