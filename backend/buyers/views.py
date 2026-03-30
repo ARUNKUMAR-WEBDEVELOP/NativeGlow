@@ -1,4 +1,6 @@
 import os
+import json
+from urllib import parse, request as urllib_request
 
 from django.utils import timezone
 from google.auth.transport import requests as google_requests
@@ -14,6 +16,48 @@ from .models import Buyer
 from .serializers import BuyerGoogleLoginSerializer, BuyerProfileSerializer, BuyerUpdateSerializer
 from orders.models import Order
 from orders.serializers import BuyerOrderListSerializer
+
+
+def verify_google_identity(google_token, client_id):
+	"""Accept Google ID token or OAuth access token and return normalized identity."""
+	# Preferred: verify ID token JWT
+	try:
+		info = id_token.verify_oauth2_token(google_token, google_requests.Request(), client_id)
+		email = (info.get('email') or '').strip().lower()
+		sub = (info.get('sub') or '').strip()
+		name = (info.get('name') or '').strip()
+		picture = (info.get('picture') or '').strip()
+		if email and sub:
+			return {
+				'email': email,
+				'google_id': sub,
+				'full_name': name,
+				'picture': picture,
+			}
+	except Exception:
+		pass
+
+	# Fallback: verify access token via Google userinfo endpoint
+	try:
+		params = parse.urlencode({'access_token': google_token})
+		url = f'https://www.googleapis.com/oauth2/v3/userinfo?{params}'
+		with urllib_request.urlopen(url, timeout=8) as resp:
+			info = json.loads(resp.read().decode('utf-8'))
+		email = (info.get('email') or '').strip().lower()
+		sub = (info.get('sub') or '').strip()
+		name = (info.get('name') or '').strip()
+		picture = (info.get('picture') or '').strip()
+		if email and sub:
+			return {
+				'email': email,
+				'google_id': sub,
+				'full_name': name,
+				'picture': picture,
+			}
+	except Exception:
+		pass
+
+	raise ValueError('Invalid Google token.')
 
 
 class BuyerGoogleLoginView(APIView):
@@ -36,14 +80,14 @@ class BuyerGoogleLoginView(APIView):
 			)
 
 		try:
-			info = id_token.verify_oauth2_token(google_token, google_requests.Request(), client_id)
+			identity = verify_google_identity(google_token, client_id)
 		except ValueError:
 			return Response({'detail': 'Invalid Google token.'}, status=status.HTTP_400_BAD_REQUEST)
 
-		email = (info.get('email') or '').strip().lower()
-		full_name = (info.get('name') or '').strip()
-		google_id = (info.get('sub') or '').strip()
-		picture = (info.get('picture') or '').strip()
+		email = identity['email']
+		full_name = identity.get('full_name', '')
+		google_id = identity['google_id']
+		picture = identity.get('picture', '')
 
 		if not email or not google_id:
 			return Response(
