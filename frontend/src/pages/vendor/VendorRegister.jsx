@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
 import { api } from '../../api';
 
 const CATEGORY_OPTIONS = [
@@ -34,9 +33,6 @@ function VendorRegister() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [googleToken, setGoogleToken] = useState('');
-  const [googleVerifiedEmail, setGoogleVerifiedEmail] = useState('');
-  const [googleVerifyLoading, setGoogleVerifyLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
 
   const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
@@ -58,9 +54,6 @@ function VendorRegister() {
     if (currentStep === 1) {
       if (!form.full_name || !form.email || !form.whatsapp_number || !form.city) {
         return 'Please complete all personal info fields.';
-      }
-      if (!googleToken) {
-        return 'Please verify with Google before continuing.';
       }
       return '';
     }
@@ -86,50 +79,6 @@ function VendorRegister() {
     }
     return '';
   };
-
-  const verifyGoogleLogin = useGoogleLogin({
-    scope: 'openid profile email',
-    onSuccess: async (tokenResponse) => {
-      try {
-        setGoogleVerifyLoading(true);
-        setError('');
-        const accessToken = tokenResponse?.access_token || '';
-        if (!accessToken) {
-          setError('Google verification failed. Please try again.');
-          return;
-        }
-
-        const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const profile = await profileRes.json().catch(() => ({}));
-        const email = (profile?.email || '').trim();
-        const name = (profile?.name || '').trim();
-        const emailVerified = Boolean(profile?.email_verified);
-
-        if (!email || !emailVerified) {
-          setError('Google email is not verified. Use a verified Google account.');
-          return;
-        }
-
-        setGoogleToken(accessToken);
-        setGoogleVerifiedEmail(email);
-        setForm((prev) => ({
-          ...prev,
-          email,
-          full_name: prev.full_name || name,
-        }));
-      } catch {
-        setError('Google verification failed. Please try again.');
-      } finally {
-        setGoogleVerifyLoading(false);
-      }
-    },
-    onError: () => {
-      setError('Google verification was cancelled or failed.');
-      setGoogleVerifyLoading(false);
-    },
-  });
 
   const goNext = () => {
     const validationError = validateStep(step);
@@ -190,7 +139,6 @@ function VendorRegister() {
       const response = await api.vendorRegister({
         full_name: form.full_name,
         email: form.email,
-        google_token: googleToken,
         whatsapp_number: form.whatsapp_number,
         city: form.city,
         business_name: form.business_name,
@@ -215,8 +163,6 @@ function VendorRegister() {
       setForm(INITIAL_FORM);
       setStep(1);
       setError('');
-      setGoogleToken('');
-      setGoogleVerifiedEmail('');
     } catch (err) {
       if (err?.status === 404) {
         setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');
@@ -307,28 +253,9 @@ function VendorRegister() {
         {step === 1 ? (
           <>
             <h2 className="text-lg font-semibold text-zinc-900">Step 1 - Personal Info</h2>
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-              <p className="text-sm font-semibold text-zinc-800">Google Account Verification (Required)</p>
-              <p className="mt-1 text-xs text-zinc-600">Sign in with Google first so admin can monitor vendor identity and avoid duplicate accounts.</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => verifyGoogleLogin()}
-                  disabled={googleVerifyLoading}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50"
-                >
-                  {googleVerifyLoading ? 'Verifying...' : 'Verify with Google'}
-                </button>
-                {googleVerifiedEmail ? (
-                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
-                    Verified: {googleVerifiedEmail}
-                  </span>
-                ) : null}
-              </div>
-            </div>
             <div className="grid gap-3 md:grid-cols-2">
               <input name="full_name" value={form.full_name} onChange={onInputChange} placeholder="Full name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input type="email" name="email" value={form.email} onChange={onInputChange} readOnly={Boolean(googleVerifiedEmail)} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input type="email" name="email" value={form.email} onChange={onInputChange} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
               <input name="whatsapp_number" value={form.whatsapp_number} onChange={onInputChange} placeholder="WhatsApp number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
               <input name="city" value={form.city} onChange={onInputChange} placeholder="City" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
             </div>

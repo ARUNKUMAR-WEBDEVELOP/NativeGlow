@@ -153,7 +153,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True
     )
-    google_token = serializers.CharField(write_only=True, required=True)
+    google_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Vendor
@@ -181,39 +181,48 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
                     'password': 'Password must be at least 8 characters.'
                 })
 
-        # Remove empty password fields before processing
+        # Preserve raw password for create(); remove form-only confirm field.
+        attrs['_raw_password'] = password
         attrs.pop('password', None)
         attrs.pop('confirm_password', None)
-        
+
         google_token = (attrs.get('google_token') or '').strip()
-        if not google_token:
-            raise serializers.ValidationError({'google_token': 'Google verification is required.'})
-
-        google_identity = verify_google_token(google_token)
-        google_email = google_identity['email']
-        google_id = google_identity['google_id']
-
         requested_email = (attrs.get('email') or '').strip().lower()
-        if requested_email and requested_email != google_email:
-            raise serializers.ValidationError({
-                'email': 'Email must match your verified Google account email.'
-            })
 
-        if Vendor.objects.filter(google_id=google_id).exists():
-            raise serializers.ValidationError({
-                'google_token': 'This Google account is already linked to an existing vendor account.'
-            })
+        if google_token:
+            google_identity = verify_google_token(google_token)
+            google_email = google_identity['email']
+            google_id = google_identity['google_id']
 
-        if Vendor.objects.filter(email__iexact=google_email).exists():
-            raise serializers.ValidationError({
-                'email': 'A vendor with this email already exists.'
-            })
+            if requested_email and requested_email != google_email:
+                raise serializers.ValidationError({
+                    'email': 'Email must match your verified Google account email.'
+                })
 
-        attrs['email'] = google_email
-        if not (attrs.get('full_name') or '').strip() and google_identity.get('name'):
-            attrs['full_name'] = google_identity['name']
-        attrs['_google_id'] = google_id
-        attrs['_google_email_verified'] = bool(google_identity.get('email_verified'))
+            if Vendor.objects.filter(google_id=google_id).exists():
+                raise serializers.ValidationError({
+                    'google_token': 'This Google account is already linked to an existing vendor account.'
+                })
+
+            if Vendor.objects.filter(email__iexact=google_email).exists():
+                raise serializers.ValidationError({
+                    'email': 'A vendor with this email already exists.'
+                })
+
+            attrs['email'] = google_email
+            if not (attrs.get('full_name') or '').strip() and google_identity.get('name'):
+                attrs['full_name'] = google_identity['name']
+            attrs['_google_id'] = google_id
+            attrs['_google_email_verified'] = bool(google_identity.get('email_verified'))
+        else:
+            if not requested_email:
+                raise serializers.ValidationError({'email': 'Email is required.'})
+            if Vendor.objects.filter(email__iexact=requested_email).exists():
+                raise serializers.ValidationError({'email': 'A vendor with this email already exists.'})
+            attrs['email'] = requested_email
+            attrs['_google_id'] = None
+            attrs['_google_email_verified'] = False
+
         attrs.pop('google_token', None)
 
         return attrs
@@ -224,7 +233,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         from django.contrib.auth.hashers import make_password
 
         # Generate or use provided password
-        password = (validated_data.pop('password', '') or '').strip()
+        password = (validated_data.pop('_raw_password', '') or '').strip()
         
         if not password:
             # Generate a strong random password: 12 chars alphanumeric + special chars
@@ -236,9 +245,10 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         
         # Hash the password for storage
         validated_data['password'] = make_password(password)
-        validated_data['google_id'] = validated_data.pop('_google_id', '')
+        google_id = validated_data.pop('_google_id', None)
+        validated_data['google_id'] = google_id
         validated_data['google_email_verified'] = validated_data.pop('_google_email_verified', False)
-        validated_data['registered_via_google'] = True
+        validated_data['registered_via_google'] = bool(google_id)
 
         vendor = Vendor.objects.create(**validated_data)
         
