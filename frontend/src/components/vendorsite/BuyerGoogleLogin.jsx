@@ -116,7 +116,7 @@ export default function BuyerGoogleLogin({
         className="rounded-full px-3 py-1.5 text-sm font-semibold"
         style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
       >
-        {isBusy ? 'Signing in...' : 'Login with Google'}
+        {isBusy ? 'Signing in...' : 'Customer Login with Google'}
       </button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
