@@ -41,8 +41,20 @@ export default function VendorApprovalPending() {
         setLastChecked(new Date());
         setError('');
 
-        if (response?.is_approved && response?.vendor_slug) {
-          navigate(`/site/${response.vendor_slug}`, { replace: true });
+        if (response?.is_approved) {
+          // Vendor approved - redirect to vendor dashboard
+          // Store vendor auth info if available
+          if (response?.vendor_token) {
+            const vendorSession = {
+              access: response.vendor_token,
+              vendor_id: response.vendor_id,
+              vendor_slug: response.vendor_slug,
+              email: email,
+              full_name: response.full_name,
+            };
+            localStorage.setItem('nativeglow_vendor_session', JSON.stringify(vendorSession));
+          }
+          navigate('/vendor/dashboard', { replace: true });
         }
       } catch (err) {
         if (!mounted) {
