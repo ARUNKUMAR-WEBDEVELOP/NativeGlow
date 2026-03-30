@@ -33,6 +33,34 @@ class Vendor(models.Model):
     is_approved = models.BooleanField(default=False, help_text='Admin approval required')
     is_active = models.BooleanField(default=True)
     maintenance_due = models.BooleanField(default=False, help_text='Monthly maintenance fee pending')
+    site_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('active', 'Active'),
+            ('suspended', 'Suspended'),
+        ],
+        default='pending',
+    )
+    site_activated_at = models.DateTimeField(null=True, blank=True)
+    site_theme = models.CharField(
+        max_length=20,
+        choices=[
+            ('default', 'Default'),
+            ('minimal', 'Minimal'),
+            ('bold', 'Bold'),
+            ('elegant', 'Elegant'),
+        ],
+        default='default',
+    )
+    site_banner_image = models.CharField(max_length=500, blank=True)
+    site_logo = models.CharField(max_length=500, blank=True)
+    about_vendor = models.TextField(blank=True)
+    youtube_url = models.CharField(max_length=500, blank=True)
+    instagram_url = models.CharField(max_length=500, blank=True)
+    whatsapp_display = models.BooleanField(default=True)
+    google_login_enabled = models.BooleanField(default=True)
+    redirect_token = models.CharField(max_length=255, blank=True)
 
     # Metadata
     created_at = models.DateTimeField(default=timezone.now)

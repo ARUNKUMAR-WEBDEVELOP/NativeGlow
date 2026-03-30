@@ -277,9 +277,51 @@ export const api = {
   getVendorStore: (vendorSlug) => request(`/products/store/${vendorSlug}/`),
   getProductDetail: (vendorSlug, productId) => request(`/products/store/${vendorSlug}/products/${productId}/`),
 
-  // Public Order APIs (no authentication required)
-  placeOrder: (data) => request('/orders/place/', {
+  // Buyer APIs (vendor-store scoped)
+  buyerGoogleLogin: (data) => request('/buyers/google-login/', {
     method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getBuyerProfile: (buyerToken) =>
+    request('/buyers/me/', {
+      headers: {
+        Authorization: `Bearer ${buyerToken}`,
+      },
+    }),
+  updateBuyerProfile: (buyerToken, data) =>
+    request('/buyers/me/update/', {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${buyerToken}`,
+      },
+      body: JSON.stringify(data),
+    }),
+  getBuyerOrders: (buyerToken) =>
+    request('/buyers/orders/', {
+      headers: {
+        Authorization: `Bearer ${buyerToken}`,
+      },
+    }),
+  confirmBuyerDelivery: (orderCode, payload, buyerToken) =>
+    requestWithFallback([
+      `/order/${orderCode}/buyer-confirm/`,
+      `/orders/${orderCode}/buyer-confirm/`,
+    ], {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${buyerToken}`,
+      },
+      body: JSON.stringify(payload || {}),
+    }),
+
+  // Public Order APIs (no authentication required)
+  placeOrder: (data, buyerToken = null) => requestWithFallback(['/order/place/', '/orders/place/'], {
+    method: 'POST',
+    headers: buyerToken
+      ? {
+          Authorization: `Bearer ${buyerToken}`,
+        }
+      : {},
     body: JSON.stringify(data),
   }),
   trackOrderByPhone: (phone) => request(`/orders/track/?phone=${encodeURIComponent(phone)}`),

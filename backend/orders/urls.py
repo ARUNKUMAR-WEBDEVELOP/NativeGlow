@@ -10,6 +10,7 @@ from .views import (
     PublicOrderTrackingDetailView,
     VendorOrderListView,
     VendorOrderStatusUpdateView,
+    BuyerOrderConfirmView,
 )
 
 urlpatterns = [
@@ -20,6 +21,7 @@ urlpatterns = [
     path('my-orders/<int:pk>/', MyOrderDetailView.as_view(), name='order-detail'),
     path('track/', PublicOrderTrackingView.as_view(), name='order-track'),
     path('track/<str:order_code>/', PublicOrderTrackingDetailView.as_view(), name='order-track-detail'),
+    path('<str:order_code>/buyer-confirm/', BuyerOrderConfirmView.as_view(), name='order-buyer-confirm'),
     path('vendor/', VendorOrderListView.as_view(), name='vendor-orders-list'),
     path('vendor/<int:id>/status/', VendorOrderStatusUpdateView.as_view(), name='vendor-order-status-update'),
 ]

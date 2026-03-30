@@ -10,6 +10,7 @@ from django.db.models import Sum, Count, Q, F, DecimalField
 from django.db.models.functions import Coalesce
 from datetime import datetime
 from decimal import Decimal
+import secrets
 
 from .models import AdminUser, MaintenanceFee, PlatformPaymentDetails
 from .serializers import (
@@ -218,6 +219,9 @@ class AdminVendorApproveView(APIView):
         if approved:
             # Approve vendor
             vendor.is_approved = True
+            vendor.site_status = 'active'
+            vendor.site_activated_at = timezone.now()
+            vendor.redirect_token = secrets.token_urlsafe(32)
             vendor.save()
 
             # Send approval email
@@ -252,18 +256,24 @@ class AdminVendorApproveView(APIView):
     def _send_approval_email(self, vendor):
         """Send vendor approval email."""
         try:
-            subject = f'Welcome to NativeGlow - Account Approved!'
+            subject = 'Your NativeGlow store is live!'
+            store_url = f'https://nativeglow.com/site/{vendor.vendor_slug}'
+            activation_url = f'https://nativeglow.com/vendor/activate?token={vendor.redirect_token}'
             message = f"""
 Dear {vendor.full_name},
 
-Congratulations! Your NativeGlow vendor account has been approved.
+Great news. Your NativeGlow store is now live.
 
-Business Name: {vendor.business_name}
-Account Status: Active
+Store URL: {store_url}
+One-time activation link: {activation_url}
 
-You can now login to your vendor dashboard at: https://nativeglow.app/vendor/dashboard
+Next steps to complete your vendor website setup:
+1. Open the one-time activation link and sign in.
+2. Upload your store logo and banner.
+3. Add your brand story and social links.
+4. Review your theme and publish product highlights.
 
-Thank you for joining NativeGlow!
+Need help? Contact support@nativeglow.com
 
 Best regards,
 NativeGlow Admin Team

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
 
@@ -60,6 +61,13 @@ class Order(models.Model):
         blank=True,
         related_name='orders',
     )
+    buyer = models.ForeignKey(
+        'buyers.Buyer',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+    )
     buyer_name = models.CharField(max_length=255, blank=True)
     buyer_phone = models.CharField(max_length=20, blank=True)
     buyer_address = models.TextField(blank=True)
@@ -106,6 +114,14 @@ class Order(models.Model):
     shipped_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    buyer_confirmed_delivery = models.BooleanField(default=False)
+    buyer_confirmed_at = models.DateTimeField(null=True, blank=True)
+    buyer_confirmation_note = models.TextField(blank=True)
+    delivery_rating = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

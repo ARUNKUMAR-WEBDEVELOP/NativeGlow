@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../api';
+import BuyerGoogleLogin from '../vendorsite/BuyerGoogleLogin';
+import { BuyerAuthProvider, useBuyerAuth } from '../vendorsite/BuyerAuthContext';
 
-function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
-  const [step, setStep] = useState(1);
+function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug }) {
+  const { buyer, isLoggedIn } = useBuyerAuth();
+  const [step, setStep] = useState(0);
+  const [continueAsGuest, setContinueAsGuest] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [orderResponse, setOrderResponse] = useState(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
@@ -20,6 +25,61 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
   });
 
   const totalAmount = product.price * formData.quantity;
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      setStep(1);
+      return;
+    }
+    if (continueAsGuest) {
+      setStep(1);
+      return;
+    }
+    setStep(0);
+  }, [isLoggedIn, continueAsGuest]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !buyer?.accessToken) {
+      return;
+    }
+
+    let mounted = true;
+
+    async function prefillBuyerProfile() {
+      setPrefillLoading(true);
+      try {
+        const profile = await api.getBuyerProfile(buyer.accessToken);
+        if (!mounted) {
+          return;
+        }
+        setFormData((prev) => ({
+          ...prev,
+          buyerName: prev.buyerName || profile?.full_name || buyer?.buyerName || '',
+          buyerPhone: prev.buyerPhone || String(profile?.phone || '').replace(/\D/g, '').slice(0, 10),
+          buyerAddress: prev.buyerAddress || profile?.default_address || '',
+          buyerPincode: prev.buyerPincode || String(profile?.default_pincode || '').replace(/\D/g, '').slice(0, 6),
+        }));
+      } catch {
+        if (!mounted) {
+          return;
+        }
+        setFormData((prev) => ({
+          ...prev,
+          buyerName: prev.buyerName || buyer?.buyerName || '',
+        }));
+      } finally {
+        if (mounted) {
+          setPrefillLoading(false);
+        }
+      }
+    }
+
+    prefillBuyerProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isLoggedIn, buyer]);
 
   // Validate step 1
   const validateStep1 = () => {
@@ -73,7 +133,7 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
     try {
       const response = await api.placeOrder({
         product_id: product.id,
-        vendor_slug: vendor.slug || product.vendor_slug,
+        vendor_slug: vendorSlug,
         buyer_name: formData.buyerName,
         buyer_phone: formData.buyerPhone,
         buyer_address: formData.buyerAddress,
@@ -81,7 +141,7 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
         quantity: parseInt(formData.quantity),
         payment_method: formData.paymentMethod,
         payment_reference: formData.paymentReference
-      });
+      }, isLoggedIn ? buyer?.accessToken : null);
 
       setOrderResponse(response);
       setStep(3);
@@ -115,17 +175,24 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
     onClose();
   };
 
+  const stepHeading =
+    step === 0
+      ? 'Sign In'
+      : step === 1
+        ? 'Delivery Details'
+        : step === 2
+          ? 'Payment Details'
+          : 'Order Confirmed';
+
+  const sellerContact = vendor?.whatsapp || vendor?.whatsapp_number || 'N/A';
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            {step === 1 && 'Delivery Details'}
-            {step === 2 && 'Payment Details'}
-            {step === 3 && 'Order Confirmed'}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">{stepHeading}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -141,15 +208,47 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
             <div
               key={s}
               className={`flex-1 h-2 rounded-full transition ${
-                s <= step ? 'bg-emerald-600' : 'bg-gray-200'
+                s <= Math.max(step, 0) ? 'bg-emerald-600' : 'bg-gray-200'
               }`}
             />
           ))}
         </div>
 
+        {/* STEP 0: Google Login / Guest Choice */}
+        {step === 0 && (
+          <div className="space-y-4 text-center">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-semibold text-emerald-900">Sign in to track your order easily</p>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <BuyerGoogleLogin vendorSlug={vendorSlug} showLogout={false} />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setContinueAsGuest(true);
+                setStep(1);
+              }}
+              className="text-sm font-semibold text-zinc-700 underline underline-offset-2 hover:text-zinc-900"
+            >
+              Continue as Guest
+            </button>
+          </div>
+        )}
+
         {/* STEP 1: Delivery Details */}
         {step === 1 && (
           <form onSubmit={handleStep1Submit} className="space-y-4">
+            {isLoggedIn ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+                {prefillLoading
+                  ? 'Loading your saved delivery details...'
+                  : `Signed in as ${buyer?.buyerName || 'Buyer'}. Delivery details are pre-filled where available.`}
+              </div>
+            ) : null}
+
             {/* Buyer Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -475,9 +574,15 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
               <p className="text-sm text-blue-800">
                 <strong>Business:</strong> {vendor.business_name}
                 <br />
-                <strong>Contact:</strong> {vendor.whatsapp}
+                <strong>Contact:</strong> {sellerContact}
               </p>
             </div>
+
+            {isLoggedIn ? (
+              <p className="text-sm text-emerald-700 font-medium">
+                We&apos;ll notify you to confirm delivery once shipped.
+              </p>
+            ) : null}
 
             {/* Action Buttons */}
             <div className="space-y-3">
@@ -516,6 +621,17 @@ function OrderModal({ product, vendor, quantity, onClose, onSuccess }) {
         )}
       </div>
     </div>
+  );
+}
+
+function OrderModal(props) {
+  const { vendor, product } = props;
+  const vendorSlug = vendor?.vendor_slug || vendor?.slug || product?.vendor_slug || '';
+
+  return (
+    <BuyerAuthProvider vendorSlug={vendorSlug}>
+      <OrderModalContent {...props} vendorSlug={vendorSlug} />
+    </BuyerAuthProvider>
   );
 }
 

@@ -7,6 +7,7 @@ from django.db.models.functions import TruncMonth
 
 from .models import Category, Product
 from vendors.models import Vendor
+from orders.models import Order
 from .serializers import (
     CategorySerializer,
     ProductListSerializer,
@@ -16,10 +17,17 @@ from .serializers import (
     VendorProductUpdateSerializer,
     VendorProductStatusSerializer,
     VendorProductQuantitySerializer,
+    VendorProductDiscountSerializer,
+    VendorProductVisibilitySerializer,
+    VendorProductFeatureSerializer,
+    VendorProductReorderSerializer,
     PublicProductSerializer,
     PublicVendorSerializer,
     PublicProductDetailSerializer,
     StoreCategoryWithCountSerializer,
+    SiteProductSerializer,
+    SiteVendorSerializer,
+    SiteAboutSerializer,
 )
 
 
@@ -63,7 +71,7 @@ class ProductListView(generics.ListAPIView):
     ordering_fields = ('price', 'created_at')
 
     def get_queryset(self):
-        qs = Product.objects.filter(is_active=True)
+        qs = Product.objects.filter(is_active=True, is_visible=True)
         category = self.request.query_params.get('category')
         tag = self.request.query_params.get('tag')
         vendor_id = self.request.query_params.get('vendor')
@@ -87,21 +95,21 @@ class FeaturedProductsView(generics.ListAPIView):
     """GET /api/products/featured/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_featured=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, is_featured=True)
 
 
 class BestSellersView(generics.ListAPIView):
     """GET /api/products/best-sellers/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_bestseller=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, is_bestseller=True)
 
 
 class NewArrivalsView(generics.ListAPIView):
     """GET /api/products/new-arrivals/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_new_arrival=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, is_new_arrival=True)
 
 
 class ProductCreateView(generics.CreateAPIView):
@@ -463,6 +471,153 @@ class VendorProductQuantityView(generics.UpdateAPIView):
             )
 
 
+class VendorProductDiscountView(generics.UpdateAPIView):
+    """PATCH /api/vendor/products/<id>/discount/"""
+    serializer_class = VendorProductDiscountSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        try:
+            vendor_id = None
+            if self.request.auth:
+                vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            if not vendor_id:
+                return Product.objects.none()
+            return Product.objects.filter(vendor_id=vendor_id)
+        except Exception:
+            return Product.objects.none()
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        instance.discount_percent = serializer.validated_data['discount_percent']
+        instance.save()
+
+        return Response(
+            {
+                'id': instance.id,
+                'discount_percent': instance.discount_percent,
+                'original_price': instance.original_price,
+                'discounted_price': instance.discounted_price,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class VendorProductVisibilityView(generics.UpdateAPIView):
+    """PATCH /api/vendor/products/<id>/visibility/"""
+    serializer_class = VendorProductVisibilitySerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        try:
+            vendor_id = None
+            if self.request.auth:
+                vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            if not vendor_id:
+                return Product.objects.none()
+            return Product.objects.filter(vendor_id=vendor_id)
+        except Exception:
+            return Product.objects.none()
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        instance.is_visible = serializer.validated_data['is_visible']
+        instance.save(update_fields=['is_visible', 'updated_at'])
+
+        return Response(
+            {
+                'id': instance.id,
+                'is_visible': instance.is_visible,
+                'message': 'Product visibility updated successfully.',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class VendorProductFeatureView(generics.UpdateAPIView):
+    """PATCH /api/vendor/products/<id>/feature/"""
+    serializer_class = VendorProductFeatureSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        try:
+            vendor_id = None
+            if self.request.auth:
+                vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
+            if not vendor_id:
+                return Product.objects.none()
+            return Product.objects.filter(vendor_id=vendor_id)
+        except Exception:
+            return Product.objects.none()
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        instance.is_featured = serializer.validated_data['is_featured']
+        instance.save(update_fields=['is_featured', 'updated_at'])
+
+        return Response(
+            {
+                'id': instance.id,
+                'is_featured': instance.is_featured,
+                'message': 'Product featured flag updated successfully.',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class VendorProductReorderView(APIView):
+    """PATCH /api/vendor/products/reorder/"""
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def patch(self, request):
+        serializer = VendorProductReorderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vendor_id = None
+        if request.auth:
+            vendor_id = request.auth.get('vendor_id') or request.auth.get('user_id')
+        if not vendor_id:
+            return Response({'error': 'Invalid or missing vendor ID in token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        order_items = serializer.validated_data['order']
+        product_ids = [item['id'] for item in order_items]
+        products = Product.objects.filter(vendor_id=vendor_id, id__in=product_ids)
+        product_map = {p.id: p for p in products}
+
+        if len(product_map) != len(set(product_ids)):
+            return Response({'error': 'One or more products not found for this vendor.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for item in order_items:
+            product = product_map[item['id']]
+            product.product_order = item['position']
+
+        Product.objects.bulk_update(product_map.values(), ['product_order', 'updated_at'])
+
+        return Response(
+            {
+                'message': 'Product order updated successfully.',
+                'updated_count': len(product_map),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class PublicVendorStoreView(generics.RetrieveAPIView):
     """
     GET /api/store/<vendor_slug>/
@@ -501,6 +656,7 @@ class PublicVendorStoreView(generics.RetrieveAPIView):
             vendor=vendor,
             status='approved',
             is_active=True,
+            is_visible=True,
             available_quantity__gt=0
         ).order_by('-created_at')
         
@@ -529,6 +685,7 @@ class PublicProductDetailView(APIView):
                 vendor__vendor_slug=vendor_slug,
                 status='approved',
                 is_active=True,
+                is_visible=True,
                 available_quantity__gt=0
             )
         except Product.DoesNotExist:
@@ -563,6 +720,7 @@ class StoreSearchView(APIView):
         queryset = Product.objects.filter(
             status='approved',
             is_active=True,
+            is_visible=True,
             available_quantity__gt=0,
             vendor__is_approved=True,
             vendor__is_active=True
@@ -609,6 +767,7 @@ class StoreCategoriesView(APIView):
                 filter=Q(
                     products__status='approved',
                     products__is_active=True,
+                    products__is_visible=True,
                     products__available_quantity__gt=0,
                     products__vendor__is_approved=True,
                     products__vendor__is_active=True
@@ -643,6 +802,7 @@ class StoreFeaturedView(APIView):
         featured_products = Product.objects.filter(
             status='approved',
             is_active=True,
+            is_visible=True,
             available_quantity__gt=0,
             vendor__is_approved=True,
             vendor__is_active=True
@@ -652,3 +812,159 @@ class StoreFeaturedView(APIView):
         
         serializer = PublicProductSerializer(featured_products, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# DEDICATED PUBLIC VENDOR SITE APIS (NO AUTH)
+# ============================================================================
+
+class PublicVendorSiteView(APIView):
+    """
+    GET /api/site/<vendor_slug>/
+    Return full public vendor website payload in one call.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, vendor_slug):
+        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+        if not vendor:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if vendor.site_status != 'active':
+            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+
+        products_qs = Product.objects.filter(
+            vendor=vendor,
+            status='approved',
+            is_visible=True,
+            is_active=True,
+        ).order_by('product_order', '-created_at')
+
+        featured_qs = products_qs.filter(is_featured=True)
+
+        categories = sorted(
+            {
+                p.category_type
+                for p in products_qs
+                if p.category_type
+            }
+        )
+
+        vendor_payload = {
+            'business_name': vendor.business_name,
+            'about_vendor': vendor.about_vendor,
+            'city': vendor.city,
+            'site_theme': vendor.site_theme,
+            'site_banner_image': vendor.site_banner_image,
+            'site_logo': vendor.site_logo,
+            'youtube_url': vendor.youtube_url,
+            'instagram_url': vendor.instagram_url,
+            'whatsapp_number': vendor.whatsapp_number if vendor.whatsapp_display else None,
+            'member_since': vendor.created_at.year,
+            'total_products': products_qs.count(),
+        }
+
+        return Response(
+            {
+                'vendor': SiteVendorSerializer(vendor_payload).data,
+                'featured_products': SiteProductSerializer(featured_qs, many=True, context={'request': request}).data,
+                'all_products': SiteProductSerializer(products_qs, many=True, context={'request': request}).data,
+                'categories': categories,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class PublicVendorSiteProductsView(APIView):
+    """
+    GET /api/site/<vendor_slug>/products/
+    Filterable public product listing for one active vendor site.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, vendor_slug):
+        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+        if not vendor:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if vendor.site_status != 'active':
+            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Product.objects.filter(
+            vendor=vendor,
+            status='approved',
+            is_visible=True,
+            is_active=True,
+        )
+
+        category = request.query_params.get('category', '').strip()
+        tag = request.query_params.get('tag', '').strip()
+        sort = request.query_params.get('sort', '').strip().lower()
+
+        if category:
+            queryset = queryset.filter(
+                Q(category_type__iexact=category)
+                | Q(category__slug__iexact=category)
+                | Q(category__name__iexact=category)
+            )
+
+        if tag:
+            normalized = tag.lower()
+            tag_query = Q(product_tag__icontains=tag) | Q(tags__icontains=tag)
+            if normalized == 'bestseller':
+                tag_query = tag_query | Q(is_bestseller=True)
+            if normalized == 'new':
+                tag_query = tag_query | Q(is_new_arrival=True)
+            queryset = queryset.filter(tag_query)
+
+        if sort == 'price_asc':
+            queryset = queryset.order_by('price', 'product_order', '-created_at')
+        elif sort == 'price_desc':
+            queryset = queryset.order_by('-price', 'product_order', '-created_at')
+        elif sort == 'newest':
+            queryset = queryset.order_by('-created_at')
+        else:
+            queryset = queryset.order_by('product_order', '-created_at')
+
+        return Response(
+            SiteProductSerializer(queryset, many=True, context={'request': request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class PublicVendorSiteAboutView(APIView):
+    """
+    GET /api/site/<vendor_slug>/about/
+    Return vendor about-page payload.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, vendor_slug):
+        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+        if not vendor:
+            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if vendor.site_status != 'active':
+            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+
+        product_count = Product.objects.filter(
+            vendor=vendor,
+            status='approved',
+            is_visible=True,
+            is_active=True,
+        ).count()
+        delivered_count = Order.objects.filter(vendor=vendor, order_status='delivered').count()
+
+        payload = {
+            'business_name': vendor.business_name,
+            'about_vendor': vendor.about_vendor,
+            'site_logo': vendor.site_logo,
+            'site_banner_image': vendor.site_banner_image,
+            'youtube_url': vendor.youtube_url,
+            'instagram_url': vendor.instagram_url,
+            'member_since': vendor.created_at.year,
+            'product_count': product_count,
+            'total_orders_delivered': delivered_count,
+        }
+
+        return Response(SiteAboutSerializer(payload).data, status=status.HTTP_200_OK)

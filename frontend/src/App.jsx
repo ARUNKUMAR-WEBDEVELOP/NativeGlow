@@ -7,6 +7,8 @@ import ProductDetailPage from './pages/buyer/ProductDetailPage';
 import VendorApplyPage from './pages/vendor/VendorApplyPage';
 import VendorRegister from './pages/vendor/VendorRegister';
 import VendorLogin from './pages/vendor/VendorLogin';
+import VendorActivate from './pages/vendor/VendorActivate';
+import VendorSetupWizard from './pages/vendor/VendorSetupWizard';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import VendorProducts from './pages/vendor/VendorProducts';
 import VendorOrders from './pages/vendor/VendorOrders';
@@ -28,6 +30,13 @@ import CheckoutPage from './pages/checkout/CheckoutPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
 import OrderTrackPage from './pages/buyer/OrderTrackPage';
 import TermsOfServicePage from './pages/terms/TermsOfServicePage';
+import VendorSiteLayout from './pages/vendorsite/VendorSiteLayout';
+import VendorSiteHome from './pages/vendorsite/VendorSiteHome';
+import VendorSiteProducts from './pages/vendorsite/VendorSiteProducts';
+import VendorSiteAbout from './pages/vendorsite/VendorSiteAbout';
+import VendorSiteTrack from './pages/vendorsite/VendorSiteTrack';
+import VendorSiteLogin from './pages/vendorsite/VendorSiteLogin';
+import BuyerOrders from './pages/vendorsite/BuyerOrders';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -176,6 +185,14 @@ function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/site/:vendor_slug/*" element={<VendorSiteLayout />}>
+          <Route index element={<VendorSiteHome />} />
+          <Route path="products" element={<VendorSiteProducts />} />
+          <Route path="about" element={<VendorSiteAbout />} />
+          <Route path="track" element={<VendorSiteTrack />} />
+          <Route path="login" element={<VendorSiteLogin />} />
+          <Route path="my-orders" element={<BuyerOrders />} />
+        </Route>
         <Route element={<SiteLayout isAuthenticated={Boolean(tokens?.access)} onLogout={onLogout} />}>
           <Route path="/" element={<HomePage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />} />
           <Route
@@ -242,6 +259,8 @@ function App() {
           />
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/vendor/login" element={<VendorLogin />} />
+          <Route path="/vendor/activate" element={<VendorActivate />} />
+          <Route path="/vendor/dashboard/setup" element={<VendorSetupWizard />} />
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
           <Route path="/vendor/dashboard/products" element={<VendorProducts />} />
           <Route path="/vendor/dashboard/orders" element={<VendorOrders />} />

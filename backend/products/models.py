@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 
 
 class Category(models.Model):
@@ -50,6 +52,12 @@ class Product(models.Model):
     )
     tags = models.CharField(max_length=300, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
+    original_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    discount_percent = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(90)]
+    )
+    discounted_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     discount_price = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True
     )
@@ -99,6 +107,9 @@ class Product(models.Model):
     is_bestseller = models.BooleanField(default=False)
     is_new_arrival = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
+    is_visible = models.BooleanField(default=True)
+    product_tag = models.CharField(max_length=100, blank=True)
+    product_order = models.IntegerField(default=0)
     shipping_info = models.CharField(
         max_length=255,
         blank=True,
@@ -110,7 +121,7 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['product_order', '-created_at']
 
     def clean(self):
         if self.status == 'approved' and not self.is_natural_certified:
@@ -119,6 +130,13 @@ class Product(models.Model):
             )
 
     def save(self, *args, **kwargs):
+        if self.discount_percent > 0:
+            multiplier = Decimal('1') - (Decimal(self.discount_percent) / Decimal('100'))
+            self.discounted_price = (self.price * multiplier).quantize(Decimal('0.01'))
+            self.original_price = self.price
+        else:
+            self.discounted_price = None
+            self.original_price = None
         if not self.name:
             self.name = self.title
         if self.available_quantity == 0 and self.inventory_qty:

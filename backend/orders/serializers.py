@@ -248,9 +248,17 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        buyer = getattr(request, 'buyer', None) if request else None
+
         product = validated_data.pop('product_obj')
         validated_data.pop('product_id', None)
         validated_data.pop('vendor_slug', None)
+
+        if buyer and buyer.vendor_id != product.vendor_id:
+            raise serializers.ValidationError(
+                {'vendor_slug': 'Buyer account does not belong to this vendor store.'}
+            )
 
         quantity = validated_data['quantity']
         total_amount = Decimal(str(product.price)) * quantity
@@ -258,6 +266,7 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
         order = Order.objects.create(
             vendor=product.vendor,
             product=product,
+            buyer=buyer,
             full_name=validated_data['buyer_name'],
             email='',
             phone=validated_data['buyer_phone'],
@@ -286,11 +295,10 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """
-        Return custom response with order_code, whatsapp_confirm_url, and send notifications.
+        Return custom response with order_code and whatsapp confirmation URL.
         
         Generates:
         1. WhatsApp wa.me URL with pre-filled order details for buyer
-        2. Email notification to vendor about new order
         """
         vendor = instance.vendor
         product = instance.product
@@ -314,9 +322,6 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
         whatsapp_text = quote(whatsapp_message)
         whatsapp_confirm_url = f"https://wa.me/{whatsapp_number}?text={whatsapp_text}"
         
-        # Send email to vendor about new order
-        self._send_vendor_email(instance, product, vendor)
-        
         vendor_whatsapp = vendor.whatsapp_number if vendor else ''
         
         return {
@@ -329,53 +334,6 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             'whatsapp_confirm_url': whatsapp_confirm_url,
             'message': f'Order {instance.order_code} placed successfully. Please share this code with vendor {vendor.business_name if vendor else ""}. Click the WhatsApp link to confirm order details with vendor.'
         }
-
-    def _send_vendor_email(self, order, product, vendor):
-        """Send email notification to vendor about new order."""
-        if not vendor or not vendor.email:
-            return  # Skip if vendor has no email
-        
-        try:
-            subject = f"New Order Received - {order.order_code}"
-            
-            # Prepare email body with order details
-            email_body = (
-                f"New Order Received!\n\n"
-                f"Order Code: {order.order_code}\n"
-                f"Order ID: {order.order_id}\n"
-                f"Status: {order.order_status.upper()}\n\n"
-                f"Product Details:\n"
-                f"  Product: {product.name if product else 'N/A'}\n"
-                f"  Category: {product.category.name if product and product.category else 'N/A'}\n"
-                f"  Price: ₹{product.price if product else 'N/A'}\n"
-                f"  Quantity: {order.quantity}\n"
-                f"  Total: ₹{order.total_amount}\n\n"
-                f"Buyer Details:\n"
-                f"  Name: {order.buyer_name}\n"
-                f"  Phone: {order.buyer_phone}\n"
-                f"  Address: {order.buyer_address}\n"
-                f"  Pincode: {order.buyer_pincode}\n\n"
-                f"Payment Details:\n"
-                f"  Method: {order.payment_method.upper()}\n"
-                f"  Reference: {order.payment_reference}\n"
-                f"  Status: {order.payment_status}\n\n"
-                f"Action: Please confirm receipt by updating order status in your vendor dashboard.\n"
-                f"Buyer will contact you on WhatsApp using the order code: {order.order_code}\n\n"
-                f"Thank you,\nNativeGlow Team"
-            )
-            
-            # Send email
-            send_mail(
-                subject=subject,
-                message=email_body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[vendor.email],
-                fail_silently=True  # Don't raise exception if email fails
-            )
-        except Exception as e:
-            # Log error but don't block order placement
-            print(f"Email send failed for order {order.order_code}: {str(e)}")
-            pass
 
 
 
@@ -570,6 +528,51 @@ class VendorOrderStatusUpdateSerializer(serializers.ModelSerializer):
             recipient_list=[buyer_email],
             fail_silently=True,
         )
+
+
+class BuyerConfirmDeliverySerializer(serializers.Serializer):
+    note = serializers.CharField(required=False, allow_blank=True)
+    rating = serializers.IntegerField(required=False, min_value=1, max_value=5)
+
+
+class BuyerOrderListSerializer(serializers.ModelSerializer):
+    product = serializers.CharField(source='product.name', read_only=True)
+    status = serializers.CharField(source='order_status', read_only=True)
+    product_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            'order_code',
+            'product',
+            'product_image',
+            'status',
+            'buyer_confirmed_delivery',
+            'buyer_confirmed_at',
+            'delivery_rating',
+            'payment_reference',
+            'quantity',
+            'total_amount',
+            'created_at',
+        )
+        read_only_fields = fields
+
+    def get_product_image(self, obj):
+        product = getattr(obj, 'product', None)
+        if not product:
+            return None
+
+        first_gallery_image = product.images.first()
+        if first_gallery_image:
+            return first_gallery_image.image_url
+
+        product_image = getattr(product, 'image', None)
+        if product_image:
+            try:
+                return product_image.url
+            except Exception:
+                return None
+        return None
 
 
 # ============================================================================

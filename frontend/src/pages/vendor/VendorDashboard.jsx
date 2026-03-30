@@ -5,6 +5,76 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
+const WS_BASE =
+  import.meta.env.VITE_WS_BASE ||
+  (import.meta.env.DEV ? 'ws://127.0.0.1:8000' : 'wss://nativeglow.onrender.com');
+
+// Create soft notification sound using Web Audio API
+function createNotificationSound() {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const now = audioContext.currentTime;
+  
+  // Create two short beeps at different frequencies
+  const beep = (freq, duration) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+    
+    osc.start(now);
+    osc.stop(now + duration);
+  };
+  
+  // First beep at 800Hz for 0.15s
+  beep(800, 0.15);
+  // Second beep at 1000Hz for 0.1s, 0.1s later
+  beep(1000, 0.1);
+}
+
+// Toast notification component
+function Toast({ order, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 10000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed right-4 top-4 z-50 w-96 gap-4 rounded-lg border border-sage/30 bg-white p-4 shadow-lg">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="flex items-center gap-2 font-semibold text-zinc-900">
+            <span className="text-lg">🛍️</span>
+            New Order Received!
+          </p>
+          <div className="mt-2 space-y-1 text-sm text-zinc-700">
+            <p><span className="font-medium">{order.product_name}</span> × {order.quantity}</p>
+            <p>Amount: <span className="font-medium text-sage">₹{(order.total_amount || 0).toFixed(2)}</span></p>
+            <p>Buyer: <span className="font-medium">{order.buyer_name || 'Guest'}</span></p>
+          </div>
+          <a
+            href={`/vendor/dashboard/orders?code=${order.order_code}`}
+            className="mt-3 inline-block rounded-lg bg-sage px-3 py-1 text-xs font-semibold text-white transition hover:bg-sage/90"
+          >
+            View Order →
+          </a>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-zinc-400 transition hover:text-zinc-600"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
     return null;
@@ -57,6 +127,8 @@ function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   if (!vendorSession?.access || !isTokenValid(vendorSession.access)) {
     localStorage.removeItem('nativeglow_vendor_tokens');
@@ -65,6 +137,9 @@ function VendorDashboard() {
 
   useEffect(() => {
     let mounted = true;
+    let ws = null;
+    let pollingInterval = null;
+    let wsConnectTimeout = null;
 
     async function fetchJson(path) {
       const res = await fetch(`${API_BASE}${path}`, {
@@ -151,17 +226,132 @@ function VendorDashboard() {
       }
     }
 
+    // Connect to WebSocket for real-time notifications
+    function connectWebSocket() {
+      if (!vendor?.id) return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${WS_BASE}/ws/vendor/${vendor.id}/`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          if (!mounted) return;
+          setWsConnected(true);
+          console.log('WebSocket connected');
+          // Clear polling interval if WebSocket connects
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+        };
+
+        ws.onmessage = (event) => {
+          if (!mounted) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'new_order') {
+              // Play notification sound
+              try {
+                createNotificationSound();
+              } catch (err) {
+                console.log('Could not play notification sound:', err);
+              }
+
+              // Show toast notification
+              setToast(data.order);
+
+              // Increment unread badge
+              setPendingOrderCount((prev) => prev + 1);
+
+              // Refresh dashboard silently
+              loadDashboard({ silent: true });
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err);
+          }
+        };
+
+        ws.onerror = (err) => {
+          if (!mounted) return;
+          console.log('WebSocket error, falling back to polling:', err);
+          setWsConnected(false);
+          // Start polling fallback
+          startPollingFallback();
+        };
+
+        ws.onclose = () => {
+          if (!mounted) return;
+          setWsConnected(false);
+          console.log('WebSocket closed');
+          // Start polling fallback if not already started
+          if (!pollingInterval) {
+            startPollingFallback();
+          }
+        };
+      } catch (err) {
+        console.log('WebSocket connection failed, using polling fallback:', err);
+        startPollingFallback();
+      }
+    }
+
+    // Polling fallback (silent, no errors shown to vendor)
+    function startPollingFallback() {
+      if (pollingInterval) return; // Already polling
+
+      pollingInterval = setInterval(async () => {
+        if (!mounted) return;
+        try {
+          const pendingOrders = await fetchJson('/vendor/orders/?status=pending');
+          if (!mounted) return;
+          
+          const pendingCount = Array.isArray(pendingOrders)
+            ? pendingOrders.filter((item) => String(item.order_status || '').toLowerCase() === 'pending').length
+            : 0;
+
+          setPendingOrderCount(pendingCount);
+        } catch (err) {
+          console.log('Polling fetch error (silent):', err);
+        }
+      }, 30000); // Poll every 30 seconds
+    }
+
+    // Initial load
     loadDashboard();
 
+    // Wait a bit for vendor info to load, then connect WebSocket
+    const vendorId = vendor?.id || vendorSession?.vendor?.id;
+    if (vendorId) {
+      connectWebSocket();
+    } else {
+      // Try again after vendor loads
+      wsConnectTimeout = setTimeout(() => {
+        if (mounted) {
+          connectWebSocket();
+        }
+      }, 1000);
+    }
+
+    // Also refresh every 60 seconds (if polling, this adds to it)
     const intervalId = setInterval(() => {
       loadDashboard({ silent: true });
     }, 60000);
 
     return () => {
       mounted = false;
+      if (ws) {
+        ws.close();
+      }
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      if (wsConnectTimeout) {
+        clearTimeout(wsConnectTimeout);
+      }
       clearInterval(intervalId);
     };
-  }, [navigate, vendorSession.access]);
+  }, [navigate, vendorSession.access, vendor?.id]);
 
   const storeUrl = vendor?.vendor_slug
     ? `https://nativeglow.com/store/${vendor.vendor_slug}`
@@ -183,9 +373,21 @@ function VendorDashboard() {
 
   return (
     <section className="max-w-6xl">
+      {toast ? (
+        <Toast order={toast} onClose={() => setToast(null)} />
+      ) : null}
+      
       <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
         <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Menu</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Menu</p>
+            <div className="flex items-center gap-1">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${wsConnected ? 'bg-sage' : 'bg-amber-500'}`}></span>
+              <span className="text-[10px] font-semibold text-zinc-500">
+                {wsConnected ? 'Live' : 'Polling'}
+              </span>
+            </div>
+          </div>
           <nav className="mt-3 space-y-2">
             {sidebarLinks.map((item) => (
               <Link

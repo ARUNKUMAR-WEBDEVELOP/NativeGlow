@@ -1,9 +1,15 @@
 from rest_framework import generics, permissions, response, status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 
 from .models import Order
 from .payment import create_stub_payment_intent
+from buyers.authentication import BuyerJWTAuthentication
 from .serializers import (
     OrderCreateSerializer,
     OrderReadSerializer,
@@ -13,6 +19,7 @@ from .serializers import (
     PublicOrderTrackingDetailSerializer,
     VendorOrderListSerializer,
     VendorOrderStatusUpdateSerializer,
+    BuyerConfirmDeliverySerializer,
 )
 
 
@@ -72,7 +79,144 @@ class PublicOrderPlaceView(generics.CreateAPIView):
     Public endpoint for buyer order placement (no login required).
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = (BuyerJWTAuthentication,)
     serializer_class = PublicOrderPlaceSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        order = serializer.instance
+        self._notify_vendor_new_order(order)
+
+        headers = self.get_success_headers(serializer.data)
+        return response.Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def _notify_vendor_new_order(self, order):
+        vendor = order.vendor
+        if not vendor:
+            return
+
+        product_name = order.product.name if order.product else 'N/A'
+        payload = {
+            'type': 'new_order',
+            'order_code': order.order_code,
+            'product_name': product_name,
+            'quantity': order.quantity,
+            'total_amount': float(order.total_amount),
+            'buyer_name': order.buyer_name,
+            'buyer_phone': order.buyer_phone,
+            'buyer_address': order.buyer_address,
+            'payment_method': (order.payment_method or '').upper(),
+            'payment_reference': order.payment_reference,
+            'timestamp': timezone.localtime(order.created_at).strftime('%Y-%m-%d %H:%M'),
+        }
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            try:
+                async_to_sync(channel_layer.group_send)(
+                    f'vendor_{vendor.id}',
+                    {
+                        'type': 'new_order_notification',
+                        'payload': payload,
+                    },
+                )
+            except Exception:
+                # Keep order flow resilient even if WebSocket push fails.
+                pass
+
+        if vendor.email:
+            send_mail(
+                subject=f'New Order Received - {order.order_code}',
+                message=(
+                    f'Order Code: {order.order_code}\n'
+                    f'Product: {product_name}\n'
+                    f'Quantity: {order.quantity}\n'
+                    f'Total: Rs {order.total_amount}\n'
+                    f'Buyer: {order.buyer_name}\n'
+                    f'Phone: {order.buyer_phone}\n'
+                    f'Address: {order.buyer_address}\n'
+                    f'Payment Method: {(order.payment_method or "").upper()}\n'
+                    f'Payment Ref: {order.payment_reference}'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[vendor.email],
+                fail_silently=True,
+            )
+
+
+class BuyerOrderConfirmView(APIView):
+    """
+    PATCH /api/order/<order_code>/buyer-confirm/
+    Buyer confirms delivery for own order.
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (BuyerJWTAuthentication,)
+
+    def patch(self, request, order_code):
+        buyer = getattr(request, 'buyer', None)
+        order = Order.objects.filter(order_code=order_code, buyer=buyer).select_related('vendor').first()
+        if not order:
+            return response.Response(
+                {'detail': 'Order not found for this buyer.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = BuyerConfirmDeliverySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        order.buyer_confirmed_delivery = True
+        order.buyer_confirmed_at = timezone.now()
+        order.buyer_confirmation_note = serializer.validated_data.get('note', '').strip()
+        order.delivery_rating = serializer.validated_data.get('rating')
+        order.order_status = 'delivered'
+        order.status = 'delivered'
+        if not order.delivered_at:
+            order.delivered_at = timezone.now()
+        order.save(
+            update_fields=[
+                'buyer_confirmed_delivery',
+                'buyer_confirmed_at',
+                'buyer_confirmation_note',
+                'delivery_rating',
+                'order_status',
+                'status',
+                'delivered_at',
+                'updated_at',
+            ]
+        )
+
+        self._send_vendor_confirmation_email(order)
+
+        return response.Response(
+            {
+                'message': f'Buyer confirmed delivery for {order.order_code}',
+                'order_code': order.order_code,
+                'buyer_confirmed_delivery': order.buyer_confirmed_delivery,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def _send_vendor_confirmation_email(self, order):
+        vendor = order.vendor
+        if not vendor or not vendor.email:
+            return
+
+        send_mail(
+            subject=f'Buyer confirmed delivery for {order.order_code}',
+            message=(
+                f'Order {order.order_code} was marked delivered by buyer confirmation.\n\n'
+                f'Buyer: {order.buyer_name}\n'
+                f'Rating: {order.delivery_rating or "Not provided"}\n'
+                f'Note: {order.buyer_confirmation_note or "No note"}'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[vendor.email],
+            fail_silently=True,
+        )
 
 
 class VendorOrderListView(generics.ListAPIView):

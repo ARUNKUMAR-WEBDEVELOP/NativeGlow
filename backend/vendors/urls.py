@@ -20,6 +20,10 @@ from products.views import (
     VendorProductDeleteView,
     VendorProductStatusView,
     VendorProductQuantityView,
+    VendorProductDiscountView,
+    VendorProductVisibilityView,
+    VendorProductFeatureView,
+    VendorProductReorderView,
 )
 
 urlpatterns = [
@@ -39,6 +43,10 @@ urlpatterns = [
     path('products/<int:id>/delete/', VendorProductDeleteView.as_view(), name='vendor-product-delete'),
     path('products/<int:id>/status/', VendorProductStatusView.as_view(), name='vendor-product-status'),
     path('products/<int:id>/quantity/', VendorProductQuantityView.as_view(), name='vendor-product-quantity'),
+    path('products/<int:id>/discount/', VendorProductDiscountView.as_view(), name='vendor-product-discount'),
+    path('products/<int:id>/visibility/', VendorProductVisibilityView.as_view(), name='vendor-product-visibility'),
+    path('products/<int:id>/feature/', VendorProductFeatureView.as_view(), name='vendor-product-feature'),
+    path('products/reorder/', VendorProductReorderView.as_view(), name='vendor-product-reorder'),
 
     # Existing endpoints
     path('', VendorListView.as_view(), name='vendor-list'),

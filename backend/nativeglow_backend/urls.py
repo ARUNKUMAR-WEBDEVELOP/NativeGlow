@@ -19,8 +19,8 @@ import os
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
-from orders.views import PublicOrderPlaceView, VendorOrderListView, VendorOrderStatusUpdateView
-from vendors.views import VendorRegisterView, VendorLoginView, VendorProfileView
+from orders.views import PublicOrderPlaceView, VendorOrderListView, VendorOrderStatusUpdateView, BuyerOrderConfirmView
+from vendors.views import VendorRegisterView, VendorLoginView, VendorProfileView, VendorActivateView
 from products.views import (
     VendorProductCreateView,
     VendorProductListView,
@@ -28,6 +28,13 @@ from products.views import (
     VendorProductDeleteView,
     VendorProductStatusView,
     VendorProductQuantityView,
+    VendorProductDiscountView,
+    VendorProductVisibilityView,
+    VendorProductFeatureView,
+    VendorProductReorderView,
+    PublicVendorSiteView,
+    PublicVendorSiteProductsView,
+    PublicVendorSiteAboutView,
 )
 
 
@@ -47,6 +54,7 @@ urlpatterns = [
     path('api/auth/', include('users.urls')),
     path('api/vendor/register/', VendorRegisterView.as_view(), name='vendor-register-public'),
     path('api/vendor/login/', VendorLoginView.as_view(), name='vendor-login-public'),
+    path('api/vendor/activate/', VendorActivateView.as_view(), name='vendor-activate-public'),
     path('api/vendor/me/', VendorProfileView.as_view(), name='vendor-me-public'),
     path('api/vendor/products/add/', VendorProductCreateView.as_view(), name='vendor-product-create-public'),
     path('api/vendor/products/', VendorProductListView.as_view(), name='vendor-products-list-public'),
@@ -54,10 +62,19 @@ urlpatterns = [
     path('api/vendor/products/<int:id>/delete/', VendorProductDeleteView.as_view(), name='vendor-product-delete-public'),
     path('api/vendor/products/<int:id>/status/', VendorProductStatusView.as_view(), name='vendor-product-status-public'),
     path('api/vendor/products/<int:id>/quantity/', VendorProductQuantityView.as_view(), name='vendor-product-quantity-public'),
+    path('api/vendor/products/<int:id>/discount/', VendorProductDiscountView.as_view(), name='vendor-product-discount-public'),
+    path('api/vendor/products/<int:id>/visibility/', VendorProductVisibilityView.as_view(), name='vendor-product-visibility-public'),
+    path('api/vendor/products/<int:id>/feature/', VendorProductFeatureView.as_view(), name='vendor-product-feature-public'),
+    path('api/vendor/products/reorder/', VendorProductReorderView.as_view(), name='vendor-product-reorder-public'),
     path('api/order/place/', PublicOrderPlaceView.as_view(), name='order-place-public'),
+    path('api/order/<str:order_code>/buyer-confirm/', BuyerOrderConfirmView.as_view(), name='order-buyer-confirm-public'),
+    path('api/site/<slug:vendor_slug>/', PublicVendorSiteView.as_view(), name='site-home-public'),
+    path('api/site/<slug:vendor_slug>/products/', PublicVendorSiteProductsView.as_view(), name='site-products-public'),
+    path('api/site/<slug:vendor_slug>/about/', PublicVendorSiteAboutView.as_view(), name='site-about-public'),
     path('api/vendor/orders/', VendorOrderListView.as_view(), name='vendor-orders-list'),
     path('api/vendor/orders/<int:id>/status/', VendorOrderStatusUpdateView.as_view(), name='vendor-order-status-update'),
     path('api/admin/', include('admins.urls')),
+    path('api/buyers/', include('buyers.urls')),
     path('api/vendors/', include('vendors.urls')),
     path('api/products/', include('products.urls')),
     path('api/orders/', include('orders.urls')),

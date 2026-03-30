@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.db.models import Sum
 from decimal import Decimal
+from datetime import timedelta
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -335,6 +336,50 @@ class VendorLoginView(APIView):
                 }
             },
             status=status.HTTP_200_OK
+        )
+
+
+class VendorActivateView(APIView):
+    """
+    GET /api/vendor/activate/?token=xxxxx
+    Exchange a one-time redirect token for fresh vendor JWT access token.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        token = request.query_params.get('token', '').strip()
+        expired_message = 'Activation link expired. Please login manually.'
+
+        if not token:
+            return Response({'detail': expired_message}, status=status.HTTP_400_BAD_REQUEST)
+
+        vendor = Vendor.objects.filter(redirect_token=token).first()
+        if not vendor or not vendor.site_activated_at:
+            return Response({'detail': expired_message}, status=status.HTTP_400_BAD_REQUEST)
+
+        if timezone.now() > vendor.site_activated_at + timedelta(hours=48):
+            return Response({'detail': expired_message}, status=status.HTTP_400_BAD_REQUEST)
+
+        refresh = RefreshToken()
+        refresh['vendor_id'] = vendor.id
+        refresh['user_id'] = vendor.id
+        refresh['email'] = vendor.email
+        refresh['is_vendor'] = True
+
+        access_token = str(refresh.access_token)
+
+        vendor.redirect_token = ''
+        vendor.save(update_fields=['redirect_token', 'updated_at'])
+
+        return Response(
+            {
+                'access_token': access_token,
+                'vendor_slug': vendor.vendor_slug,
+                'business_name': vendor.business_name,
+                'site_status': vendor.site_status,
+                'is_first_login': True,
+            },
+            status=status.HTTP_200_OK,
         )
 
 

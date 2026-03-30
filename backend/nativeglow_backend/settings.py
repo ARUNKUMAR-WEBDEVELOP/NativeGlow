@@ -62,9 +62,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'channels',
     # NativeGlow apps
     'users',
     'vendors',
+    'buyers',
     'products',
     'orders',
     'admins',
@@ -137,6 +139,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'nativeglow_backend.wsgi.application'
+ASGI_APPLICATION = 'nativeglow_backend.asgi.application'
+
+redis_url = os.environ.get('REDIS_URL', '').strip()
+if redis_url:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [redis_url]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        }
+    }
 
 
 # Database
@@ -178,6 +196,10 @@ else:
             'PASSWORD': config('DB_PASSWORD', default='postgres'),
             'HOST': db_host,
             'PORT': config('DB_PORT', default=5432, cast=int),
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'OPTIONS': {
+                'sslmode': config('DB_SSLMODE', default='require'),
+            },
         }
     }
 

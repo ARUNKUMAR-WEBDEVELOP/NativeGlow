@@ -260,6 +260,31 @@ class VendorProductQuantitySerializer(serializers.Serializer):
         return instance
 
 
+class VendorProductDiscountSerializer(serializers.Serializer):
+    """Serializer for updating product discount percentage."""
+    discount_percent = serializers.IntegerField(min_value=0, max_value=90)
+
+
+class VendorProductVisibilitySerializer(serializers.Serializer):
+    """Serializer for toggling storefront visibility."""
+    is_visible = serializers.BooleanField()
+
+
+class VendorProductFeatureSerializer(serializers.Serializer):
+    """Serializer for marking product as featured."""
+    is_featured = serializers.BooleanField()
+
+
+class VendorProductReorderItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    position = serializers.IntegerField(min_value=0)
+
+
+class VendorProductReorderSerializer(serializers.Serializer):
+    """Serializer for bulk product reordering."""
+    order = VendorProductReorderItemSerializer(many=True)
+
+
 # ============================================================================
 # PUBLIC BUYER STORE APIS - NO AUTHENTICATION REQUIRED
 # ============================================================================
@@ -364,3 +389,66 @@ class StoreCategoryWithCountSerializer(serializers.Serializer):
     """
     category = serializers.CharField()
     count = serializers.IntegerField()
+
+
+class SiteProductSerializer(serializers.ModelSerializer):
+    """Serializer for public vendor website product listing."""
+    category = serializers.CharField(source='category_type', read_only=True)
+    discounted_price = serializers.SerializerMethodField()
+    primary_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = (
+            'id',
+            'name',
+            'title',
+            'slug',
+            'description',
+            'price',
+            'discount_percent',
+            'discounted_price',
+            'category',
+            'product_tag',
+            'is_featured',
+            'primary_image',
+        )
+
+    def get_discounted_price(self, obj):
+        if (obj.discount_percent or 0) > 0:
+            return obj.discounted_price
+        return None
+
+    def get_primary_image(self, obj):
+        img = obj.images.first()
+        if img:
+            return img.image_url
+        if obj.image:
+            return obj.image.url
+        return None
+
+
+class SiteVendorSerializer(serializers.Serializer):
+    business_name = serializers.CharField()
+    about_vendor = serializers.CharField(allow_blank=True)
+    city = serializers.CharField(allow_blank=True)
+    site_theme = serializers.CharField(allow_blank=True)
+    site_banner_image = serializers.CharField(allow_blank=True)
+    site_logo = serializers.CharField(allow_blank=True)
+    youtube_url = serializers.CharField(allow_blank=True)
+    instagram_url = serializers.CharField(allow_blank=True)
+    whatsapp_number = serializers.CharField(allow_blank=True, allow_null=True)
+    member_since = serializers.IntegerField()
+    total_products = serializers.IntegerField()
+
+
+class SiteAboutSerializer(serializers.Serializer):
+    business_name = serializers.CharField()
+    about_vendor = serializers.CharField(allow_blank=True)
+    site_logo = serializers.CharField(allow_blank=True)
+    site_banner_image = serializers.CharField(allow_blank=True)
+    youtube_url = serializers.CharField(allow_blank=True)
+    instagram_url = serializers.CharField(allow_blank=True)
+    member_since = serializers.IntegerField()
+    product_count = serializers.IntegerField()
+    total_orders_delivered = serializers.IntegerField()
