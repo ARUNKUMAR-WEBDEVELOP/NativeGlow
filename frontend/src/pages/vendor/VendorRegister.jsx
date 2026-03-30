@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { api } from '../../api';
 
 const CATEGORY_OPTIONS = [
@@ -24,18 +25,52 @@ const INITIAL_FORM = {
   bank_account_number: '',
   bank_ifsc: '',
   account_holder_name: '',
+  google_token: '',
 };
 
 function VendorRegister() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [googleVerified, setGoogleVerified] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
 
   const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (codeResponse) => {
+      setIsGoogleLoading(true);
+      try {
+        // Get user info from Google's userinfo endpoint
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?access_token=' + codeResponse.access_token);
+        const userInfo = await userInfoResponse.json();
+
+        // Auto-populate form with Google data
+        setForm((prev) => ({
+          ...prev,
+          email: userInfo.email || prev.email,
+          full_name: userInfo.name || prev.full_name,
+          google_token: codeResponse.access_token,
+        }));
+
+        setGoogleVerified(true);
+        setError('');
+      } catch (err) {
+        setError('Failed to get Google account info. Please try again.');
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      setError('Google login failed. Please try again.');
+      setIsGoogleLoading(false);
+    },
+    scope: 'profile email',
+  });
 
   const onInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,6 +87,14 @@ function VendorRegister() {
 
   const validateStep = (currentStep) => {
     if (currentStep === 1) {
+      // If Google verified, only need whatsapp_number and city
+      if (googleVerified) {
+        if (!form.whatsapp_number || !form.city) {
+          return 'Please enter WhatsApp number and city.';
+        }
+        return '';
+      }
+      // Manual entry requires all fields
       if (!form.full_name || !form.email || !form.whatsapp_number || !form.city) {
         return 'Please complete all personal info fields.';
       }
@@ -136,7 +179,7 @@ function VendorRegister() {
 
     setIsSubmitting(true);
     try {
-      const response = await api.vendorRegister({
+      const payload = {
         full_name: form.full_name,
         email: form.email,
         whatsapp_number: form.whatsapp_number,
@@ -149,7 +192,14 @@ function VendorRegister() {
         bank_account_number: form.bank_account_number,
         bank_ifsc: form.bank_ifsc,
         account_holder_name: form.account_holder_name,
-      });
+      };
+
+      // Include google_token if user logged in with Google
+      if (form.google_token) {
+        payload.google_token = form.google_token;
+      }
+
+      const response = await api.vendorRegister(payload);
 
       // Store registration success data (including generated password)
       setRegistrationSuccess({
@@ -163,6 +213,7 @@ function VendorRegister() {
       setForm(INITIAL_FORM);
       setStep(1);
       setError('');
+      setGoogleVerified(false);
     } catch (err) {
       if (err?.status === 404) {
         setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');
@@ -253,15 +304,92 @@ function VendorRegister() {
         {step === 1 ? (
           <>
             <h2 className="text-lg font-semibold text-zinc-900">Step 1 - Personal Info</h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              <input name="full_name" value={form.full_name} onChange={onInputChange} placeholder="Full name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input type="email" name="email" value={form.email} onChange={onInputChange} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input name="whatsapp_number" value={form.whatsapp_number} onChange={onInputChange} placeholder="WhatsApp number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input name="city" value={form.city} onChange={onInputChange} placeholder="City" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+
+            {/* Google Login Option */}
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-semibold text-blue-900 mb-3">Quick Registration with Google:</p>
+              {googleVerified ? (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                  <span className="text-lg">✓</span>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900">Google Account Verified</p>
+                    <p className="text-xs text-emerald-700">{form.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoogleVerified(false);
+                      setForm((prev) => ({ ...prev, google_token: '' }));
+                    }}
+                    className="ml-auto text-xs font-semibold text-emerald-700 hover:text-emerald-900"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isGoogleLoading}
+                  onClick={() => googleLogin()}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-white border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                    <path d="M23.745 12.27c0-.79-.07-1.54-.187-2.27H12.03v4.287h6.846c-.29 1.48-1.175 2.725-2.5 3.573v3.16h4.057c2.364-2.183 3.729-5.406 3.729-9.23Z" fill="#4285F4"/>
+                    <path d="M12.03 24c3.39 0 6.226-1.129 8.303-3.06l-4.057-3.16c-1.13.754-2.577 1.2-4.246 1.2-3.265 0-6.032-2.21-7.02-5.18H.957v3.266C2.029 21.785 6.934 24 12.03 24Z" fill="#34A853"/>
+                    <path d="M5.01 14.8c-.25-.755-.388-1.559-.388-2.4 0-.841.138-1.645.388-2.4V5.734H.957C.347 7.16 0 8.537 0 12c0 3.463.348 4.84.957 6.266l4.053-3.266Z" fill="#FBBC04"/>
+                    <path d="M12.03 4.75c1.84 0 3.49.631 4.784 1.87l3.582-3.582C18.246 1.129 15.41 0 12.03 0 6.934 0 2.029 2.215.957 5.734l4.053 3.266c.988-2.97 3.755-5.25 7.02-5.25Z" fill="#EA4335"/>
+                  </svg>
+                  {isGoogleLoading ? 'Verifying...' : 'Register with Google'}
+                </button>
+              )}
             </div>
+
+            {/* OR divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-300" />
+              <span className="text-xs font-semibold text-gray-500">OR</span>
+              <div className="flex-1 h-px bg-gray-300" />
+            </div>
+
+            {/* Manual email entry */}
+            <p className="text-xs font-semibold text-gray-600">Enter Your Details Manually:</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <input
+                name="full_name"
+                value={form.full_name}
+                onChange={onInputChange}
+                placeholder="Full name"
+                disabled={googleVerified}
+                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600"
+              />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={onInputChange}
+                placeholder="Email"
+                disabled={googleVerified}
+                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600"
+              />
+              <input
+                name="whatsapp_number"
+                value={form.whatsapp_number}
+                onChange={onInputChange}
+                placeholder="WhatsApp number"
+                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+              />
+              <input
+                name="city"
+                value={form.city}
+                onChange={onInputChange}
+                placeholder="City"
+                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </div>
+
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
               <p className="font-semibold">ℹ Password Note:</p>
-              <p>A secure password will be automatically generated for you during registration. You'll see it after successful registration.</p>
+              <p>A secure password will be automatically generated for you during registration using your email and phone number. You'll see it after successful registration.</p>
             </div>
           </>
         ) : null}
