@@ -442,7 +442,7 @@ class VendorApprovalStatusView(APIView):
 
         approval_status = 'approved' if vendor.is_approved else 'pending'
         redirect_url = f"/site/{vendor.vendor_slug}" if vendor.is_approved and vendor.vendor_slug else ''
-        management_url = '/vendor/dashboard' if vendor.is_approved else ''
+        management_url = '/vendor/dashboard/products' if vendor.is_approved else ''
 
         return Response(
             {

@@ -59,7 +59,7 @@ function VendorLogin() {
       });
 
       localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(tokens));
-      navigate('/vendor/dashboard', { replace: true });
+      navigate('/vendor/dashboard/products', { replace: true });
     } catch (err) {
       const message = getErrorMessage(err);
       if (message.toLowerCase().includes('pending admin approval')) {
