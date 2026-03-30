@@ -13,6 +13,9 @@ class Vendor(models.Model):
     full_name = models.CharField(max_length=255, default='')
     email = models.EmailField(unique=True, db_index=True, null=True, blank=True)
     password = models.CharField(max_length=255, default='')  # Hashed password
+    google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    google_email_verified = models.BooleanField(default=False)
+    registered_via_google = models.BooleanField(default=False)
 
     # Business Details
     business_name = models.CharField(max_length=255, default='')

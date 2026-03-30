@@ -253,10 +253,13 @@ class VendorRegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def create(self, request, *args, **kwargs):
-        """Handle registration with custom response."""
+        """Handle registration with custom response including generated password."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         vendor = serializer.save()
+        
+        # Get the plain password that was generated or provided
+        plain_password = getattr(vendor, '_plain_password', '[auto-generated]')
 
         return Response(
             {
@@ -266,10 +269,17 @@ class VendorRegisterView(generics.CreateAPIView):
                 'business_name': vendor.business_name,
                 'vendor_slug': vendor.vendor_slug,
                 'city': vendor.city,
+                'registered_via_google': vendor.registered_via_google,
+                'google_email_verified': vendor.google_email_verified,
                 'is_approved': vendor.is_approved,
                 'approval_status': 'approved' if vendor.is_approved else 'pending',
                 'next_step': 'wait_for_admin_approval',
-                'message': 'Registration successful! Your account is pending admin approval. You will receive an email once approved.',
+                'login_credentials': {
+                    'email': vendor.email,
+                    'password': plain_password,
+                    'note': 'Use these credentials to login after admin approval. Do not share your password with anyone.'
+                },
+                'message': f'Registration successful! Your account is pending admin approval. You will receive an email once approved. Use the password shown above to login after approval.',
             },
             status=status.HTTP_201_CREATED
         )

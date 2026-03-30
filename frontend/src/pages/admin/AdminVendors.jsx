@@ -308,7 +308,12 @@ export default function AdminVendors() {
               filteredVendors.map((vendor) => (
                 <tr key={vendor.id} className="border-b border-slate-700 hover:bg-slate-800/30">
                   <td className="px-6 py-4 text-sm text-white font-medium">{vendor.business_name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-300">{vendor.full_name}</td>
+                  <td className="px-6 py-4 text-sm text-slate-300">
+                    <div>{vendor.full_name}</div>
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      {vendor.registered_via_google ? 'Google linked' : 'Legacy account'}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.email || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.city || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">
@@ -554,6 +559,20 @@ function VendorDetailModal({ vendor, onClose }) {
                 >
                   {STATUS_BADGES[vendorDetail.status]?.label || vendorDetail.status}
                 </span>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                <p className="text-xs text-slate-400 mb-1">Registration Source</p>
+                <p className="text-white font-semibold">
+                  {vendorDetail.registered_via_google ? 'Google Auth Verified' : 'Manual / Legacy'}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+                <p className="text-xs text-slate-400 mb-1">Google Email Verified</p>
+                <p className="text-white font-semibold">{vendorDetail.google_email_verified ? 'Yes' : 'No'}</p>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 md:col-span-2">
+                <p className="text-xs text-slate-400 mb-1">Google Account ID</p>
+                <p className="text-white font-semibold break-all">{vendorDetail.google_id || '-'}</p>
               </div>
             </div>
 

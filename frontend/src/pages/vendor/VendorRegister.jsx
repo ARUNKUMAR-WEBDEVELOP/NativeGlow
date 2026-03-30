@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { api } from '../../api';
 
 const CATEGORY_OPTIONS = [
@@ -14,8 +15,6 @@ const CATEGORY_OPTIONS = [
 const INITIAL_FORM = {
   full_name: '',
   email: '',
-  password: '',
-  confirm_password: '',
   whatsapp_number: '',
   city: '',
   business_name: '',
@@ -35,6 +34,10 @@ function VendorRegister() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [googleToken, setGoogleToken] = useState('');
+  const [googleVerifiedEmail, setGoogleVerifiedEmail] = useState('');
+  const [googleVerifyLoading, setGoogleVerifyLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(null);
 
   const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
 
@@ -53,14 +56,11 @@ function VendorRegister() {
 
   const validateStep = (currentStep) => {
     if (currentStep === 1) {
-      if (!form.full_name || !form.email || !form.password || !form.confirm_password || !form.whatsapp_number || !form.city) {
+      if (!form.full_name || !form.email || !form.whatsapp_number || !form.city) {
         return 'Please complete all personal info fields.';
       }
-      if (form.password.length < 8) {
-        return 'Password must be at least 8 characters.';
-      }
-      if (form.password !== form.confirm_password) {
-        return 'Passwords do not match.';
+      if (!googleToken) {
+        return 'Please verify with Google before continuing.';
       }
       return '';
     }
@@ -86,6 +86,50 @@ function VendorRegister() {
     }
     return '';
   };
+
+  const verifyGoogleLogin = useGoogleLogin({
+    scope: 'openid profile email',
+    onSuccess: async (tokenResponse) => {
+      try {
+        setGoogleVerifyLoading(true);
+        setError('');
+        const accessToken = tokenResponse?.access_token || '';
+        if (!accessToken) {
+          setError('Google verification failed. Please try again.');
+          return;
+        }
+
+        const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const profile = await profileRes.json().catch(() => ({}));
+        const email = (profile?.email || '').trim();
+        const name = (profile?.name || '').trim();
+        const emailVerified = Boolean(profile?.email_verified);
+
+        if (!email || !emailVerified) {
+          setError('Google email is not verified. Use a verified Google account.');
+          return;
+        }
+
+        setGoogleToken(accessToken);
+        setGoogleVerifiedEmail(email);
+        setForm((prev) => ({
+          ...prev,
+          email,
+          full_name: prev.full_name || name,
+        }));
+      } catch {
+        setError('Google verification failed. Please try again.');
+      } finally {
+        setGoogleVerifyLoading(false);
+      }
+    },
+    onError: () => {
+      setError('Google verification was cancelled or failed.');
+      setGoogleVerifyLoading(false);
+    },
+  });
 
   const goNext = () => {
     const validationError = validateStep(step);
@@ -117,8 +161,6 @@ function VendorRegister() {
     setForm({
       full_name: 'Demo Vendor',
       email: `demo.vendor.${ts}@nativeglow.test`,
-      password: 'Demo@12345',
-      confirm_password: 'Demo@12345',
       whatsapp_number: '9876543210',
       city: 'Chennai',
       business_name: 'Demo Herbal Store',
@@ -148,8 +190,7 @@ function VendorRegister() {
       const response = await api.vendorRegister({
         full_name: form.full_name,
         email: form.email,
-        password: form.password,
-        confirm_password: form.confirm_password,
+        google_token: googleToken,
         whatsapp_number: form.whatsapp_number,
         city: form.city,
         business_name: form.business_name,
@@ -162,17 +203,20 @@ function VendorRegister() {
         account_holder_name: form.account_holder_name,
       });
 
-      const pendingEmail = response?.email || form.email;
-      const pendingBusiness = response?.business_name || form.business_name;
+      // Store registration success data (including generated password)
+      setRegistrationSuccess({
+        email: response?.email || form.email,
+        password: response?.login_credentials?.password || '[auto-generated]',
+        business_name: response?.business_name || form.business_name,
+        vendor_slug: response?.vendor_slug || '',
+      });
 
-      setSuccess('Registration submitted. Redirecting to approval status page...');
+      // Reset form
       setForm(INITIAL_FORM);
       setStep(1);
       setError('');
-      navigate(
-        `/vendor/pending-approval?email=${encodeURIComponent(pendingEmail)}&business=${encodeURIComponent(pendingBusiness)}`,
-        { replace: true }
-      );
+      setGoogleToken('');
+      setGoogleVerifiedEmail('');
     } catch (err) {
       if (err?.status === 404) {
         setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');
@@ -186,6 +230,52 @@ function VendorRegister() {
 
   return (
     <section className="max-w-3xl">
+      {/* Registration Success Modal */}
+      {registrationSuccess ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 shadow-lg">
+            <div className="rounded-xl bg-emerald-50 p-4 text-center">
+              <p className="text-3xl">✓</p>
+              <h3 className="mt-2 text-lg font-semibold text-emerald-900">Registration Successful!</h3>
+              <p className="mt-1 text-sm text-emerald-700">Your account is pending admin approval.</p>
+            </div>
+
+            <div className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-sm font-semibold text-zinc-800">Your Login Credentials:</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600">Email:</label>
+                  <p className="mt-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-sm text-zinc-900">{registrationSuccess.email}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-zinc-600">Password:</label>
+                  <p className="mt-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-sm text-zinc-900">{registrationSuccess.password}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-semibold">⚠ Important:</p>
+              <ul className="mt-1 list-inside list-disc space-y-1">
+                <li>Save these credentials securely. Do not share with anyone.</li>
+                <li>You can login after admin approval using these credentials.</li>
+                <li>You will receive an email notification once approved.</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => {
+                setRegistrationSuccess(null);
+                navigate('/vendor/pending-approval?email=' + encodeURIComponent(registrationSuccess.email), { replace: true });
+              }}
+              className="mt-4 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              Check Approval Status
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="rounded-3xl border border-sage/20 bg-gradient-to-br from-[#f7f6ee] via-[#ecf0e2] to-[#e5d9c7] p-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Onboarding</p>
         <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Become a NativeGlow Vendor</h1>
@@ -217,13 +307,34 @@ function VendorRegister() {
         {step === 1 ? (
           <>
             <h2 className="text-lg font-semibold text-zinc-900">Step 1 - Personal Info</h2>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <p className="text-sm font-semibold text-zinc-800">Google Account Verification (Required)</p>
+              <p className="mt-1 text-xs text-zinc-600">Sign in with Google first so admin can monitor vendor identity and avoid duplicate accounts.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => verifyGoogleLogin()}
+                  disabled={googleVerifyLoading}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50"
+                >
+                  {googleVerifyLoading ? 'Verifying...' : 'Verify with Google'}
+                </button>
+                {googleVerifiedEmail ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                    Verified: {googleVerifiedEmail}
+                  </span>
+                ) : null}
+              </div>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
               <input name="full_name" value={form.full_name} onChange={onInputChange} placeholder="Full name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input type="email" name="email" value={form.email} onChange={onInputChange} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input type="password" name="password" value={form.password} onChange={onInputChange} placeholder="Password" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input type="password" name="confirm_password" value={form.confirm_password} onChange={onInputChange} placeholder="Confirm password" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+              <input type="email" name="email" value={form.email} onChange={onInputChange} readOnly={Boolean(googleVerifiedEmail)} placeholder="Email" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
               <input name="whatsapp_number" value={form.whatsapp_number} onChange={onInputChange} placeholder="WhatsApp number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
               <input name="city" value={form.city} onChange={onInputChange} placeholder="City" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+              <p className="font-semibold">ℹ Password Note:</p>
+              <p>A secure password will be automatically generated for you during registration. You'll see it after successful registration.</p>
             </div>
           </>
         ) : null}

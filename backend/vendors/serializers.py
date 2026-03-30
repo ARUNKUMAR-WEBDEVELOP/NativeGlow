@@ -1,6 +1,56 @@
+import os
+from urllib import parse, request as urllib_request
+
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from rest_framework import serializers
 from .models import Vendor, VendorApplication
 from users.models import EmailOTP
+
+
+def verify_google_token(google_token):
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+    if not client_id:
+        raise serializers.ValidationError('Google login is not configured on the server.')
+
+    # Preferred: verify ID token JWT
+    try:
+        info = id_token.verify_oauth2_token(google_token, google_requests.Request(), client_id)
+        email = (info.get('email') or '').strip().lower()
+        sub = (info.get('sub') or '').strip()
+        name = (info.get('name') or '').strip()
+        email_verified = bool(info.get('email_verified'))
+        if email and sub:
+            return {
+                'email': email,
+                'google_id': sub,
+                'name': name,
+                'email_verified': email_verified,
+            }
+    except Exception:
+        pass
+
+    # Fallback: access token via Google userinfo endpoint
+    try:
+        params = parse.urlencode({'access_token': google_token})
+        url = f'https://www.googleapis.com/oauth2/v3/userinfo?{params}'
+        with urllib_request.urlopen(url, timeout=8) as resp:
+            import json
+            info = json.loads(resp.read().decode('utf-8'))
+        email = (info.get('email') or '').strip().lower()
+        sub = (info.get('sub') or '').strip()
+        name = (info.get('name') or '').strip()
+        email_verified = bool(info.get('email_verified'))
+        if not email or not sub:
+            raise serializers.ValidationError('Google token did not provide required identity fields.')
+        return {
+            'email': email,
+            'google_id': sub,
+            'name': name,
+            'email_verified': email_verified,
+        }
+    except Exception:
+        raise serializers.ValidationError('Invalid Google token. Please sign in with Google again.')
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -88,23 +138,30 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
     """
     Serializer for vendor registration.
     POST /api/vendor/register/
+    
+    Note: Password is auto-generated if not provided.
+    Generated password is returned in response so vendor knows their login credentials.
     """
     password = serializers.CharField(
         write_only=True,
-        required=True,
+        required=False,
+        allow_blank=True,
         min_length=8,
-        help_text='Password must be at least 8 characters'
+        help_text='Optional. If not provided, a secure password will be auto-generated.'
     )
     confirm_password = serializers.CharField(
         write_only=True,
-        required=True,
+        required=False,
+        allow_blank=True,
         min_length=8
     )
+    google_token = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = Vendor
         fields = (
             'full_name', 'email', 'password', 'confirm_password',
+            'google_token',
             'business_name', 'whatsapp_number', 'city',
             'product_category', 'natural_only_confirmed', 'terms_accepted',
             'upi_id', 'bank_account_number', 'bank_ifsc', 'account_holder_name'
@@ -112,29 +169,76 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Validate password confirmation and email uniqueness."""
-        if attrs.get('password') != attrs.get('confirm_password'):
+        password = (attrs.get('password') or '').strip()
+        confirm_password = (attrs.get('confirm_password') or '').strip()
+        
+        # Only validate if password is provided
+        if password and password != confirm_password:
             raise serializers.ValidationError({
                 'confirm_password': 'Passwords do not match.'
             })
 
-        password = attrs.pop('confirm_password')  # Remove confirm_password from validated data
-        
-        if Vendor.objects.filter(email__iexact=attrs.get('email')).exists():
+        attrs.pop('confirm_password', None)
+        google_token = (attrs.get('google_token') or '').strip()
+        if not google_token:
+            raise serializers.ValidationError({'google_token': 'Google verification is required.'})
+
+        google_identity = verify_google_token(google_token)
+        google_email = google_identity['email']
+        google_id = google_identity['google_id']
+
+        requested_email = (attrs.get('email') or '').strip().lower()
+        if requested_email and requested_email != google_email:
+            raise serializers.ValidationError({
+                'email': 'Email must match your verified Google account email.'
+            })
+
+        if Vendor.objects.filter(google_id=google_id).exists():
+            raise serializers.ValidationError({
+                'google_token': 'This Google account is already linked to an existing vendor account.'
+            })
+
+        if Vendor.objects.filter(email__iexact=google_email).exists():
             raise serializers.ValidationError({
                 'email': 'A vendor with this email already exists.'
             })
 
+        attrs['email'] = google_email
+        if not (attrs.get('full_name') or '').strip() and google_identity.get('name'):
+            attrs['full_name'] = google_identity['name']
+        attrs['_google_id'] = google_id
+        attrs['_google_email_verified'] = bool(google_identity.get('email_verified'))
+        attrs.pop('google_token', None)
+
         return attrs
 
     def create(self, validated_data):
-        """Create vendor with hashed password and auto-generated slug."""
+        """Create vendor with auto-generated password if not provided, and auto-generated slug."""
+        import secrets
         from django.contrib.auth.hashers import make_password
 
-        # Hash the password
-        password = validated_data.pop('password')
+        # Generate or use provided password
+        password = (validated_data.pop('password', '') or '').strip()
+        
+        if not password:
+            # Generate a strong random password: 12 chars alphanumeric + special chars
+            # Format: e.g., "aBc123!@Def456"
+            password = secrets.token_urlsafe(12)[:12]  # 12 random chars from URL-safe alphabet
+        
+        # Store the plain password to return in response
+        plain_password = password
+        
+        # Hash the password for storage
         validated_data['password'] = make_password(password)
+        validated_data['google_id'] = validated_data.pop('_google_id', '')
+        validated_data['google_email_verified'] = validated_data.pop('_google_email_verified', False)
+        validated_data['registered_via_google'] = True
 
         vendor = Vendor.objects.create(**validated_data)
+        
+        # Store the plain password temporarily on the instance for response
+        vendor._plain_password = plain_password
+        
         return vendor
 
 

@@ -58,6 +58,7 @@ class AdminVendorListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'full_name', 'business_name', 'email', 'city',
             'whatsapp_number', 'is_approved', 'is_active',
+            'registered_via_google', 'google_email_verified', 'google_id',
             'maintenance_due', 'created_at',
             'total_products', 'total_orders', 'this_month_revenue', 'status'
         )
@@ -111,6 +112,7 @@ class AdminVendorDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'full_name', 'business_name', 'email', 'city',
             'whatsapp_number', 'upi_id', 'bank_account_number', 'bank_ifsc', 'account_holder_name',
+            'registered_via_google', 'google_email_verified', 'google_id',
             'is_approved', 'is_active', 'maintenance_due',
             'created_at', 'updated_at',
             'total_products', 'total_orders', 'this_month_revenue', 'all_time_revenue',
