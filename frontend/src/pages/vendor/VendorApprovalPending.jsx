@@ -42,19 +42,23 @@ export default function VendorApprovalPending() {
         setError('');
 
         if (response?.is_approved) {
-          // Vendor approved - redirect to vendor dashboard
-          // Store vendor auth info if available
+          // Vendor approved: if token is present, move directly to management area.
+          // Otherwise send vendor to login to generate JWT session.
           if (response?.vendor_token) {
             const vendorSession = {
               access: response.vendor_token,
-              vendor_id: response.vendor_id,
+              refresh: response.refresh || '',
+              id: response.vendor_id,
               vendor_slug: response.vendor_slug,
-              email: email,
+              email: response.email || email,
               full_name: response.full_name,
             };
-            localStorage.setItem('nativeglow_vendor_session', JSON.stringify(vendorSession));
+            localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(vendorSession));
+            navigate(response?.management_url || '/vendor/dashboard', { replace: true });
+            return;
           }
-          navigate('/vendor/dashboard', { replace: true });
+
+          navigate(`/vendor/login?email=${encodeURIComponent(email)}`, { replace: true });
         }
       } catch (err) {
         if (!mounted) {
@@ -99,7 +103,7 @@ export default function VendorApprovalPending() {
         </div>
 
         <p className="mt-3 text-sm text-zinc-600">
-          We automatically check every 15 seconds. Once approved, you will be redirected to your live vendor website.
+          We automatically check every 15 seconds. Once approved, you will be redirected to your vendor management dashboard.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">

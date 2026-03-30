@@ -166,6 +166,12 @@ class VendorProductCreateView(generics.CreateAPIView):
                     {'error': 'Vendor profile not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
+
+            if not request.vendor.is_approved or not request.vendor.is_active:
+                return Response(
+                    {'error': 'Only approved active vendors can manage products.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -209,6 +215,10 @@ class VendorProductListView(generics.ListAPIView):
                 vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
             
             if not vendor_id:
+                return Product.objects.none()
+
+            vendor = Vendor.objects.filter(id=vendor_id, is_approved=True, is_active=True).first()
+            if not vendor:
                 return Product.objects.none()
             
             return Product.objects.filter(vendor_id=vendor_id).order_by('-created_at')

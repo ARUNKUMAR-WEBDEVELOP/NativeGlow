@@ -404,6 +404,7 @@ class VendorApprovalStatusView(APIView):
 
         approval_status = 'approved' if vendor.is_approved else 'pending'
         redirect_url = f"/site/{vendor.vendor_slug}" if vendor.is_approved and vendor.vendor_slug else ''
+        management_url = '/vendor/dashboard' if vendor.is_approved else ''
 
         return Response(
             {
@@ -418,6 +419,8 @@ class VendorApprovalStatusView(APIView):
                 'is_active': vendor.is_active,
                 'registered_at': vendor.created_at,
                 'redirect_url': redirect_url,
+                'management_url': management_url,
+                'store_url': redirect_url,
             },
             status=status.HTTP_200_OK,
         )

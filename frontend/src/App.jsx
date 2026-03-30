@@ -26,6 +26,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminMaintenance from './pages/admin/AdminMaintenance';
 import StickyCartBar from './components/StickyCartBar';
 import ProtectedRoute from './components/ProtectedRoute';
+import VendorProtectedRoute from './components/VendorProtectedRoute';
 import CartPage from './pages/cart/CartPage';
 import CheckoutPage from './pages/checkout/CheckoutPage';
 import MyOrdersPage from './pages/orders/MyOrdersPage';
@@ -262,12 +263,54 @@ function App() {
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/activate" element={<VendorActivate />} />
           <Route path="/vendor/pending-approval" element={<VendorApprovalPending />} />
-          <Route path="/vendor/dashboard/setup" element={<VendorSetupWizard />} />
-          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-          <Route path="/vendor/dashboard/products" element={<VendorProducts />} />
-          <Route path="/vendor/dashboard/orders" element={<VendorOrders />} />
-          <Route path="/vendor/dashboard/maintenance" element={<VendorMaintenance />} />
-          <Route path="/vendor/dashboard/products/new" element={<AddProduct />} />
+          <Route
+            path="/vendor/dashboard/setup"
+            element={
+              <VendorProtectedRoute>
+                <VendorSetupWizard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard/products"
+            element={
+              <VendorProtectedRoute>
+                <VendorProducts />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard/orders"
+            element={
+              <VendorProtectedRoute>
+                <VendorOrders />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard/maintenance"
+            element={
+              <VendorProtectedRoute>
+                <VendorMaintenance />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor/dashboard/products/new"
+            element={
+              <VendorProtectedRoute>
+                <AddProduct />
+              </VendorProtectedRoute>
+            }
+          />
           <Route path="/store/:vendor_slug" element={<VendorStorePage />} />
           <Route path="/track" element={<OrderTrackPage />} />
           <Route path="/track/:order_code" element={<OrderTrackPage />} />
