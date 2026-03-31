@@ -1,307 +1,525 @@
-import { useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { useVendorSite } from './VendorSiteLayout';
+﻿import { useEffect, useState, useRef, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import { theme } from '../../styles/designSystem';
+import ProductCard3D from '../../components/common/ProductCard3D';
 
-function getDisplayName(product) {
-  return product?.name || product?.title || 'Product';
-}
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
-function toNumber(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
+// â”€â”€â”€ NAVBAR COMPONENT â”€â”€â”€
+function Navbar({ vendorData, scrolled, onMenuToggle }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isBuyerLoggedIn, setIsBuyerLoggedIn] = useState(false);
 
-function formatPrice(value) {
-  const n = toNumber(value);
-  return `Rs ${n.toLocaleString('en-IN')}`;
-}
-
-function getTag(product) {
-  const raw = String(product?.product_tag || '').trim().toLowerCase();
-  if (!raw) {
-    return '';
-  }
-  if (raw === 'new' || raw === 'new arrival') {
-    return 'NEW';
-  }
-  if (raw === 'sale') {
-    return 'SALE';
-  }
-  if (raw === 'bestseller' || raw === 'best seller') {
-    return 'BESTSELLER';
-  }
-  return raw.toUpperCase();
-}
-
-function ProductPrice({ product }) {
-  const price = toNumber(product?.price);
-  const discountPercent = toNumber(product?.discount_percent);
-  const discounted = product?.discounted_price != null
-    ? toNumber(product.discounted_price)
-    : Math.max(price - (price * discountPercent) / 100, 0);
-
-  const hasDiscount = discountPercent > 0 && discounted > 0 && discounted < price;
-
-  if (!hasDiscount) {
-    return <p className="mt-1 text-sm font-semibold">{formatPrice(price)}</p>;
-  }
+  useEffect(() => {
+    const token = localStorage.getItem('buyer_token');
+    setIsBuyerLoggedIn(!!token);
+  }, []);
 
   return (
-    <div className="mt-1 flex items-center gap-2">
-      <span className="text-sm font-semibold text-red-600">{formatPrice(discounted)}</span>
-      <span className="text-xs opacity-70 line-through">{formatPrice(price)}</span>
-      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-        {discountPercent}% OFF
-      </span>
-    </div>
-  );
-}
-
-function ProductCard({ product, vendorSlug }) {
-  const name = getDisplayName(product);
-  const tag = getTag(product);
-  const image = product?.primary_image;
-
-  return (
-    <article className="group overflow-hidden rounded-2xl border bg-white/90 shadow-sm transition hover:shadow-md" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-        {image ? (
-          <img
-            src={image}
-            alt={name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm opacity-60">No Image</div>
-        )}
-
-        {tag ? (
-          <span
-            className="absolute left-3 top-3 rounded-full px-2 py-1 text-[10px] font-bold"
-            style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
-          >
-            {tag}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="p-4">
-        <h3 className="line-clamp-2 text-sm font-semibold" title={name}>{name}</h3>
-        <ProductPrice product={product} />
-
-        <div className="mt-4 flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            className="rounded-full border px-3 py-1.5 text-xs font-semibold opacity-60"
-            style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-            title="Cart integration coming soon"
-          >
-            Add to Cart
-          </button>
-          <Link
-            to={`/store/${vendorSlug}/products/${product.id}`}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
-          >
-            Order Now
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-export default function VendorSiteHome() {
-  const { vendor_slug: vendorSlug } = useParams();
-  const { vendor, featuredProducts, allProducts, categories } = useVendorSite();
-  const [activeCategory, setActiveCategory] = useState('All');
-  const productSectionRef = useRef(null);
-
-  const storeName = vendor?.business_name || vendorSlug;
-  const aboutText = String(vendor?.about_vendor || '').trim();
-  const aboutPreview = aboutText ? aboutText.slice(0, 100) : 'Clean beauty and natural care crafted with intention.';
-  const heroBackground = vendor?.site_banner_image
-    ? `url(${vendor.site_banner_image}) center/cover no-repeat`
-    : 'linear-gradient(135deg, color-mix(in srgb, var(--primary) 85%, #000 15%), color-mix(in srgb, var(--secondary) 80%, #fff 20%))';
-
-  const filteredProducts = useMemo(() => {
-    if (activeCategory === 'All') {
-      return allProducts;
-    }
-    return allProducts.filter(
-      (product) => String(product?.category || '').toLowerCase() === activeCategory.toLowerCase()
-    );
-  }, [allProducts, activeCategory]);
-
-  const pills = useMemo(() => {
-    const base = ['All'];
-    const fromContext = Array.isArray(categories) ? categories : [];
-    const dynamic = fromContext.length
-      ? fromContext
-      : Array.from(new Set(allProducts.map((p) => p?.category).filter(Boolean)));
-    return [...base, ...dynamic];
-  }, [categories, allProducts]);
-
-  const onShopNow = () => {
-    productSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  return (
-    <div className="space-y-10 pb-8">
-      <section
-        className="relative overflow-hidden rounded-3xl"
-        style={{
-          minHeight: 360,
-          background: heroBackground,
-        }}
-      >
-        <div className="absolute inset-0 bg-black/45" />
-        <div className="relative flex min-h-[360px] items-end px-6 py-8 md:px-10">
-          <div className="max-w-2xl text-white">
-            <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl" style={{ fontFamily: 'var(--heading-font)' }}>
-              {storeName}
-            </h1>
-            <p className="mt-3 text-sm md:text-base" style={{ fontFamily: 'var(--body-font)' }}>
-              {aboutPreview}
-              {aboutText.length > 100 ? '...' : ''}
-            </p>
-            <button
-              type="button"
-              onClick={onShopNow}
-              className="mt-6 rounded-full px-5 py-2 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
+    <nav
+      className="sticky top-0 z-40 w-full border-b transition-all"
+      style={{
+        backgroundColor: scrolled ? 'rgba(255, 255, 255, 0.95)' : 'white',
+        borderColor: scrolled ? `${theme.colors.muted}20` : 'transparent',
+        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo & Store Name */}
+          <div className="flex items-center gap-3">
+            <div
+              className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: theme.colors.primaryGlow }}
             >
-              Shop Now
+              ðŸŒ¿
+            </div>
+            <div>
+              <h2
+                className="font-bold text-lg hidden sm:inline"
+                style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+              >
+                {vendorData?.business_name || 'Store'}
+              </h2>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#home" className="text-sm font-medium hover:text-primary" style={{ color: theme.colors.charcoal }}>
+              Home
+            </a>
+            <a href="#products" className="text-sm font-medium hover:text-primary" style={{ color: theme.colors.charcoal }}>
+              Products
+            </a>
+            <a href="#about" className="text-sm font-medium hover:text-primary" style={{ color: theme.colors.charcoal }}>
+              About
+            </a>
+            <a href="#contact" className="text-sm font-medium hover:text-primary" style={{ color: theme.colors.charcoal }}>
+              Contact
+            </a>
+          </div>
+
+          {/* Right Side: Auth Button or Avatar */}
+          <div className="flex items-center gap-4">
+            {!isBuyerLoggedIn ? (
+              <button
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                style={{ backgroundColor: theme.colors.primary }}
+              >
+                Login
+              </button>
+            ) : (
+              <div
+                className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold cursor-pointer"
+                style={{ backgroundColor: theme.colors.primaryGlow }}
+              >
+                B
+              </div>
+            )}
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden text-2xl"
+            >
+              â˜°
             </button>
           </div>
         </div>
-      </section>
 
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--heading-font)' }}>Our Best Sellers</h2>
-          <Link to={`/site/${vendorSlug}/products`} className="text-sm font-semibold underline-offset-2 hover:underline" style={{ color: 'var(--primary)' }}>
-            View All
-          </Link>
-        </div>
-
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {(featuredProducts.length ? featuredProducts : allProducts.slice(0, 8)).map((product) => (
-            <div key={product.id} className="min-w-[260px] max-w-[260px] flex-shrink-0">
-              <ProductCard product={product} vendorSlug={vendorSlug} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section ref={productSectionRef}>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {pills.map((category) => {
-            const isActive = activeCategory === category;
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setActiveCategory(category)}
-                className="rounded-full px-3 py-1.5 text-sm"
-                style={{
-                  backgroundColor: isActive ? 'var(--primary)' : 'transparent',
-                  color: isActive ? 'var(--secondary)' : 'var(--site-text)',
-                  border: `1px solid ${isActive ? 'var(--primary)' : 'rgba(0,0,0,0.12)'}`,
-                }}
-              >
-                {category}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} vendorSlug={vendorSlug} />
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border px-5 py-6" style={{ borderColor: 'rgba(0,0,0,0.12)' }}>
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          {vendor?.site_logo ? (
-            <img src={vendor.site_logo} alt={storeName} className="h-14 w-14 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full text-sm font-bold" style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}>
-              {String(storeName).slice(0, 2).toUpperCase()}
-            </div>
-          )}
-          <div className="flex-1">
-            <p className="line-clamp-2 text-sm opacity-85">{aboutText || 'We build products inspired by tradition and crafted for modern daily care.'}</p>
-          </div>
-          <Link to={`/site/${vendorSlug}/about`} className="rounded-full border px-4 py-1.5 text-sm font-semibold" style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}>
-            Read More
-          </Link>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border px-5 py-6" style={{ borderColor: 'rgba(0,0,0,0.12)' }}>
-        <h3 className="text-lg font-semibold" style={{ fontFamily: 'var(--heading-font)' }}>Connect With Us</h3>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          {vendor?.youtube_url ? (
-            <a
-              href={vendor.youtube_url}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full px-4 py-2 text-sm font-semibold"
-              style={{ backgroundColor: '#ff0000', color: '#ffffff' }}
-            >
-              ▶ Watch Us On YouTube
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t px-4 py-4 space-y-3">
+            <a href="#home" className="block text-sm font-medium py-2" style={{ color: theme.colors.charcoal }}>
+              Home
             </a>
-          ) : null}
-
-          {vendor?.instagram_url ? (
-            <a
-              href={vendor.instagram_url}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border px-4 py-2 text-sm font-semibold"
-              style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
-            >
-              Instagram
+            <a href="#products" className="block text-sm font-medium py-2" style={{ color: theme.colors.charcoal }}>
+              Products
             </a>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border px-5 py-6" style={{ borderColor: 'rgba(0,0,0,0.12)' }}>
-        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-semibold">Powered by NativeGlow 🌿</p>
-          <div className="flex flex-wrap items-center gap-3">
-            {vendor?.instagram_url ? (
-              <a href={vendor.instagram_url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
-                Instagram
-              </a>
-            ) : null}
-            {vendor?.youtube_url ? (
-              <a href={vendor.youtube_url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
-                YouTube
-              </a>
-            ) : null}
-            {vendor?.whatsapp_number ? (
-              <a
-                href={`https://wa.me/${String(vendor.whatsapp_number).replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full px-3 py-1.5 font-semibold"
-                style={{ backgroundColor: '#25D366', color: '#ffffff' }}
-              >
-                WhatsApp
-              </a>
-            ) : null}
-            <Link to={`/site/${vendorSlug}/track`} className="underline-offset-2 hover:underline" style={{ color: 'var(--primary)' }}>
-              Track Order
-            </Link>
+            <a href="#about" className="block text-sm font-medium py-2" style={{ color: theme.colors.charcoal }}>
+              About
+            </a>
+            <a href="#contact" className="block text-sm font-medium py-2" style={{ color: theme.colors.charcoal }}>
+              Contact
+            </a>
           </div>
-        </div>
-      </section>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+// â”€â”€â”€ FADE-UP ANIMATION DIRECTIVE â”€â”€â”€
+function FadeUpElement({ children }) {
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.unobserve(entry.target);
+      }
+    }, { threshold: 0.1 });
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+      }`}
+    >
+      {children}
     </div>
   );
 }
+
+// â”€â”€â”€ MAIN VENDOR SITE HOME â”€â”€â”€
+export default function VendorSiteHome() {
+  const { vendor_slug } = useParams();
+  const [vendorData, setVendorData] = useState(null);
+  const [allProducts, setAllProducts] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [scrolled, setScrolled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const productsRef = useRef(null);
+
+  // Fetch vendor data and products
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const vendorRes = await fetch(`${API_BASE}/vendor/site/${vendor_slug}/`);
+        if (!vendorRes.ok) throw new Error('Vendor not found');
+        const vendor = await vendorRes.json();
+        setVendorData(vendor);
+
+        // Apply theme to document root
+        if (vendor.site_theme) {
+          const root = document.documentElement;
+          const themeColors = vendor.site_theme;
+          Object.entries(themeColors).forEach(([key, value]) => {
+            root.style.setProperty(`--${key}`, value);
+          });
+        }
+
+        // Fetch products
+        const productsRes = await fetch(`${API_BASE}/vendor/${vendor.id}/products/`);
+        const products = await productsRes.json();
+        setAllProducts(Array.isArray(products) ? products : []);
+
+        // Featured products (first 8)
+        setFeaturedProducts(Array.isArray(products) ? products.slice(0, 8) : []);
+      } catch (err) {
+        console.error('Failed to load vendor data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [vendor_slug]);
+
+  // Handle scroll for navbar effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Get unique categories
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(allProducts.map(p => p.category).filter(Boolean)));
+    return ['All', ...cats];
+  }, [allProducts]);
+
+  // Filter products by category
+  const filteredProducts = useMemo(() => {
+    if (activeCategory === 'All') return allProducts;
+    return allProducts.filter(p => p.category === activeCategory);
+  }, [allProducts, activeCategory]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg font-semibold">Loading store...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Navbar */}
+      <Navbar vendorData={vendorData} scrolled={scrolled} />
+
+      {/* Hero Section */}
+      <section
+        id="home"
+        className="relative h-screen w-full overflow-hidden flex items-center justify-center text-white"
+        style={{
+          background: vendorData?.site_banner_image
+            ? `linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%), url(${vendorData.site_banner_image}) center/cover`
+            : `linear-gradient(135deg, ${theme.colors.primary}99 0%, ${theme.colors.primaryDark}99 100%)`,
+          backgroundAttachment: 'fixed',
+        }}
+      >
+        {/* Content */}
+        <div className="text-center space-y-6 max-w-2xl px-4">
+          <h1
+            className="text-5xl sm:text-6xl font-bold leading-tight"
+            style={{ fontFamily: theme.fonts.heading }}
+          >
+            {vendorData?.business_name}
+          </h1>
+
+          <div className="space-y-4">
+            <p className="text-lg sm:text-xl opacity-90">
+              {vendorData?.about_vendor?.slice(0, 150) || 'Premium natural products crafted with care'}
+            </p>
+
+            {vendorData?.is_natural_certified && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                <span>âœ…</span>
+                <span className="text-sm font-semibold">Verified Natural Seller</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => productsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-8 py-3 rounded-lg font-semibold text-white"
+            style={{ backgroundColor: theme.colors.primaryGlow }}
+          >
+            Shop Now
+          </button>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <span className="text-2xl">â†“</span>
+        </div>
+      </section>
+
+      {/* Featured Products */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <FadeUpElement>
+          <div className="mb-8">
+            <h2
+              className="text-3xl font-bold mb-2"
+              style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+            >
+              Our Best Sellers
+            </h2>
+            <p style={{ color: theme.colors.muted }}>Hand-picked products</p>
+          </div>
+
+          {/* Horizontal Scroll */}
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex gap-4 pb-4">
+              {featuredProducts.map(product => (
+                <div key={product.id} className="min-w-[280px] flex-shrink-0">
+                  <ProductCard3D
+                    product={product}
+                    theme={theme}
+                    onOrder={() => console.log('Order:', product.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </FadeUpElement>
+      </section>
+
+      {/* All Products Section */}
+      <section id="products" ref={productsRef} className="max-w-7xl mx-auto px-4 py-16">
+        <FadeUpElement>
+          <div className="mb-8">
+            <h2
+              className="text-3xl font-bold mb-6"
+              style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+            >
+              Our Products
+            </h2>
+
+            {/* Category Filter Pills */}
+            <div className="flex flex-wrap gap-2 mb-8 sticky top-20 bg-white pt-4 z-30">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: activeCategory === cat ? theme.colors.primary : `${theme.colors.muted}10`,
+                    color: activeCategory === cat ? 'white' : theme.colors.charcoal,
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Product Grid */}
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProducts.map(product => (
+                <FadeUpElement key={product.id}>
+                  <ProductCard3D
+                    product={product}
+                    theme={theme}
+                    onOrder={() => console.log('Order:', product.id)}
+                  />
+                </FadeUpElement>
+              ))}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <FadeUpElement>
+                <div className="text-center py-12">
+                  <p className="text-lg" style={{ color: theme.colors.muted }}>
+                    No products found in this category
+                  </p>
+                </div>
+              </FadeUpElement>
+            )}
+          </div>
+        </FadeUpElement>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="max-w-7xl mx-auto px-4 py-16">
+        <FadeUpElement>
+          <div className="grid gap-8 md:grid-cols-2 items-center">
+            {/* Left: Logo & Stats */}
+            <div className="space-y-6">
+              {vendorData?.site_logo && (
+                <img
+                  src={vendorData.site_logo}
+                  alt={vendorData.business_name}
+                  className="h-32 w-32 rounded-2xl object-cover"
+                />
+              )}
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg" style={{ backgroundColor: `${theme.colors.primary}10` }}>
+                  <p style={{ color: theme.colors.muted }} className="text-sm">Total Products</p>
+                  <p className="text-4xl font-bold" style={{ color: theme.colors.primary }}>
+                    {allProducts.length}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-lg" style={{ backgroundColor: `${theme.colors.primaryGlow}10` }}>
+                  <p style={{ color: theme.colors.muted }} className="text-sm">Happy Customers</p>
+                  <p className="text-4xl font-bold" style={{ color: theme.colors.primaryGlow }}>
+                    500+
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: About Text */}
+            <div className="space-y-4">
+              <h3
+                className="text-3xl font-bold"
+                style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+              >
+                Our Story
+              </h3>
+
+              <p style={{ color: theme.colors.charcoal }} className="leading-relaxed">
+                {vendorData?.about_vendor || 'We are passionate about creating premium natural products that enhance your daily wellness routine. Every product is carefully crafted with the finest natural ingredients.'}
+              </p>
+
+              <button
+                className="px-6 py-3 rounded-lg font-semibold text-white"
+                style={{ backgroundColor: theme.colors.primary }}
+              >
+                Read Our Full Story â†’
+              </button>
+            </div>
+          </div>
+        </FadeUpElement>
+      </section>
+
+      {/* How to Order */}
+      <section className="bg-white py-16">
+        <FadeUpElement>
+          <div className="max-w-7xl mx-auto px-4">
+            <h2
+              className="text-3xl font-bold text-center mb-12"
+              style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+            >
+              How to Order
+            </h2>
+
+            <div className="grid gap-8 md:grid-cols-3">
+              {[
+                { step: '1', icon: 'ðŸ›ï¸', title: 'Browse Products', desc: 'Explore our collection of natural products' },
+                { step: '2', icon: 'ðŸ’³', title: 'Pay via UPI', desc: 'Secure payment through WhatsApp or UPI' },
+                { step: '3', icon: 'ðŸ“¦', title: 'Get Delivered', desc: 'Receive your order at your doorstep' },
+              ].map(item => (
+                <div
+                  key={item.step}
+                  className="text-center card-3d p-6 rounded-2xl border"
+                  style={{
+                    borderColor: `${theme.colors.primary}20`,
+                    backgroundColor: theme.colors.cream,
+                  }}
+                >
+                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <h4
+                    className="text-xl font-bold mb-2"
+                    style={{ color: theme.colors.charcoal }}
+                  >
+                    {item.title}
+                  </h4>
+                  <p style={{ color: theme.colors.muted }} className="text-sm">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FadeUpElement>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-charcoal text-white py-12">
+        <FadeUpElement>
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="grid gap-8 md:grid-cols-3 mb-8">
+              {/* Left */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: theme.colors.primaryGlow }}>
+                    ðŸŒ¿
+                  </div>
+                  <span className="font-bold">{vendorData?.business_name}</span>
+                </div>
+                <p className="text-sm opacity-80">Premium natural products for your wellness</p>
+              </div>
+
+              {/* Center */}
+              <div>
+                <h4 className="font-semibold mb-3">Quick Links</h4>
+                <ul className="space-y-2 text-sm opacity-80">
+                  <li><a href="#home" className="hover:opacity-100">Home</a></li>
+                  <li><a href="#products" className="hover:opacity-100">Products</a></li>
+                  <li><a href="#about" className="hover:opacity-100">About</a></li>
+                </ul>
+              </div>
+
+              {/* Right: Social */}
+              <div>
+                <h4 className="font-semibold mb-3">Connect</h4>
+                <div className="flex gap-3">
+                  {vendorData?.instagram_url && (
+                    <a href={vendorData.instagram_url} target="_blank" rel="noreferrer" className="text-lg hover:opacity-80">
+                      ðŸ“¸
+                    </a>
+                  )}
+                  {vendorData?.youtube_url && (
+                    <a href={vendorData.youtube_url} target="_blank" rel="noreferrer" className="text-lg hover:opacity-80">
+                      â–¶ï¸
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom */}
+            <div className="border-t border-white/20 pt-6 text-center text-sm opacity-60">
+              <p>Powered by NativeGlow ðŸŒ¿</p>
+            </div>
+          </div>
+        </FadeUpElement>
+      </footer>
+
+      {/* Floating WhatsApp Button */}
+      {vendorData?.whatsapp_number && (
+        <a
+          href={`https://wa.me/${vendorData.whatsapp_number}`}
+          target="_blank"
+          rel="noreferrer"
+          className="fixed bottom-6 right-6 z-50 flex items-center justify-center text-3xl rounded-full"
+          style={{
+            backgroundColor: '#25D366',
+            width: '60px',
+            height: '60px',
+            boxShadow: `0 0 20px ${theme.colors.primaryGlow}40`,
+          }}
+        >
+          ðŸ’¬
+        </a>
+      )}
+    </div>
+  );}

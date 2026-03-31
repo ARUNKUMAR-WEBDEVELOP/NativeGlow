@@ -1,62 +1,118 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-cream text-zinc-900 font-sans;
-    background-image: radial-gradient(circle at 14% 10%, #fffdf9 0%, #f7f3ee 55%, #f0e7d8 100%);
-  }
-
-  * {
-    @apply antialiased;
-  }
+:root {
+  --primary:       #1a472a;
+  --primary-light: #2d6a4f;
+  --primary-glow:  #52b788;
+  --cream:         #faf7f2;
+  --charcoal:      #1c1c1e;
+  --sand:          #e9e0d0;
 }
 
-@layer components {
-  .panel {
-    @apply rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm;
-  }
+* { box-sizing: border-box; scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--charcoal);
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes riseIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── 3D CARD EFFECT ── */
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  will-change: transform;
+}
+.card-3d:hover {
+  transform: translateY(-8px) rotateX(4deg) rotateY(-2deg);
+  box-shadow: 0 25px 60px rgba(26,71,42,0.18);
 }
 
-@keyframes floatSoft {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
+/* ── GLASSMORPHISM ── */
+.glass {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.4);
+}
+.glass-dark {
+  background: rgba(26,71,42,0.15);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(82,183,136,0.2);
 }
 
-@keyframes shrink {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0);
-  }
+/* ── GRADIENT TEXT ── */
+.gradient-text {
+  background: linear-gradient(135deg, #1a472a, #52b788);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-main {
-  animation: riseIn 420ms ease-out;
+/* ── GLOW BUTTON ── */
+.btn-glow {
+  background: linear-gradient(135deg, #1a472a, #2d6a4f);
+  box-shadow: 0 0 20px rgba(82,183,136,0.4);
+  transition: all 0.3s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 40px rgba(82,183,136,0.7);
+  transform: translateY(-2px);
 }
 
-.float-soft {
-  animation: floatSoft 6s ease-in-out infinite;
+/* ── SCROLL FADE IN ── */
+.fade-up {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── FLOATING ANIMATION ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-16px); }
+}
+.float { animation: float 4s ease-in-out infinite; }
+
+/* ── SHIMMER LOADING ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg,
+    #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── RESPONSIVE UTILITIES ── */
+@layer utilities {
+  .container-app {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+  .heading-xl {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold;
+    font-family: 'Playfair Display', serif;
+  }
+  .heading-lg {
+    @apply text-3xl md:text-4xl font-bold;
+    font-family: 'Playfair Display', serif;
+  }
+  .card-base {
+    @apply bg-white rounded-2xl p-6 shadow-md
+           hover:shadow-xl transition-all duration-300;
+  }
 }

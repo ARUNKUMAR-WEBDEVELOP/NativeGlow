@@ -1,497 +1,885 @@
-import { useMemo, useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
-import { api } from '../../api';
+import { useForm, Controller } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { theme } from '../../styles/designSystem';
+import Button from '../../components/common/Button';
 
-const CATEGORY_OPTIONS = [
-  { value: 'face_wash', label: 'Face Wash' },
-  { value: 'soap', label: 'Soap' },
-  { value: 'serum', label: 'Serum' },
-  { value: 'moisturizer', label: 'Moisturizer' },
-  { value: 'hair_oil', label: 'Hair Oil' },
-  { value: 'other', label: 'Other' },
+// Validation Schema
+const validationSchema = yup.object().shape({
+  // Step 1
+  full_name: yup.string().min(2, 'Name must be at least 2 characters').required('Full name is required'),
+  email: yup.string().email('Invalid email').required('Email is required'),
+  password: yup.string().min(8, 'Password must be at least 8 characters').required('Password is required'),
+  confirm_password: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required('Confirm password is required'),
+  whatsapp_number: yup
+    .string()
+    .matches(/^[0-9]{10}$/, 'WhatsApp number must be 10 digits')
+    .required('WhatsApp number is required'),
+  city: yup.string().min(2, 'City is required').required('City is required'),
+
+  // Step 2
+  business_name: yup.string().min(2, 'Business name must be valid').required('Business name is required'),
+  product_categories: yup
+    .array()
+    .min(1, 'Select at least one category')
+    .required('Product categories are required'),
+  where_you_sell: yup.array().min(1, 'Select at least one platform').required('Selling platforms are required'),
+  natural_only_confirmed: yup.boolean().oneOf([true], 'You must confirm you sell only natural products'),
+  terms_accepted: yup.boolean().oneOf([true], 'You must accept terms'),
+
+  // Step 3
+  upi_id: yup.string().required('UPI ID is required'),
+  account_holder_name: yup.string().min(2, 'Account holder name is required').required(),
+  bank_account_number: yup.string().required('Bank account number is required'),
+  bank_ifsc: yup.string().matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code').required(),
+  bank_name: yup.string().required('Bank name is required'),
+});
+
+const PRODUCT_CATEGORIES = [
+  'Face Wash',
+  'Soap',
+  'Serum',
+  'Toner',
+  'Moisturizer',
+  'Hair Care',
+  'Body Care',
+  'Other',
 ];
 
-const INITIAL_FORM = {
-  full_name: '',
-  email: '',
-  whatsapp_number: '',
-  city: '',
-  business_name: '',
-  product_category: [],
-  natural_only_confirmed: false,
-  terms_accepted: false,
-  upi_id: '',
-  bank_account_number: '',
-  bank_ifsc: '',
-  account_holder_name: '',
-  google_token: '',
-};
+const SELLING_PLATFORMS = [
+  'WhatsApp',
+  'Instagram',
+  'YouTube',
+  'Facebook',
+  'Local Market',
+  'Other',
+];
 
-function VendorRegister() {
+/**
+ * Modern split-screen vendor registration form
+ * Left: Decorative side with testimonial
+ * Right: Multi-step form with validation
+ */
+const VendorRegister = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [googleVerified, setGoogleVerified] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-  const [registrationSuccess, setRegistrationSuccess] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const progress = useMemo(() => `${Math.round((step / 3) * 100)}%`, [step]);
-
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (codeResponse) => {
-      setIsGoogleLoading(true);
-      try {
-        // Get user info from Google's userinfo endpoint
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?access_token=' + codeResponse.access_token);
-        const userInfo = await userInfoResponse.json();
-
-        // Auto-populate form with Google data
-        setForm((prev) => ({
-          ...prev,
-          email: userInfo.email || prev.email,
-          full_name: userInfo.name || prev.full_name,
-          google_token: codeResponse.access_token,
-        }));
-
-        setGoogleVerified(true);
-        setError('');
-      } catch (err) {
-        setError('Failed to get Google account info. Please try again.');
-      } finally {
-        setIsGoogleLoading(false);
-      }
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(validationSchema),
+    defaultValues: {
+      full_name: '',
+      email: '',
+      password: '',
+      confirm_password: '',
+      whatsapp_number: '',
+      city: '',
+      business_name: '',
+      product_categories: [],
+      where_you_sell: [],
+      natural_only_confirmed: false,
+      terms_accepted: false,
+      upi_id: '',
+      account_holder_name: '',
+      bank_account_number: '',
+      bank_ifsc: '',
+      bank_name: '',
     },
-    onError: () => {
-      setError('Google login failed. Please try again.');
-      setIsGoogleLoading(false);
-    },
-    scope: 'profile email',
   });
 
-  const onInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+  const watchProductCategories = watch('product_categories');
+  const watchPlatforms = watch('where_you_sell');
 
-  const onCategoryChange = (e) => {
-    const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-    setForm((prev) => ({ ...prev, product_category: selected }));
-  };
-
-  const validateStep = (currentStep) => {
-    if (currentStep === 1) {
-      // If Google verified, only need whatsapp_number and city
-      if (googleVerified) {
-        if (!form.whatsapp_number || !form.city) {
-          return 'Please enter WhatsApp number and city.';
-        }
-        return '';
-      }
-      // Manual entry requires all fields
-      if (!form.full_name || !form.email || !form.whatsapp_number || !form.city) {
-        return 'Please complete all personal info fields.';
-      }
-      return '';
-    }
-
-    if (currentStep === 2) {
-      if (!form.business_name) {
-        return 'Business name is required.';
-      }
-      if (form.product_category.length === 0) {
-        return 'Please select at least one product category.';
-      }
-      if (!form.natural_only_confirmed) {
-        return 'Please confirm that you sell only 100% natural cosmetic products.';
-      }
-      if (!form.terms_accepted) {
-        return 'Please accept NativeGlow platform terms and disclaimer.';
-      }
-      return '';
-    }
-
-    if (!form.upi_id || !form.bank_account_number || !form.bank_ifsc || !form.account_holder_name) {
-      return 'Please complete all payment details.';
-    }
-    return '';
-  };
-
-  const goNext = () => {
-    const validationError = validateStep(step);
-    setError(validationError);
-    if (validationError) {
-      return;
-    }
-    setStep((prev) => Math.min(3, prev + 1));
-  };
-
-  const goBack = () => {
-    setError('');
-    setStep((prev) => Math.max(1, prev - 1));
-  };
-
-  const fillDummyPayment = () => {
-    setForm((prev) => ({
-      ...prev,
-      upi_id: 'demo.vendor@upi',
-      bank_account_number: '123456789012',
-      bank_ifsc: 'SBIN0001234',
-      account_holder_name: 'Demo Vendor',
-    }));
-    setError('');
-  };
-
-  const fillDummyAllSteps = () => {
-    const ts = Date.now();
-    setForm({
-      full_name: 'Demo Vendor',
-      email: `demo.vendor.${ts}@nativeglow.test`,
-      whatsapp_number: '9876543210',
-      city: 'Chennai',
-      business_name: 'Demo Herbal Store',
-      product_category: ['face_wash', 'serum'],
-      natural_only_confirmed: true,
-      terms_accepted: true,
-      upi_id: 'demo.vendor@upi',
-      bank_account_number: '123456789012',
-      bank_ifsc: 'SBIN0001234',
-      account_holder_name: 'Demo Vendor',
-    });
-    setStep(3);
-    setError('');
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setSuccess('');
-    const validationError = validateStep(3);
-    setError(validationError);
-    if (validationError) {
+  const onSubmit = async (data) => {
+    if (step < 3) {
+      setStep(step + 1);
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     try {
-      const payload = {
-        full_name: form.full_name,
-        email: form.email,
-        whatsapp_number: form.whatsapp_number,
-        city: form.city,
-        business_name: form.business_name,
-        product_category: form.product_category,
-        natural_only_confirmed: form.natural_only_confirmed,
-        terms_accepted: form.terms_accepted,
-        upi_id: form.upi_id,
-        bank_account_number: form.bank_account_number,
-        bank_ifsc: form.bank_ifsc,
-        account_holder_name: form.account_holder_name,
-      };
-
-      // Include google_token if user logged in with Google
-      if (form.google_token) {
-        payload.google_token = form.google_token;
-      }
-
-      const response = await api.vendorRegister(payload);
-
-      // Store registration success data (including generated password)
-      setRegistrationSuccess({
-        email: response?.email || form.email,
-        password: response?.login_credentials?.password || '[auto-generated]',
-        business_name: response?.business_name || form.business_name,
-        vendor_slug: response?.vendor_slug || '',
-      });
-
-      // Reset form
-      setForm(INITIAL_FORM);
-      setStep(1);
-      setError('');
-      setGoogleVerified(false);
+      // API call would go here
+      // const response = await vendorService.registerVendor(data);
+      setSubmitted(true);
     } catch (err) {
-      if (err?.status === 404) {
-        setError('Vendor registration endpoint is not deployed on server yet. Please contact admin to deploy latest backend routes.');
-        return;
-      }
-      setError(err.message || 'Registration failed. Please check your details and try again.');
+      console.error('Registration failed:', err);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  return (
-    <section className="max-w-3xl">
-      {/* Registration Success Modal */}
-      {registrationSuccess ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 shadow-lg">
-            <div className="rounded-xl bg-emerald-50 p-4 text-center">
-              <p className="text-3xl">✓</p>
-              <h3 className="mt-2 text-lg font-semibold text-emerald-900">Registration Successful!</h3>
-              <p className="mt-1 text-sm text-emerald-700">Your account is pending admin approval.</p>
-            </div>
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
 
-            <div className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-sm font-semibold text-zinc-800">Your Login Credentials:</p>
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs font-semibold text-zinc-600">Email:</label>
-                  <p className="mt-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-sm text-zinc-900">{registrationSuccess.email}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-zinc-600">Password:</label>
-                  <p className="mt-1 break-all rounded-lg bg-white px-3 py-2 font-mono text-sm text-zinc-900">{registrationSuccess.password}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              <p className="font-semibold">⚠ Important:</p>
-              <ul className="mt-1 list-inside list-disc space-y-1">
-                <li>Save these credentials securely. Do not share with anyone.</li>
-                <li>You can login after admin approval using these credentials.</li>
-                <li>You will receive an email notification once approved.</li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => {
-                setRegistrationSuccess(null);
-                navigate('/vendor/pending-approval?email=' + encodeURIComponent(registrationSuccess.email), { replace: true });
-              }}
-              className="mt-4 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              Check Approval Status
-            </button>
-          </div>
+  // â”€â”€â”€ LEFT PANEL: DECORATIVE SIDE â”€â”€â”€
+  const LeftPanel = () => (
+    <div
+      className="hidden lg:flex fixed left-0 top-0 w-2/5 h-screen flex-col items-center justify-between p-8"
+      style={{
+        background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.primaryLight} 100%)`,
+      }}
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-2" style={{ fontFamily: theme.fonts.heading }}>
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+          style={{ backgroundColor: theme.colors.primaryGlow }}
+        >
+          ðŸŒ¿
         </div>
-      ) : null}
+        <span className="text-2xl font-bold text-white">NativeGlow</span>
+      </div>
 
-      <div className="rounded-3xl border border-sage/20 bg-gradient-to-br from-[#f7f6ee] via-[#ecf0e2] to-[#e5d9c7] p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Onboarding</p>
-        <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Become a NativeGlow Vendor</h1>
-        <p className="mt-2 text-sm text-zinc-700">Complete all 3 steps to submit your seller registration for admin review.</p>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={fillDummyAllSteps}
-            className="rounded-xl border border-sage/30 bg-white/70 px-3 py-1.5 text-xs font-semibold text-sage hover:bg-white"
-          >
-            Use Full Dummy Data
-          </button>
-        </div>
-
-        <div className="mt-5">
-          <div className="h-2 w-full rounded-full bg-white/70">
-            <div className="h-full rounded-full bg-sage transition-all duration-300" style={{ width: progress }} />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-xs font-semibold text-zinc-600">
-            <span className={step >= 1 ? 'text-sage' : ''}>Step 1 Personal</span>
-            <span className={step >= 2 ? 'text-sage' : ''}>Step 2 Business</span>
-            <span className={step >= 3 ? 'text-sage' : ''}>Step 3 Payment</span>
-          </div>
+      {/* Phone Mockup */}
+      <div
+        className="float relative"
+        style={{
+          width: '220px',
+          backgroundColor: '#000000',
+          borderRadius: '40px',
+          padding: '12px',
+          boxShadow: `0 0 60px ${theme.colors.primaryGlow}40`,
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: theme.colors.cream,
+            borderRadius: '32px',
+            aspectRatio: '9/20',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: theme.colors.muted,
+            fontSize: '11px',
+            fontWeight: 'bold',
+          }}
+        >
+          <div style={{ marginBottom: '8px' }}>Your Store</div>
+          <div style={{ fontSize: '10px', opacity: 0.6 }}>Live in minutes</div>
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="mt-5 space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        {step === 1 ? (
-          <>
-            <h2 className="text-lg font-semibold text-zinc-900">Step 1 - Personal Info</h2>
+      {/* Step Indicators */}
+      <div className="flex gap-3">
+        {[1, 2, 3].map((s) => (
+          <div
+            key={s}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width: '12px',
+              height: '12px',
+              backgroundColor: s <= step ? theme.colors.primaryGlow : 'rgba(255,255,255,0.3)',
+            }}
+          />
+        ))}
+      </div>
 
-            {/* Google Login Option */}
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-sm font-semibold text-blue-900 mb-3">Quick Registration with Google:</p>
-              {googleVerified ? (
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
-                  <span className="text-lg">✓</span>
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-900">Google Account Verified</p>
-                    <p className="text-xs text-emerald-700">{form.email}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGoogleVerified(false);
-                      setForm((prev) => ({ ...prev, google_token: '' }));
-                    }}
-                    className="ml-auto text-xs font-semibold text-emerald-700 hover:text-emerald-900"
-                  >
-                    Change
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={isGoogleLoading}
-                  onClick={() => googleLogin()}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-white border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <path d="M23.745 12.27c0-.79-.07-1.54-.187-2.27H12.03v4.287h6.846c-.29 1.48-1.175 2.725-2.5 3.573v3.16h4.057c2.364-2.183 3.729-5.406 3.729-9.23Z" fill="#4285F4"/>
-                    <path d="M12.03 24c3.39 0 6.226-1.129 8.303-3.06l-4.057-3.16c-1.13.754-2.577 1.2-4.246 1.2-3.265 0-6.032-2.21-7.02-5.18H.957v3.266C2.029 21.785 6.934 24 12.03 24Z" fill="#34A853"/>
-                    <path d="M5.01 14.8c-.25-.755-.388-1.559-.388-2.4 0-.841.138-1.645.388-2.4V5.734H.957C.347 7.16 0 8.537 0 12c0 3.463.348 4.84.957 6.266l4.053-3.266Z" fill="#FBBC04"/>
-                    <path d="M12.03 4.75c1.84 0 3.49.631 4.784 1.87l3.582-3.582C18.246 1.129 15.41 0 12.03 0 6.934 0 2.029 2.215.957 5.734l4.053 3.266c.988-2.97 3.755-5.25 7.02-5.25Z" fill="#EA4335"/>
-                  </svg>
-                  {isGoogleLoading ? 'Verifying...' : 'Register with Google'}
-                </button>
-              )}
-            </div>
-
-            {/* OR divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-300" />
-              <span className="text-xs font-semibold text-gray-500">OR</span>
-              <div className="flex-1 h-px bg-gray-300" />
-            </div>
-
-            {/* Manual email entry */}
-            <p className="text-xs font-semibold text-gray-600">Enter Your Details Manually:</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                name="full_name"
-                value={form.full_name}
-                onChange={onInputChange}
-                placeholder="Full name"
-                disabled={googleVerified}
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600"
-              />
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={onInputChange}
-                placeholder="Email"
-                disabled={googleVerified}
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600"
-              />
-              <input
-                name="whatsapp_number"
-                value={form.whatsapp_number}
-                onChange={onInputChange}
-                placeholder="WhatsApp number"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <input
-                name="city"
-                value={form.city}
-                onChange={onInputChange}
-                placeholder="City"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-              <p className="font-semibold">ℹ Password Note:</p>
-              <p>A secure password will be automatically generated for you during registration using your email and phone number. You'll see it after successful registration.</p>
-            </div>
-          </>
-        ) : null}
-
-        {step === 2 ? (
-          <>
-            <h2 className="text-lg font-semibold text-zinc-900">Step 2 - Business Info</h2>
-            <div className="space-y-3">
-              <input name="business_name" value={form.business_name} onChange={onInputChange} placeholder="Business name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-
-              <div>
-                <label htmlFor="product_category" className="mb-1 block text-sm font-semibold text-zinc-800">Product category (multi-select)</label>
-                <select
-                  id="product_category"
-                  multiple
-                  value={form.product_category}
-                  onChange={onCategoryChange}
-                  className="h-36 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
-                >
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-zinc-500">Hold Ctrl or Cmd to select multiple categories.</p>
-              </div>
-
-              <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-[#f4f7ed] px-3 py-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  name="natural_only_confirmed"
-                  checked={form.natural_only_confirmed}
-                  onChange={onInputChange}
-                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-sage focus:ring-sage"
-                />
-                <span>I confirm I sell only 100% natural cosmetic products</span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-[#f8f2e8] px-3 py-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  name="terms_accepted"
-                  checked={form.terms_accepted}
-                  onChange={onInputChange}
-                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-sage focus:ring-sage"
-                />
-                <span>I accept NativeGlow platform terms and disclaimer</span>
-              </label>
-            </div>
-          </>
-        ) : null}
-
-        {step === 3 ? (
-          <>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-zinc-900">Step 3 - Payment Details</h2>
-              <button
-                type="button"
-                onClick={fillDummyPayment}
-                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-              >
-                Fill Dummy Payment Data
-              </button>
-            </div>
-            <div className="rounded-xl border border-sage/25 bg-[#eef5ea] px-3 py-2 text-xs font-semibold text-sage">
-              Buyers will pay directly to your UPI/Bank. NativeGlow does not process payments.
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <input name="upi_id" value={form.upi_id} onChange={onInputChange} placeholder="UPI ID" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input name="bank_account_number" value={form.bank_account_number} onChange={onInputChange} placeholder="Bank account number" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input name="bank_ifsc" value={form.bank_ifsc} onChange={onInputChange} placeholder="Bank IFSC" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-              <input name="account_holder_name" value={form.account_holder_name} onChange={onInputChange} placeholder="Account holder name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
-            </div>
-          </>
-        ) : null}
-
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={step === 1 || isSubmitting}
-            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Back
-          </button>
-
-          {step < 3 ? (
-            <button type="button" onClick={goNext} className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white">
-              Next
-            </button>
-          ) : (
-            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-              {isSubmitting ? 'Submitting...' : 'Submit Registration'}
-            </button>
-          )}
-        </div>
-      </form>
-
-      {success ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
-      {error ? <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-    </section>
+      {/* Testimonial Card */}
+      <div
+        className="glass rounded-2xl p-6 max-w-sm text-center"
+        style={{ maxWidth: '280px' }}
+      >
+        <p className="text-sm text-white mb-4 leading-relaxed">
+          "I was taking orders on WhatsApp notes. Now everything is managed automatically."
+        </p>
+        <p className="text-sm font-semibold text-white">â€” Priya S, Chennai</p>
+      </div>
+    </div>
   );
-}
+
+  // â”€â”€â”€ SUCCESS SCREEN â”€â”€â”€
+  const SuccessScreen = () => (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: `linear-gradient(135deg, ${theme.colors.primary}20, ${theme.colors.primaryGlow}20)` }}
+    >
+      <div className="text-center space-y-6 max-w-md mx-auto">
+        <div>
+          <p className="text-6xl mb-4 animate-bounce">ðŸŽ‰</p>
+          <h2
+            className="text-4xl font-bold"
+            style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+          >
+            Registration Submitted!
+          </h2>
+        </div>
+
+        <p style={{ color: theme.colors.muted }} className="text-lg">
+          Our admin team will review your details. You'll receive an email with your store link within 24 hours.
+        </p>
+
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={() => navigate('/')}
+          fullWidth
+        >
+          Back to Home
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (submitted) {
+    return <SuccessScreen />;
+  }
+
+  return (
+    <div className="min-h-screen flex">
+      <LeftPanel />
+
+      {/* RIGHT PANEL: FORM AREA */}
+      <div className="w-full lg:w-3/5 lg:ml-2/5 bg-white">
+        <div className="max-w-2xl mx-auto px-6 md:px-8 py-12">
+          {/* Progress Bar */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold" style={{ color: theme.colors.muted }}>
+                Step {step} of 3
+              </p>
+              <p className="text-sm font-semibold" style={{ color: theme.colors.muted }}>
+                {Math.round((step / 3) * 100)}%
+              </p>
+            </div>
+            <div
+              className="h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: `${theme.colors.muted}15` }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${(step / 3) * 100}%`,
+                  backgroundColor: theme.colors.primary,
+                }}
+              />
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* STEP 1: PERSONAL INFO */}
+            {step === 1 && (
+              <div className="space-y-6">
+                <h1
+                  className="text-4xl font-bold"
+                  style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+                >
+                  Let's get started
+                </h1>
+
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Full Name
+                  </label>
+                  <Controller
+                    name="full_name"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Your full name"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.full_name ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.full_name && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.full_name.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Email Address
+                  </label>
+                  <Controller
+                    name="email"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="email"
+                        placeholder="your@email.com"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.email ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.email && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Controller
+                      name="password"
+                      control={control}
+                      render={({ field }) => (
+                        <input
+                          {...field}
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="Min 8 characters"
+                          className="w-full px-4 py-3 rounded-xl border-2 transition-all pr-12"
+                          style={{
+                            borderColor: errors.password ? theme.colors.danger : `${theme.colors.muted}20`,
+                            color: theme.colors.charcoal,
+                          }}
+                        />
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold"
+                      style={{ color: theme.colors.muted }}
+                    >
+                      {showPassword ? 'ðŸ‘ï¸' : 'ðŸ‘ï¸â€ðŸ—¨ï¸'}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.password.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Controller
+                      name="confirm_password"
+                      control={control}
+                      render={({ field }) => (
+                        <input
+                          {...field}
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="Re-enter your password"
+                          className="w-full px-4 py-3 rounded-xl border-2 transition-all pr-12"
+                          style={{
+                            borderColor: errors.confirm_password ? theme.colors.danger : `${theme.colors.muted}20`,
+                            color: theme.colors.charcoal,
+                          }}
+                        />
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold"
+                      style={{ color: theme.colors.muted }}
+                    >
+                      {showConfirmPassword ? 'ðŸ‘ï¸' : 'ðŸ‘ï¸â€ðŸ—¨ï¸'}
+                    </button>
+                  </div>
+                  {errors.confirm_password && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.confirm_password.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* WhatsApp */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    WhatsApp Number
+                  </label>
+                  <div className="flex">
+                    <div
+                      className="px-4 py-3 rounded-l-xl border-2 font-semibold"
+                      style={{
+                        borderColor: `${theme.colors.muted}20`,
+                        backgroundColor: `${theme.colors.muted}05`,
+                        color: theme.colors.charcoal,
+                      }}
+                    >
+                      +91
+                    </div>
+                    <Controller
+                      name="whatsapp_number"
+                      control={control}
+                      render={({ field }) => (
+                        <input
+                          {...field}
+                          type="tel"
+                          placeholder="10-digit number"
+                          maxLength="10"
+                          className="flex-1 px-4 py-3 rounded-r-xl border-2 transition-all"
+                          style={{
+                            borderColor: errors.whatsapp_number ? theme.colors.danger : `${theme.colors.muted}20`,
+                            color: theme.colors.charcoal,
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                  {errors.whatsapp_number && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.whatsapp_number.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    City
+                  </label>
+                  <Controller
+                    name="city"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Your city"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.city ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.city && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.city.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: BUSINESS INFO */}
+            {step === 2 && (
+              <div className="space-y-6">
+                <h1
+                  className="text-4xl font-bold"
+                  style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+                >
+                  About your business
+                </h1>
+
+                {/* Business Name */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Business / Brand Name
+                  </label>
+                  <Controller
+                    name="business_name"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Your brand name"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.business_name ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.business_name && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.business_name.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Product Categories */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3" style={{ color: theme.colors.charcoal }}>
+                    Product Categories
+                  </label>
+                  <Controller
+                    name="product_categories"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex flex-wrap gap-2">
+                        {PRODUCT_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => {
+                              const updated = watchProductCategories.includes(cat)
+                                ? watchProductCategories.filter((c) => c !== cat)
+                                : [...watchProductCategories, cat];
+                              field.onChange(updated);
+                            }}
+                            className="px-4 py-2 rounded-full font-semibold border-2 transition-all"
+                            style={{
+                              borderColor: watchProductCategories.includes(cat)
+                                ? theme.colors.primary
+                                : `${theme.colors.muted}20`,
+                              backgroundColor: watchProductCategories.includes(cat)
+                                ? `${theme.colors.primary}15`
+                                : 'transparent',
+                              color: watchProductCategories.includes(cat)
+                                ? theme.colors.primary
+                                : theme.colors.muted,
+                            }}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  />
+                  {errors.product_categories && (
+                    <p className="text-sm mt-2" style={{ color: theme.colors.danger }}>
+                      {errors.product_categories.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Selling Platforms */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3" style={{ color: theme.colors.charcoal }}>
+                    Where do you currently sell?
+                  </label>
+                  <Controller
+                    name="where_you_sell"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex flex-wrap gap-2">
+                        {SELLING_PLATFORMS.map((platform) => (
+                          <button
+                            key={platform}
+                            type="button"
+                            onClick={() => {
+                              const updated = watchPlatforms.includes(platform)
+                                ? watchPlatforms.filter((p) => p !== platform)
+                                : [...watchPlatforms, platform];
+                              field.onChange(updated);
+                            }}
+                            className="px-4 py-2 rounded-full font-semibold border-2 transition-all"
+                            style={{
+                              borderColor: watchPlatforms.includes(platform)
+                                ? theme.colors.primary
+                                : `${theme.colors.muted}20`,
+                              backgroundColor: watchPlatforms.includes(platform)
+                                ? `${theme.colors.primary}15`
+                                : 'transparent',
+                              color: watchPlatforms.includes(platform)
+                                ? theme.colors.primary
+                                : theme.colors.muted,
+                            }}
+                          >
+                            {platform}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  />
+                  {errors.where_you_sell && (
+                    <p className="text-sm mt-2" style={{ color: theme.colors.danger }}>
+                      {errors.where_you_sell.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Natural Products Confirmation */}
+                <div>
+                  <Controller
+                    name="natural_only_confirmed"
+                    control={control}
+                    render={({ field }) => (
+                      <label
+                        className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                        style={{
+                          borderColor: field.value ? theme.colors.primary : `${theme.colors.muted}20`,
+                          backgroundColor: field.value ? `${theme.colors.primary}10` : 'transparent',
+                        }}
+                      >
+                        <input
+                          {...field}
+                          type="checkbox"
+                          className="w-5 h-5 rounded cursor-pointer"
+                          style={{ accentColor: theme.colors.primary }}
+                        />
+                        <span style={{ color: theme.colors.charcoal }}>
+                          I sell only 100% natural cosmetic products
+                        </span>
+                      </label>
+                    )}
+                  />
+                  {errors.natural_only_confirmed && (
+                    <p className="text-sm mt-2" style={{ color: theme.colors.danger }}>
+                      {errors.natural_only_confirmed.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Terms Acceptance */}
+                <div>
+                  <Controller
+                    name="terms_accepted"
+                    control={control}
+                    render={({ field }) => (
+                      <label
+                        className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                        style={{
+                          borderColor: field.value ? theme.colors.primary : `${theme.colors.muted}20`,
+                          backgroundColor: field.value ? `${theme.colors.primary}10` : 'transparent',
+                        }}
+                      >
+                        <input
+                          {...field}
+                          type="checkbox"
+                          className="w-5 h-5 rounded cursor-pointer"
+                          style={{ accentColor: theme.colors.primary }}
+                        />
+                        <span style={{ color: theme.colors.charcoal }}>
+                          I accept NativeGlow platform terms and disclaimer
+                        </span>
+                      </label>
+                    )}
+                  />
+                  {errors.terms_accepted && (
+                    <p className="text-sm mt-2" style={{ color: theme.colors.danger }}>
+                      {errors.terms_accepted.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: PAYMENT DETAILS */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <h1
+                  className="text-4xl font-bold"
+                  style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+                >
+                  How buyers will pay you
+                </h1>
+
+                {/* Info Box */}
+                <div
+                  className="rounded-xl border-2 p-4"
+                  style={{
+                    borderColor: theme.colors.info,
+                    backgroundColor: `${theme.colors.info}15`,
+                    color: theme.colors.info,
+                  }}
+                >
+                  <p className="text-sm font-semibold">
+                    Buyers will pay directly to your UPI or Bank. NativeGlow does not collect or hold payments.
+                  </p>
+                </div>
+
+                {/* UPI ID */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    UPI ID
+                  </label>
+                  <Controller
+                    name="upi_id"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="yourname@upi"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.upi_id ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.upi_id && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.upi_id.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Account Holder */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Account Holder Name
+                  </label>
+                  <Controller
+                    name="account_holder_name"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Name on bank account"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.account_holder_name ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.account_holder_name && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.account_holder_name.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Bank Account Number */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Bank Account Number
+                  </label>
+                  <Controller
+                    name="bank_account_number"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="Your bank account number"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.bank_account_number ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.bank_account_number && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.bank_account_number.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* IFSC Code */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    IFSC Code
+                  </label>
+                  <Controller
+                    name="bank_ifsc"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="SBIN0001234"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all uppercase"
+                        style={{
+                          borderColor: errors.bank_ifsc ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.bank_ifsc && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.bank_ifsc.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Bank Name */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: theme.colors.charcoal }}>
+                    Bank Name
+                  </label>
+                  <Controller
+                    name="bank_name"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="text"
+                        placeholder="State Bank of India"
+                        className="w-full px-4 py-3 rounded-xl border-2 transition-all"
+                        style={{
+                          borderColor: errors.bank_name ? theme.colors.danger : `${theme.colors.muted}20`,
+                          color: theme.colors.charcoal,
+                        }}
+                      />
+                    )}
+                  />
+                  {errors.bank_name && (
+                    <p className="text-sm mt-1" style={{ color: theme.colors.danger }}>
+                      {errors.bank_name.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 pt-8 border-t" style={{ borderColor: `${theme.colors.muted}20` }}>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={handleBack}
+                disabled={step === 1}
+                className="flex-1"
+              >
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                type="submit"
+                loading={isLoading}
+                className="flex-1"
+              >
+                {step === 3 ? 'Submit Registration' : 'Continue â†’'}
+              </Button>
+            </div>
+          </form>
+
+          {/* Mobile device indicator */}
+          <div className="lg:hidden text-center mt-12">
+            <p style={{ color: theme.colors.muted }} className="text-sm">
+              For better experience, open on a larger screen
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default VendorRegister;

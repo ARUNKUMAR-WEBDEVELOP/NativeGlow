@@ -1,0 +1,18 @@
+import API from '../utils/axiosConfig'
+
+export const adminLogin          = (data)      => API.post('/api/admin/login/', data)
+export const getAdminStats       = ()          => API.get('/api/admin/dashboard/stats/')
+export const getAllVendors        = (params)    => API.get('/api/admin/vendors/', { params })
+export const getVendorDetail     = (id)        => API.get(`/api/admin/vendors/${id}/`)
+export const approveVendor       = (id, data)  => API.patch(`/api/admin/vendors/${id}/approve/`, data)
+export const deactivateVendor    = (id, data)  => API.patch(`/api/admin/vendors/${id}/deactivate/`, data)
+export const getAllProducts       = (params)    => API.get('/api/admin/products/', { params })
+export const approveProduct      = (id, data)  => API.patch(`/api/admin/products/${id}/approve/`, data)
+export const getAllOrders         = (params)    => API.get('/api/admin/orders/', { params })
+export const getMonthlySales     = ()          => API.get('/api/admin/sales/monthly/')
+export const getAllFees           = (params)    => API.get('/api/admin/maintenance/', { params })
+export const generateFees        = (data)      => API.post('/api/admin/maintenance/generate/', data)
+export const markFeePaid         = (id, data)  => API.patch(`/api/admin/maintenance/${id}/mark-paid/`, data)
+export const getPendingVerify    = ()          => API.get('/api/admin/maintenance/pending-verification/')
+export const verifyPayment       = (id, data)  => API.patch(`/api/admin/maintenance/${id}/verify/`, data)
+export const getPlatformDetails  = ()          => API.get('/api/admin/payment-details/')

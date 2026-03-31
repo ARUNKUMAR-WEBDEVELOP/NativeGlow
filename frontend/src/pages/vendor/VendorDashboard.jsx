@@ -1,480 +1,694 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+﻿import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { theme } from '../../styles/designSystem';
+import Button from '../../components/common/Button';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
-const WS_BASE =
-  import.meta.env.VITE_WS_BASE ||
-  (import.meta.env.DEV ? 'ws://127.0.0.1:8000' : 'wss://nativeglow.onrender.com');
+// â”€â”€â”€ SIDEBAR COMPONENT â”€â”€â”€
+function Sidebar({ isOpen, onClose, vendorData }) {
+  const navigate = useNavigate();
+  const navItems = [
+    { icon: 'ðŸ“Š', label: 'Dashboard', path: '/vendor/dashboard' },
+    { icon: 'ðŸ“¦', label: 'My Products', path: '/vendor/products' },
+    { icon: 'âž•', label: 'Add Product', path: '/vendor/add-product' },
+    { icon: 'ðŸ›’', label: 'My Orders', path: '/vendor/orders', badge: vendorData?.pending_orders || 0 },
+    { icon: 'ðŸ‘¥', label: 'Customers', path: '/vendor/customers' },
+    { icon: 'ðŸ’°', label: 'Maintenance Fee', path: '/vendor/maintenance' },
+    { icon: 'ðŸª', label: 'View My Store', path: '#', external: true },
+    { icon: 'âš™ï¸', label: 'Settings', path: '/vendor/settings' },
+  ];
 
-// Create soft notification sound using Web Audio API
-function createNotificationSound() {
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const now = audioContext.currentTime;
-  
-  // Create two short beeps at different frequencies
-  const beep = (freq, duration) => {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    osc.connect(gain);
-    gain.connect(audioContext.destination);
-    
-    osc.frequency.value = freq;
-    osc.type = 'sine';
-    
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-    
-    osc.start(now);
-    osc.stop(now + duration);
+  const handleLogout = () => {
+    localStorage.removeItem('vendor_token');
+    navigate('/vendor/login');
   };
-  
-  // First beep at 800Hz for 0.15s
-  beep(800, 0.15);
-  // Second beep at 1000Hz for 0.1s, 0.1s later
-  beep(1000, 0.1);
-}
 
-// Toast notification component
-function Toast({ order, onClose }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 10000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
+  const handleNavigation = (item) => {
+    if (item.external) {
+      window.open(vendorData?.store_url || '#', '_blank');
+    } else {
+      navigate(item.path);
+      onClose();
+    }
+  };
 
   return (
-    <div className="fixed right-4 top-4 z-50 w-96 gap-4 rounded-lg border border-sage/30 bg-white p-4 shadow-lg">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="flex items-center gap-2 font-semibold text-zinc-900">
-            <span className="text-lg">🛍️</span>
-            New Order Received!
-          </p>
-          <div className="mt-2 space-y-1 text-sm text-zinc-700">
-            <p><span className="font-medium">{order.product_name}</span> × {order.quantity}</p>
-            <p>Amount: <span className="font-medium text-sage">₹{(order.total_amount || 0).toFixed(2)}</span></p>
-            <p>Buyer: <span className="font-medium">{order.buyer_name || 'Guest'}</span></p>
-          </div>
-          <a
-            href={`/vendor/dashboard/orders?code=${order.order_code}`}
-            className="mt-3 inline-block rounded-lg bg-sage px-3 py-1 text-xs font-semibold text-white transition hover:bg-sage/90"
-          >
-            View Order →
-          </a>
-        </div>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`fixed left-0 top-0 z-40 h-screen w-64 transition-transform duration-300 lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{
+          background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.primaryLight} 100%)`,
+        }}
+      >
+        {/* Close button (mobile only) */}
         <button
           onClick={onClose}
-          className="text-zinc-400 transition hover:text-zinc-600"
+          className="absolute right-4 top-4 text-2xl text-white lg:hidden"
         >
-          ✕
+          âœ•
         </button>
+
+        {/* Logo & Business Name */}
+        <div className="space-y-3 border-b" style={{ borderColor: `${theme.colors.primaryGlow}30`, padding: '24px 20px' }}>
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-xl text-2xl"
+            style={{ backgroundColor: theme.colors.primaryGlow }}
+          >
+            ðŸŒ¿
+          </div>
+          <div>
+            <h2 className="font-semibold text-white" style={{ fontFamily: theme.fonts.heading }}>
+              {vendorData?.business_name || 'Your Store'}
+            </h2>
+            <div className="mt-1 flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: '#10b981' }}
+              />
+              <span className="text-xs text-white/90">Active Store</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="space-y-1 px-4 py-6">
+          {navItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item)}
+              className="relative flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all text-white/90 hover:text-white"
+              style={{ hover: { backgroundColor: `${theme.colors.primaryGlow}20` } }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}20`)}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span>{item.label}</span>
+              {item.badge > 0 && (
+                <span
+                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: theme.colors.danger }}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="absolute bottom-6 left-4 right-4">
+          <button
+            onClick={handleLogout}
+            className="w-full rounded-lg px-4 py-2.5 font-semibold text-white transition-all"
+            style={{
+              backgroundColor: `${theme.colors.primaryGlow}40`,
+              border: `2px solid ${theme.colors.primaryGlow}`,
+            }}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}60`)}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}40`)}
+          >
+            Logout ðŸšª
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// â”€â”€â”€ HEADER COMPONENT â”€â”€â”€
+function Header({ pageTitle, vendorData, onMenuToggle }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  return (
+    <div
+      className="sticky top-0 z-20 border-b px-4 py-4 sm:px-6 lg:px-8 bg-white"
+      style={{ borderColor: `${theme.colors.muted}20` }}
+    >
+      <div className="flex items-center justify-between gap-4 mb-4">
+        {/* Menu toggle & title */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onMenuToggle}
+            className="lg:hidden text-2xl"
+          >
+            â˜°
+          </button>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+          >
+            {pageTitle}
+          </h1>
+        </div>
+
+        {/* Right side: Notification + Avatar */}
+        <div className="flex items-center gap-4">
+          <button
+            className="relative p-2 rounded-lg transition-all text-xl"
+            style={{ backgroundColor: `${theme.colors.muted}10` }}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.muted}20`)}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.muted}10`)}
+          >
+            ðŸ””
+            <span
+              className="absolute top-1 right-1 h-2 w-2 rounded-full"
+              style={{ backgroundColor: theme.colors.danger }}
+            />
+          </button>
+
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all"
+            style={{ backgroundColor: `${theme.colors.primary}10` }}
+            onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primary}20`)}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.primary}10`)}
+          >
+            <div
+              className="h-8 w-8 rounded-full flex items-center justify-center text-white font-semibold"
+              style={{ backgroundColor: theme.colors.primaryGlow }}
+            >
+              {vendorData?.business_name?.charAt(0).toUpperCase() || 'V'}
+            </div>
+            <span
+              className="text-sm font-semibold hidden sm:inline"
+              style={{ color: theme.colors.charcoal }}
+            >
+              {vendorData?.business_name?.split(' ')[0] || 'Vendor'}
+            </span>
+            <span className="text-lg">â–¼</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search bar */}
+      <input
+        type="text"
+        placeholder="Search products, orders, customers..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full max-w-md px-4 py-2 rounded-lg border-2 transition-all focus:outline-none"
+        style={{
+          borderColor: `${theme.colors.muted}20`,
+          color: theme.colors.charcoal,
+        }}
+        onFocus={(e) => (e.target.style.borderColor = theme.colors.primaryGlow)}
+        onBlur={(e) => (e.target.style.borderColor = `${theme.colors.muted}20`)}
+      />
+    </div>
+  );
+}
+
+// â”€â”€â”€ STATS CARD COMPONENT â”€â”€â”€
+function StatsCard({ label, value, icon }) {
+  return (
+    <div
+      className="card-3d group rounded-2xl border p-6 transition-all duration-300"
+      style={{
+        borderColor: `${theme.colors.primary}20`,
+        backgroundColor: theme.colors.cream,
+      }}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p
+            className="text-sm font-semibold"
+            style={{ color: theme.colors.muted }}
+          >
+            {label}
+          </p>
+          <p
+            className="mt-2 text-4xl font-bold"
+            style={{ color: theme.colors.primary, fontFamily: theme.fonts.heading }}
+          >
+            {value}
+          </p>
+        </div>
+        <span className="text-3xl">{icon}</span>
       </div>
     </div>
   );
 }
 
-function parseJwtPayload(token) {
-  if (!token || typeof token !== 'string') {
-    return null;
-  }
-  const parts = token.split('.');
-  if (parts.length !== 3) {
-    return null;
-  }
-  try {
-    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
-
-function isTokenValid(token) {
-  const payload = parseJwtPayload(token);
-  if (!payload?.exp) {
-    return false;
-  }
-  return payload.exp * 1000 > Date.now();
-}
-
-function formatCurrency(value) {
-  const amount = Number(value || 0);
-  if (Number.isNaN(amount)) {
-    return '0.00';
-  }
-  return amount.toFixed(2);
-}
-
-function VendorDashboard() {
+// â”€â”€â”€ MAIN DASHBOARD COMPONENT â”€â”€â”€
+export default function VendorDashboard() {
   const navigate = useNavigate();
-  const vendorSession = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const [vendor, setVendor] = useState(null);
-  const [summary, setSummary] = useState({
-    totalProducts: 0,
-    pendingApprovals: 0,
-    activeOrders: 0,
-    monthSales: 0,
-  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [vendorData, setVendorData] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [chartData, setChartData] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [maintenanceDue, setMaintenanceDue] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [pendingOrderCount, setPendingOrderCount] = useState(0);
-  const [toast, setToast] = useState(null);
-  const [wsConnected, setWsConnected] = useState(false);
 
-  if (!vendorSession?.access || !isTokenValid(vendorSession.access)) {
-    localStorage.removeItem('nativeglow_vendor_tokens');
-    return <Navigate to="/vendor/login" replace />;
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const token = localStorage.getItem('vendor_token');
+        if (!token) {
+          navigate('/vendor/login');
+          return;
+        }
+
+        const response = await fetch(`${API_BASE}/vendor/dashboard/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem('vendor_token');
+            navigate('/vendor/login');
+          }
+          throw new Error('Failed to load dashboard');
+        }
+
+        const data = await response.json();
+        setVendorData(data.vendor);
+        setStats(data.stats);
+        setChartData(data.chart_data || []);
+        setRecentOrders(data.recent_orders || []);
+        setLowStockProducts(data.low_stock_products || []);
+        setMaintenanceDue(data.maintenance_fee_due || false);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-xl font-semibold mb-2">Loading dashboard...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-primary"></div>
+        </div>
+      </div>
+    );
   }
 
-  useEffect(() => {
-    let mounted = true;
-    let ws = null;
-    let pollingInterval = null;
-    let wsConnectTimeout = null;
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div
+          className="rounded-lg border p-6 max-w-md text-center"
+          style={{
+            borderColor: theme.colors.danger,
+            backgroundColor: `${theme.colors.danger}10`,
+          }}
+        >
+          <p
+            className="font-semibold text-lg"
+            style={{ color: theme.colors.danger }}
+          >
+            Error
+          </p>
+          <p style={{ color: theme.colors.charcoal }} className="mt-2">
+            {error}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-    async function fetchJson(path) {
-      const res = await fetch(`${API_BASE}${path}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${vendorSession.access}`,
-        },
-      });
-
-      if (!res.ok) {
-        let detail = `Request failed (${res.status})`;
-        try {
-          const payload = await res.json();
-          detail = payload.detail || payload.error || JSON.stringify(payload);
-        } catch {
-          // keep default detail
-        }
-        throw new Error(detail);
-      }
-
-      return res.json();
-    }
-
-    async function loadDashboard({ silent = false } = {}) {
-      if (!silent) {
-        setLoading(true);
-      }
-      setError('');
-      try {
-        const [profile, products, orders, pendingOrders] = await Promise.all([
-          fetchJson('/vendor/me/'),
-          fetchJson('/vendor/products/'),
-          fetchJson('/vendor/orders/'),
-          fetchJson('/vendor/orders/?status=pending'),
-        ]);
-
-        if (!mounted) {
-          return;
-        }
-
-        const pendingApprovals = products.filter((item) => item.status === 'pending').length;
-        const activeOrders = orders.filter((item) => ['pending', 'confirmed', 'shipped'].includes(item.order_status)).length;
-
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-
-        const monthSales = orders
-          .filter((item) => {
-            if (item.order_status !== 'delivered' || !item.created_at) {
-              return false;
-            }
-            const created = new Date(item.created_at);
-            return created.getFullYear() === currentYear && created.getMonth() === currentMonth;
-          })
-          .reduce((acc, item) => acc + Number(item.total_amount || 0), 0);
-
-        const pendingCount = Array.isArray(pendingOrders)
-          ? pendingOrders.filter((item) => String(item.order_status || '').toLowerCase() === 'pending').length
-          : 0;
-
-        setVendor(profile);
-        setSummary({
-          totalProducts: products.length,
-          pendingApprovals,
-          activeOrders,
-          monthSales,
-        });
-        setPendingOrderCount(pendingCount);
-      } catch (err) {
-        if (!mounted) {
-          return;
-        }
-        if (String(err.message || '').toLowerCase().includes('authentication')) {
-          localStorage.removeItem('nativeglow_vendor_tokens');
-          navigate('/vendor/login', { replace: true });
-          return;
-        }
-        setError(err.message || 'Failed to load dashboard data.');
-      } finally {
-        if (mounted && !silent) {
-          setLoading(false);
-        }
-      }
-    }
-
-    // Connect to WebSocket for real-time notifications
-    function connectWebSocket() {
-      if (!vendor?.id) return;
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${WS_BASE}/ws/vendor/${vendor.id}/`;
-      
-      try {
-        ws = new WebSocket(wsUrl);
-
-        ws.onopen = () => {
-          if (!mounted) return;
-          setWsConnected(true);
-          console.log('WebSocket connected');
-          // Clear polling interval if WebSocket connects
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-          }
-        };
-
-        ws.onmessage = (event) => {
-          if (!mounted) return;
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'new_order') {
-              // Play notification sound
-              try {
-                createNotificationSound();
-              } catch (err) {
-                console.log('Could not play notification sound:', err);
-              }
-
-              // Show toast notification
-              setToast(data.order);
-
-              // Increment unread badge
-              setPendingOrderCount((prev) => prev + 1);
-
-              // Refresh dashboard silently
-              loadDashboard({ silent: true });
-            }
-          } catch (err) {
-            console.error('Error parsing WebSocket message:', err);
-          }
-        };
-
-        ws.onerror = (err) => {
-          if (!mounted) return;
-          console.log('WebSocket error, falling back to polling:', err);
-          setWsConnected(false);
-          // Start polling fallback
-          startPollingFallback();
-        };
-
-        ws.onclose = () => {
-          if (!mounted) return;
-          setWsConnected(false);
-          console.log('WebSocket closed');
-          // Start polling fallback if not already started
-          if (!pollingInterval) {
-            startPollingFallback();
-          }
-        };
-      } catch (err) {
-        console.log('WebSocket connection failed, using polling fallback:', err);
-        startPollingFallback();
-      }
-    }
-
-    // Polling fallback (silent, no errors shown to vendor)
-    function startPollingFallback() {
-      if (pollingInterval) return; // Already polling
-
-      pollingInterval = setInterval(async () => {
-        if (!mounted) return;
-        try {
-          const pendingOrders = await fetchJson('/vendor/orders/?status=pending');
-          if (!mounted) return;
-          
-          const pendingCount = Array.isArray(pendingOrders)
-            ? pendingOrders.filter((item) => String(item.order_status || '').toLowerCase() === 'pending').length
-            : 0;
-
-          setPendingOrderCount(pendingCount);
-        } catch (err) {
-          console.log('Polling fetch error (silent):', err);
-        }
-      }, 30000); // Poll every 30 seconds
-    }
-
-    // Initial load
-    loadDashboard();
-
-    // Wait a bit for vendor info to load, then connect WebSocket
-    const vendorId = vendor?.id || vendorSession?.vendor?.id;
-    if (vendorId) {
-      connectWebSocket();
-    } else {
-      // Try again after vendor loads
-      wsConnectTimeout = setTimeout(() => {
-        if (mounted) {
-          connectWebSocket();
-        }
-      }, 1000);
-    }
-
-    // Also refresh every 60 seconds (if polling, this adds to it)
-    const intervalId = setInterval(() => {
-      loadDashboard({ silent: true });
-    }, 60000);
-
-    return () => {
-      mounted = false;
-      if (ws) {
-        ws.close();
-      }
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-      if (wsConnectTimeout) {
-        clearTimeout(wsConnectTimeout);
-      }
-      clearInterval(intervalId);
-    };
-  }, [navigate, vendorSession.access, vendor?.id]);
-
-  const storeUrl = vendor?.vendor_slug
-    ? `https://nativeglow.com/store/${vendor.vendor_slug}`
-    : 'Not available yet';
-
-  const sidebarLinks = [
-    { label: 'My Products', to: '/vendor/dashboard/products' },
-    { label: 'Add Product', to: '/vendor/dashboard/products/new' },
-    { label: 'My Orders', to: '/vendor/dashboard/orders' },
-    { label: 'Maintenance Fees', to: '/vendor/dashboard/maintenance' },
-    { label: 'My Store', to: '/vendor/dashboard/store' },
-    { label: 'Account Settings', to: '/vendor/dashboard/account' },
-  ];
-
-  const handleLogout = () => {
-    localStorage.removeItem('nativeglow_vendor_tokens');
-    navigate('/vendor/login', { replace: true });
+  const timeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   };
 
   return (
-    <section className="max-w-6xl">
-      {toast ? (
-        <Toast order={toast} onClose={() => setToast(null)} />
-      ) : null}
-      
-      <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-        <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Menu</p>
-            <div className="flex items-center gap-1">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${wsConnected ? 'bg-sage' : 'bg-amber-500'}`}></span>
-              <span className="text-[10px] font-semibold text-zinc-500">
-                {wsConnected ? 'Live' : 'Polling'}
-              </span>
-            </div>
-          </div>
-          <nav className="mt-3 space-y-2">
-            {sidebarLinks.map((item) => (
-              <Link
-                key={item.label}
-                to={item.to}
-                className="flex items-center justify-between rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:border-sage/40 hover:bg-[#f2f7eb]"
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: `${theme.colors.muted}05` }}>
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        vendorData={vendorData}
+      />
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">
+        {/* Header */}
+        <Header
+          pageTitle="Dashboard"
+          vendorData={vendorData}
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
+
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+            {/* Welcome Banner */}
+            <div
+              className="rounded-2xl border p-6 sm:p-8"
+              style={{
+                borderColor: `${theme.colors.primaryGlow}30`,
+                background: `linear-gradient(135deg, ${theme.colors.primary}05, ${theme.colors.primaryGlow}05)`,
+              }}
+            >
+              <h2
+                className="text-2xl sm:text-3xl font-bold"
+                style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
               >
-                <span>{item.label}</span>
-                {item.label === 'My Orders' && pendingOrderCount > 0 ? (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                    {pendingOrderCount}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="block w-full rounded-xl border border-rose-200 px-3 py-2 text-left text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-            >
-              Logout
-            </button>
-          </nav>
-
-          <div className="mt-4 rounded-xl border border-sage/25 bg-[#edf5e9] p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-sage">My Store</p>
-            <p className="mt-1 break-all text-xs text-zinc-700">{storeUrl}</p>
-          </div>
-        </aside>
-
-        <div className="space-y-5">
-          <div className="rounded-3xl border border-sage/20 bg-gradient-to-br from-[#f8f7ef] via-[#edf3e6] to-[#e8dcc9] p-6 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Dashboard</p>
-            <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">
-              Welcome {vendor?.full_name || vendorSession?.vendor?.full_name || 'Vendor'}
-            </h1>
-            <p className="mt-2 text-sm text-zinc-700">
-              Business: {vendor?.business_name || vendorSession?.vendor?.business_name || 'NA'}
-            </p>
-            <p className="mt-1 text-sm text-zinc-600">City: {vendor?.city || vendorSession?.vendor?.city || 'NA'}</p>
-          </div>
-
-          {pendingOrderCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => navigate('/vendor/dashboard/orders?filter=pending')}
-              className="w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
-            >
-              🔔 You have {pendingOrderCount} new order(s) waiting for confirmation!
-            </button>
-          ) : null}
-
-          {error ? (
-            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
-          ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Total Products</p>
-              <p className="mt-2 text-3xl font-bold text-zinc-900">{loading ? '-' : summary.totalProducts}</p>
+                {timeGreeting()}, {vendorData?.business_name?.split(' ')[0]}! ðŸŒ¿
+              </h2>
+              <p
+                className="mt-2 text-sm sm:text-base"
+                style={{ color: theme.colors.muted }}
+              >
+                Your store has received{' '}
+                <span className="font-bold" style={{ color: theme.colors.primary }}>
+                  {stats?.orders_this_week || 0}
+                </span>{' '}
+                orders this week
+              </p>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Pending Approvals</p>
-              <p className="mt-2 text-3xl font-bold text-amber-700">{loading ? '-' : summary.pendingApprovals}</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Active Orders</p>
-              <p className="mt-2 text-3xl font-bold text-sage">{loading ? '-' : summary.activeOrders}</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">This Month's Sales</p>
-              <p className="mt-2 text-3xl font-bold text-zinc-900">INR {loading ? '-' : formatCurrency(summary.monthSales)}</p>
-            </div>
-          </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-zinc-900">Quick Actions</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link to="/vendor/dashboard/products/new" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">Add Product</Link>
-              <Link to="/vendor/dashboard/orders" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">View Orders</Link>
-              <Link to="/vendor/dashboard/account" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">Account Settings</Link>
+            {/* Stats Grid */}
+            <div className="grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
+              <StatsCard
+                label="Total Products"
+                value={stats?.total_products || 0}
+                icon="ðŸ“¦"
+              />
+              <StatsCard
+                label="This Month Orders"
+                value={stats?.orders_this_month || 0}
+                icon="ðŸ›’"
+              />
+              <StatsCard
+                label="Pending Orders"
+                value={stats?.pending_orders || 0}
+                icon="â³"
+              />
+              <StatsCard
+                label="Delivered Orders"
+                value={stats?.delivered_orders || 0}
+                icon="âœ“"
+              />
             </div>
+
+            {/* Chart Section */}
+            {chartData.length > 0 && (
+              <div
+                className="rounded-2xl border p-6"
+                style={{
+                  borderColor: `${theme.colors.muted}20`,
+                  backgroundColor: 'white',
+                }}
+              >
+                <h3
+                  className="text-lg font-bold mb-4"
+                  style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+                >
+                  Orders This Month
+                </h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={`${theme.colors.muted}20`}
+                    />
+                    <XAxis
+                      dataKey="day"
+                      stroke={theme.colors.muted}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis
+                      stroke={theme.colors.muted}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme.colors.cream,
+                        borderColor: theme.colors.primary,
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar
+                      dataKey="orders"
+                      fill={theme.colors.primary}
+                      radius={[8, 8, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => navigate('/vendor/add-product')}
+              >
+                + Add Product
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => navigate('/vendor/orders')}
+              >
+                View Orders
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => window.open(vendorData?.store_url || '#', '_blank')}
+              >
+                View My Store
+              </Button>
+            </div>
+
+            {/* Alerts Section */}
+            <div className="space-y-4">
+              {/* Low Stock Alert */}
+              {lowStockProducts.length > 0 && (
+                <div
+                  className="rounded-2xl border p-6"
+                  style={{
+                    borderColor: theme.colors.warning,
+                    backgroundColor: `${theme.colors.warning}10`,
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">âš ï¸</span>
+                    <div className="flex-1">
+                      <h4
+                        className="font-bold"
+                        style={{ color: theme.colors.warning }}
+                      >
+                        Low Stock Alert
+                      </h4>
+                      <p
+                        className="text-sm mt-1"
+                        style={{ color: theme.colors.charcoal }}
+                      >
+                        {lowStockProducts.length} product(s) have less than 5 units remaining
+                      </p>
+                      <div className="mt-3 space-y-1">
+                        {lowStockProducts.map((product, idx) => (
+                          <p
+                            key={idx}
+                            className="text-sm"
+                            style={{ color: theme.colors.charcoal }}
+                          >
+                            â€¢ <strong>{product.name}</strong> ({product.quantity} units)
+                          </p>
+                        ))}
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate('/vendor/products')}
+                        className="mt-4"
+                      >
+                        Update Inventory
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Maintenance Fee Alert */}
+              {maintenanceDue && (
+                <div
+                  className="rounded-2xl border p-6"
+                  style={{
+                    borderColor: theme.colors.danger,
+                    backgroundColor: `${theme.colors.danger}10`,
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <span className="text-2xl">ðŸ’³</span>
+                      <div>
+                        <h4
+                          className="font-bold"
+                          style={{ color: theme.colors.danger }}
+                        >
+                          Maintenance Fee Due
+                        </h4>
+                        <p
+                          className="text-sm mt-1"
+                          style={{ color: theme.colors.charcoal }}
+                        >
+                          Your monthly maintenance fee for {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} is pending
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate('/vendor/maintenance')}
+                    >
+                      Pay Now
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Orders Table */}
+            {recentOrders.length > 0 && (
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{
+                  borderColor: `${theme.colors.muted}20`,
+                  backgroundColor: 'white',
+                }}
+              >
+                <div className="px-6 py-4 border-b" style={{ borderColor: `${theme.colors.muted}20` }}>
+                  <h3
+                    className="text-lg font-bold"
+                    style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
+                  >
+                    Recent Orders
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead style={{ backgroundColor: `${theme.colors.muted}05` }}>
+                      <tr>
+                        <th className="px-6 py-3 text-left font-semibold" style={{ color: theme.colors.charcoal }}>
+                          Order Code
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold" style={{ color: theme.colors.charcoal }}>
+                          Product
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold" style={{ color: theme.colors.charcoal }}>
+                          Buyer
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold" style={{ color: theme.colors.charcoal }}>
+                          Amount
+                        </th>
+                        <th className="px-6 py-3 text-left font-semibold" style={{ color: theme.colors.charcoal }}>
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentOrders.map((order, idx) => (
+                        <tr
+                          key={idx}
+                          className="border-t hover:bg-opacity-50 transition-all"
+                          style={{
+                            borderColor: `${theme.colors.muted}20`,
+                            backgroundColor: idx % 2 === 0 ? 'white' : `${theme.colors.muted}02`,
+                          }}
+                        >
+                          <td className="px-6 py-3 font-mono text-xs" style={{ color: theme.colors.charcoal }}>
+                            {order.order_code || order.id}
+                          </td>
+                          <td className="px-6 py-3" style={{ color: theme.colors.charcoal }}>
+                            {order.product_name || 'Product'}
+                          </td>
+                          <td className="px-6 py-3" style={{ color: theme.colors.charcoal }}>
+                            {order.buyer_name || 'Unknown'}
+                          </td>
+                          <td className="px-6 py-3 font-semibold" style={{ color: theme.colors.primary }}>
+                            â‚¹{order.total_amount || 0}
+                          </td>
+                          <td className="px-6 py-3">
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
+                              style={{
+                                backgroundColor:
+                                  order.status === 'delivered'
+                                    ? `${theme.colors.success}20`
+                                    : order.status === 'pending'
+                                    ? `${theme.colors.warning}20`
+                                    : `${theme.colors.info}20`,
+                                color:
+                                  order.status === 'delivered'
+                                    ? theme.colors.success
+                                    : order.status === 'pending'
+                                    ? theme.colors.warning
+                                    : theme.colors.info,
+                              }}
+                            >
+                              {order.status === 'delivered' && 'âœ“'}
+                              {order.status === 'pending' && 'â³'}
+                              {order.status === 'cancelled' && 'âœ•'}
+                              {order.status?.replace('_', ' ').charAt(0).toUpperCase() + order.status?.slice(1) || 'Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-6 py-4 border-t text-center" style={{ borderColor: `${theme.colors.muted}20` }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/vendor/orders')}
+                  >
+                    View All Orders â†’
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {recentOrders.length === 0 && (
+              <div
+                className="rounded-2xl border p-12 text-center"
+                style={{
+                  borderColor: `${theme.colors.muted}20`,
+                  backgroundColor: `${theme.colors.muted}05`,
+                }}
+              >
+                <p className="text-3xl mb-2">ðŸ“­</p>
+                <p className="font-semibold" style={{ color: theme.colors.charcoal }}>
+                  No orders yet
+                </p>
+                <p className="text-sm mt-1" style={{ color: theme.colors.muted }}>
+                  Your recent orders will appear here
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
-
-export default VendorDashboard;
