@@ -128,6 +128,8 @@ class BuyerGoogleLoginView(APIView):
 			{
 				'access_token': str(refresh.access_token),
 				'buyer_name': buyer.full_name,
+				'buyer_email': buyer.email,
+				'buyer_picture': buyer.profile_picture,
 				'is_new_buyer': created,
 			},
 			status=status.HTTP_200_OK,

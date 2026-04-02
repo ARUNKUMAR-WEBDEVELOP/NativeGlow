@@ -1,62 +1,73 @@
 import { Link, Outlet } from 'react-router-dom';
 import ThreeBackground from '../components/ThreeBackground';
+import NeoButton from '../components/ui/NeoButton';
 
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
   { to: '/vendor/register', label: 'Sell on NativeGlow' },
+  { to: '/login', label: 'Google Login' },
 ];
 
 const footerLinks = [
   { to: '/about', label: 'About Us' },
-  { to: '/vendor/register', label: 'Register as Seller' },
-  { to: '/terms', label: 'Terms of Service' },
+  { to: '/vendor/register', label: 'Sell on NativeGlow' },
 ];
 
-function SiteLayout({ isAuthenticated, onLogout }) {
-  return (
-    <div className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,_#fffef8_0%,_#f5efe6_45%,_#efe2d1_100%)]">
-      <ThreeBackground />
-      <div className="border-b border-zinc-200/70 bg-white/70 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-4 gap-y-1">
-          <span>Verified herbal care</span>
-          <span>Breathable natural fabrics</span>
-          <span>Secure checkout</span>
-        </div>
-      </div>
+function SiteLayout({ isAuthenticated = false, onLogout }) {
+  let googleProfile = null;
+  try {
+    googleProfile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
+  } catch {
+    googleProfile = null;
+  }
 
-      <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex w-[94%] max-w-6xl flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
+  const displayName = googleProfile?.name || googleProfile?.email || 'Account';
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-brand-soft">
+      <ThreeBackground />
+      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/55 backdrop-blur-xl">
+        <div className="mx-auto flex w-[94%] max-w-6xl flex-col gap-3 py-3 md:py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center justify-between gap-3">
-            <Link to="/" className="font-display text-3xl text-zinc-900">NativeGlow</Link>
-            <div className="flex items-center gap-2 lg:hidden">
-              <Link to="/cart" className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700">Cart</Link>
-              {isAuthenticated ? (
-                <button type="button" onClick={onLogout} className="whitespace-nowrap rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white">Logout</button>
-              ) : (
-                <Link to="/login" className="whitespace-nowrap rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white">Login</Link>
-              )}
-            </div>
+            <Link to="/" className="font-display text-2xl text-zinc-900 sm:text-3xl">NativeGlow</Link>
           </div>
           <nav className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-1 lg:justify-end">
             {navLinks.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50"
-              >
-                {item.label}
-              </Link>
+              item.to === '/login' ? (
+                <Link key={item.to} to={item.to}>
+                  <NeoButton className="whitespace-nowrap px-4 py-2 text-xs sm:text-sm">{item.label}</NeoButton>
+                </Link>
+              ) : (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="whitespace-nowrap rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-xs font-semibold text-zinc-700 transition duration-300 hover:-translate-y-0.5 hover:bg-white sm:text-sm"
+                >
+                  {item.label}
+                </Link>
+              )
             ))}
+
             {isAuthenticated ? (
-              <Link to="/my-orders" className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50">My Orders</Link>
+              <div className="ml-1 flex items-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-2 py-1">
+                {googleProfile?.picture ? (
+                  <img src={googleProfile.picture} alt={displayName} className="h-7 w-7 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-semibold text-white">
+                    {String(displayName).charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="max-w-[150px] truncate text-xs font-semibold text-zinc-700 sm:text-sm">{displayName}</span>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-xl border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50"
+                >
+                  Logout
+                </button>
+              </div>
             ) : null}
-            <Link to="/cart" className="hidden whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50 lg:inline-flex">Cart</Link>
-            {isAuthenticated ? (
-              <button type="button" onClick={onLogout} className="hidden whitespace-nowrap rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white lg:inline-flex">Logout</button>
-            ) : (
-              <Link to="/login" className="hidden whitespace-nowrap rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white lg:inline-flex">Login</Link>
-            )}
           </nav>
         </div>
       </header>
@@ -65,12 +76,12 @@ function SiteLayout({ isAuthenticated, onLogout }) {
         <Outlet />
       </main>
 
-      <footer className="mt-auto border-t border-zinc-200 bg-white/90 backdrop-blur-sm">
+      <footer className="mt-auto border-t border-white/70 bg-white/60 backdrop-blur-xl">
         <div className="mx-auto flex w-[94%] max-w-6xl flex-col items-start justify-between gap-3 py-5 text-sm text-zinc-600 md:flex-row md:items-center">
-          <p>NativeGlow - Natural skincare and comfort essentials.</p>
+          <p>NativeGlow for modern social-commerce sellers.</p>
           <div className="flex flex-wrap gap-3">
             {footerLinks.map((item) => (
-              <Link key={item.to} to={item.to} className="hover:text-zinc-900">{item.label}</Link>
+              <Link key={item.to} to={item.to} className="rounded-xl px-2 py-1 transition duration-300 hover:bg-white/80 hover:text-zinc-900">{item.label}</Link>
             ))}
           </div>
         </div>

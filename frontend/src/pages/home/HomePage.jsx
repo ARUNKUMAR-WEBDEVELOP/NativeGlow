@@ -275,11 +275,6 @@ function HomePage() {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/vendor/register" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
-                    Register as Seller
-                  </Link>
-                </li>
-                <li>
                   <Link to="/terms" className="text-sm text-zinc-600 hover:text-emerald-600 transition-colors">
                     Terms of Service
                   </Link>

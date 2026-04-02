@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/designSystem';
 import Button from '../../components/common/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import platformContent from '../../content/platformContent';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
@@ -244,6 +245,7 @@ function StatsCard({ label, value, icon }) {
 // â”€â”€â”€ MAIN DASHBOARD COMPONENT â”€â”€â”€
 export default function VendorDashboard() {
   const navigate = useNavigate();
+  const { brand } = platformContent;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vendorData, setVendorData] = useState(null);
   const [stats, setStats] = useState(null);
@@ -251,6 +253,7 @@ export default function VendorDashboard() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [maintenanceDue, setMaintenanceDue] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -335,8 +338,43 @@ export default function VendorDashboard() {
     return 'Good evening';
   };
 
+  const pendingOrders = Number(stats?.pending_orders || 0);
+  const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
+  const vendorSlug = vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || 'vendor-store';
+  const storeUrl = `https://nativeglow.com/site/${vendorSlug}`;
+  const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name} 🌿\nBrowse and order directly here:\n${storeUrl}`;
+
+  const welcomeLine2 =
+    pendingOrders > 0
+      ? `You have ${pendingOrders} order(s) waiting for confirmation`
+      : totalOrdersToday > 0
+      ? `You received ${totalOrdersToday} order(s) today — great work!`
+      : 'Share your store link to start receiving orders today';
+
+  const handleCopyStoreLink = async () => {
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      setToastMessage('Link copied! Share it on WhatsApp and Instagram');
+      window.setTimeout(() => setToastMessage(''), 2400);
+    } catch {
+      setToastMessage('Could not copy the link. Please copy manually.');
+      window.setTimeout(() => setToastMessage(''), 2400);
+    }
+  };
+
+  const handleShareOnWhatsApp = () => {
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(whatsappShareMessage)}`;
+    window.open(waUrl, '_blank');
+  };
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: `${theme.colors.muted}05` }}>
+      {toastMessage ? (
+        <div className="fixed right-4 top-4 z-[70] rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow">
+          {toastMessage}
+        </div>
+      ) : null}
+
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -368,18 +406,53 @@ export default function VendorDashboard() {
                 className="text-2xl sm:text-3xl font-bold"
                 style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
               >
-                {timeGreeting()}, {vendorData?.business_name?.split(' ')[0]}! ðŸŒ¿
+                {timeGreeting()}, {vendorData?.business_name || 'Vendor'}! 🌿
               </h2>
               <p
                 className="mt-2 text-sm sm:text-base"
                 style={{ color: theme.colors.muted }}
               >
-                Your store has received{' '}
-                <span className="font-bold" style={{ color: theme.colors.primary }}>
-                  {stats?.orders_this_week || 0}
-                </span>{' '}
-                orders this week
+                {welcomeLine2}
               </p>
+            </div>
+
+            {/* Store Link Card */}
+            <div
+              className="rounded-2xl border p-6 text-white"
+              style={{
+                borderColor: `${theme.colors.primaryGlow}40`,
+                background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryLight})`,
+              }}
+            >
+              <h3 className="text-xl font-bold" style={{ fontFamily: theme.fonts.heading }}>
+                Your Store Link
+              </h3>
+              <div className="mt-3 rounded-lg border border-white/30 bg-black/20 px-4 py-3 font-mono text-sm break-all">
+                {storeUrl}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleCopyStoreLink}
+                  className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
+                >
+                  📋 Copy Link
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareOnWhatsApp}
+                  className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
+                >
+                  📲 Share on WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open(storeUrl, '_blank')}
+                  className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
+                >
+                  ↗ View Store
+                </button>
+              </div>
             </div>
 
             {/* Stats Grid */}
@@ -477,6 +550,35 @@ export default function VendorDashboard() {
                 View My Store
               </Button>
             </div>
+
+            {/* No Products Empty State */}
+            {Number(stats?.total_products || 0) === 0 && (
+              <div
+                className="rounded-2xl border p-10 text-center"
+                style={{
+                  borderColor: `${theme.colors.primaryGlow}35`,
+                  backgroundColor: `${theme.colors.primaryGlow}08`,
+                }}
+              >
+                <svg width="64" height="64" viewBox="0 0 24 24" className="mx-auto" fill="none" aria-hidden="true">
+                  <path d="M12 3c-3 2-5 5-5 8 0 3 2 5 5 6 3-1 5-3 5-6 0-3-2-6-5-8zm0 0v18" stroke={theme.colors.primary} strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <p className="mt-4 text-xl font-semibold" style={{ color: theme.colors.charcoal }}>
+                  Your store is ready — add your first product!
+                </p>
+                <p className="mt-2 text-sm" style={{ color: theme.colors.muted }}>
+                  Products you add will appear on your public store
+                </p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => navigate('/vendor/dashboard/products/new')}
+                  className="mt-5"
+                >
+                  + Add Product
+                </Button>
+              </div>
+            )}
 
             {/* Alerts Section */}
             <div className="space-y-4">
@@ -682,8 +784,16 @@ export default function VendorDashboard() {
                   No orders yet
                 </p>
                 <p className="text-sm mt-1" style={{ color: theme.colors.muted }}>
-                  Your recent orders will appear here
+                  Share your store link on Instagram, YouTube, or WhatsApp to reach your customers
                 </p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={handleCopyStoreLink}
+                  className="mt-4"
+                >
+                  Share My Store
+                </Button>
               </div>
             )}
           </div>

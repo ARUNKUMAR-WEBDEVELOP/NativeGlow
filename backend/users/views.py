@@ -98,8 +98,17 @@ class GoogleLoginView(APIView):
         if not hasattr(user, 'profile'):
             UserProfile.objects.get_or_create(user=user)
 
+        full_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip() or user.username
         refresh = RefreshToken.for_user(user)
-        return Response({'refresh': str(refresh), 'access': str(refresh.access_token)})
+        return Response(
+            {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user_name': full_name,
+                'user_email': user.email,
+                'user_picture': info.get('picture', ''),
+            }
+        )
 
 
 class OTPRequestView(APIView):

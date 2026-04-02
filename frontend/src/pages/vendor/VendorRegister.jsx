@@ -5,6 +5,8 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 
 import { registerVendor } from '../../services/vendorService';
+import NeoButton from '../../components/ui/NeoButton';
+import NeoInput from '../../components/ui/NeoInput';
 
 const CATEGORY_OPTIONS = [
   { label: 'Face Wash', value: 'face_wash' },
@@ -48,8 +50,7 @@ const schema = yup.object({
     .required('IFSC is required'),
 });
 
-const inputClass =
-  'w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200';
+const inputClass = '';
 
 function FieldError({ message }) {
   if (!message) return null;
@@ -151,22 +152,22 @@ export default function VendorRegister() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-zinc-50">
-        <header className="border-b bg-white">
+      <div className="min-h-screen bg-brand-soft">
+        <header className="border-b border-white/70 bg-white/65 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
             <Link to="/" className="text-xl font-bold text-emerald-700">NativeGlow</Link>
-            <button onClick={() => navigate('/vendor/login')} className="rounded-lg border border-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-700">Vendor Login</button>
+            <NeoButton variant="secondary" onClick={() => navigate('/vendor/login')} className="px-3 py-2 text-sm">Vendor Login</NeoButton>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-          <section className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm sm:p-8">
+          <section className="rounded-2xl border border-violet-200/70 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
             <h1 className="text-2xl font-bold text-zinc-900">Registration Submitted</h1>
             <p className="mt-2 text-sm text-zinc-600">
               Your vendor account request has been received. Admin review is required before activation.
             </p>
 
-            <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm">
+            <div className="mt-6 rounded-xl border border-violet-100 bg-white/80 p-4 text-sm">
               <p><span className="font-semibold">Business:</span> {success.business_name}</p>
               <p><span className="font-semibold">Email:</span> {success.email}</p>
               {success?.login_credentials?.password ? (
@@ -175,20 +176,8 @@ export default function VendorRegister() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/vendor/login')}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Go to Vendor Login
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
-              >
-                Back to Home
-              </button>
+              <NeoButton type="button" onClick={() => navigate('/vendor/login')}>Go to Vendor Login</NeoButton>
+              <NeoButton type="button" variant="secondary" onClick={() => navigate('/')}>Back to Home</NeoButton>
             </div>
           </section>
         </main>
@@ -201,33 +190,33 @@ export default function VendorRegister() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="border-b bg-white">
+    <div className="min-h-screen bg-brand-soft">
+      <header className="border-b border-white/70 bg-white/65 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/" className="text-xl font-bold text-emerald-700">NativeGlow</Link>
-          <Link to="/vendor/login" className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100">Already a vendor? Login</Link>
+          <Link to="/" className="text-xl font-bold text-violet-700">NativeGlow</Link>
+          <Link to="/vendor/login" className="rounded-xl border border-violet-200 bg-white/80 px-3 py-2 text-sm font-semibold text-violet-700 transition duration-300 hover:bg-white">Already a vendor? Login</Link>
         </div>
       </header>
 
       <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <aside className="rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur">
           <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Vendor Registration</p>
           <h2 className="mt-2 text-xl font-bold text-zinc-900">Create your store account</h2>
           <p className="mt-2 text-sm text-zinc-600">Simple 3-step process. Works well on mobile and desktop.</p>
 
           <div className="mt-5 h-2 w-full rounded-full bg-zinc-200">
-            <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 transition-all" style={{ width: `${progress}%` }} />
           </div>
           <p className="mt-2 text-xs font-semibold text-zinc-600">Step {step} of 3</p>
 
           <ul className="mt-4 space-y-2 text-sm">
-            <li className={step === 1 ? 'font-semibold text-emerald-700' : 'text-zinc-500'}>1. Personal details</li>
-            <li className={step === 2 ? 'font-semibold text-emerald-700' : 'text-zinc-500'}>2. Business details</li>
-            <li className={step === 3 ? 'font-semibold text-emerald-700' : 'text-zinc-500'}>3. Payment setup</li>
+            <li className={step === 1 ? 'font-semibold text-violet-700' : 'text-zinc-500'}>1. Personal details</li>
+            <li className={step === 2 ? 'font-semibold text-violet-700' : 'text-zinc-500'}>2. Business details</li>
+            <li className={step === 3 ? 'font-semibold text-violet-700' : 'text-zinc-500'}>3. Payment setup</li>
           </ul>
         </aside>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:p-7">
           {apiError ? (
             <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{apiError}</p>
           ) : null}
@@ -239,32 +228,32 @@ export default function VendorRegister() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Full name</label>
-                    <Controller name="full_name" control={control} render={({ field }) => <input {...field} className={inputClass} placeholder="Your full name" />} />
+                    <Controller name="full_name" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="Your full name" />} />
                     <FieldError message={errors.full_name?.message} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Email</label>
-                    <Controller name="email" control={control} render={({ field }) => <input {...field} type="email" className={inputClass} placeholder="you@example.com" />} />
+                    <Controller name="email" control={control} render={({ field }) => <NeoInput {...field} type="email" className={inputClass} placeholder="you@example.com" />} />
                     <FieldError message={errors.email?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Password</label>
-                    <Controller name="password" control={control} render={({ field }) => <input {...field} type="password" className={inputClass} />} />
+                    <Controller name="password" control={control} render={({ field }) => <NeoInput {...field} type="password" className={inputClass} />} />
                     <FieldError message={errors.password?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Confirm password</label>
-                    <Controller name="confirm_password" control={control} render={({ field }) => <input {...field} type="password" className={inputClass} />} />
+                    <Controller name="confirm_password" control={control} render={({ field }) => <NeoInput {...field} type="password" className={inputClass} />} />
                     <FieldError message={errors.confirm_password?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">WhatsApp number</label>
-                    <Controller name="whatsapp_number" control={control} render={({ field }) => <input {...field} inputMode="numeric" maxLength={10} className={inputClass} placeholder="10 digit number" />} />
+                    <Controller name="whatsapp_number" control={control} render={({ field }) => <NeoInput {...field} inputMode="numeric" maxLength={10} className={inputClass} placeholder="10 digit number" />} />
                     <FieldError message={errors.whatsapp_number?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">City</label>
-                    <Controller name="city" control={control} render={({ field }) => <input {...field} className={inputClass} placeholder="Your city" />} />
+                    <Controller name="city" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="Your city" />} />
                     <FieldError message={errors.city?.message} />
                   </div>
                 </div>
@@ -276,7 +265,7 @@ export default function VendorRegister() {
                 <h1 className="text-2xl font-bold text-zinc-900">Business Details</h1>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-zinc-700">Business name</label>
-                  <Controller name="business_name" control={control} render={({ field }) => <input {...field} className={inputClass} placeholder="Brand or business name" />} />
+                  <Controller name="business_name" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="Brand or business name" />} />
                   <FieldError message={errors.business_name?.message} />
                 </div>
 
@@ -311,7 +300,7 @@ export default function VendorRegister() {
                   <FieldError message={errors.product_category?.message} />
                 </div>
 
-                <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                <div className="space-y-2 rounded-xl border border-violet-100 bg-white/80 p-3">
                   <Controller
                     name="natural_only_confirmed"
                     control={control}
@@ -347,22 +336,22 @@ export default function VendorRegister() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">UPI ID</label>
-                    <Controller name="upi_id" control={control} render={({ field }) => <input {...field} className={inputClass} placeholder="yourname@upi" />} />
+                    <Controller name="upi_id" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="yourname@upi" />} />
                     <FieldError message={errors.upi_id?.message} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Account holder name</label>
-                    <Controller name="account_holder_name" control={control} render={({ field }) => <input {...field} className={inputClass} />} />
+                    <Controller name="account_holder_name" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} />} />
                     <FieldError message={errors.account_holder_name?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">Bank account number</label>
-                    <Controller name="bank_account_number" control={control} render={({ field }) => <input {...field} className={inputClass} />} />
+                    <Controller name="bank_account_number" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} />} />
                     <FieldError message={errors.bank_account_number?.message} />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-zinc-700">IFSC</label>
-                    <Controller name="bank_ifsc" control={control} render={({ field }) => <input {...field} className={`${inputClass} uppercase`} placeholder="SBIN0001234" />} />
+                    <Controller name="bank_ifsc" control={control} render={({ field }) => <NeoInput {...field} className={`${inputClass} uppercase`} placeholder="SBIN0001234" />} />
                     <FieldError message={errors.bank_ifsc?.message} />
                   </div>
                 </div>
@@ -370,38 +359,36 @@ export default function VendorRegister() {
             ) : null}
 
             <div className="flex flex-wrap justify-between gap-3 border-t border-zinc-200 pt-4">
-              <button
+              <NeoButton
                 type="button"
                 onClick={goBack}
                 disabled={step === 1 || submitting}
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 disabled:opacity-50"
+                variant="secondary"
               >
                 Back
-              </button>
+              </NeoButton>
 
               {step < 3 ? (
-                <button
+                <NeoButton
                   type="button"
                   onClick={goNext}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                 >
                   Continue
-                </button>
+                </NeoButton>
               ) : (
-                <button
+                <NeoButton
                   type="submit"
                   disabled={submitting}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                 >
                   {submitting ? 'Submitting...' : 'Submit Registration'}
-                </button>
+                </NeoButton>
               )}
             </div>
           </form>
         </section>
       </main>
 
-      <footer className="border-t bg-white">
+      <footer className="border-t border-white/70 bg-white/60 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-zinc-500 sm:px-6">
           NativeGlow vendor onboarding
         </div>

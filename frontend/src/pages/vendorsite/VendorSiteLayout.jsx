@@ -60,35 +60,6 @@ function getTheme(themeName) {
   return THEMES[themeName] || THEMES.default;
 }
 
-function buildSocialLinks(vendor) {
-  if (!vendor) {
-    return [];
-  }
-
-  const entries = [
-    ['Instagram', vendor.instagram_url || vendor.social_instagram],
-    ['Facebook', vendor.facebook_url || vendor.social_facebook],
-    ['YouTube', vendor.youtube_url || vendor.social_youtube],
-    ['TikTok', vendor.tiktok_url || vendor.social_tiktok],
-    ['WhatsApp', vendor.whatsapp_display || vendor.whatsapp_number],
-  ];
-
-  return entries
-    .filter(([, value]) => typeof value === 'string' && value.trim() !== '')
-    .map(([label, value]) => ({ label, value: value.trim() }));
-}
-
-function formatSocialHref(value) {
-  if (value.startsWith('http://') || value.startsWith('https://')) {
-    return value;
-  }
-  if (/^[+\d][\d\s-]{6,}$/.test(value)) {
-    const phone = value.replace(/\D/g, '');
-    return `https://wa.me/${phone}`;
-  }
-  return `https://${value}`;
-}
-
 function StatePage({ title, message }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-20 text-center">
@@ -209,8 +180,6 @@ export default function VendorSiteLayout() {
     [vendor, featuredProducts, allProducts, categories, loading, errorStatus]
   );
 
-  const socialLinks = useMemo(() => buildSocialLinks(vendor), [vendor]);
-
   if (loading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--secondary)', color: 'var(--site-text)' }}>
@@ -321,32 +290,6 @@ export default function VendorSiteLayout() {
         <main className="mx-auto w-full max-w-6xl px-4 py-6">
           <Outlet />
         </main>
-
-        <footer className="mt-8 border-t" style={{ borderColor: 'var(--primary)' }}>
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-5 text-sm md:flex-row md:items-center md:justify-between">
-            <p style={{ fontFamily: 'var(--body-font)' }}>
-              Powered by NativeGlow
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              {socialLinks.length ? (
-                socialLinks.map((social) => (
-                  <a
-                    key={`${social.label}-${social.value}`}
-                    href={formatSocialHref(social.value)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline-offset-2 hover:underline"
-                    style={{ color: 'var(--primary)' }}
-                  >
-                    {social.label}
-                  </a>
-                ))
-              ) : (
-                <span className="opacity-70">Social links coming soon</span>
-              )}
-            </div>
-          </div>
-        </footer>
       </div>
       </BuyerAuthProvider>
     </VendorSiteContext.Provider>

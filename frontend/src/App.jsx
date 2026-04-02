@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import SiteLayout from './layout/SiteLayout';
 import AdminLayout from './layout/AdminLayout';
 import HomePage from './pages/buyer/HomePage';
@@ -108,9 +109,12 @@ function App() {
     });
   }
 
-  function onLogin(newTokens) {
+  function onLogin(newTokens, profile = null) {
     setTokens(newTokens);
     localStorage.setItem('nativeglow_tokens', JSON.stringify(newTokens));
+    if (profile) {
+      localStorage.setItem('nativeglow_google_profile', JSON.stringify(profile));
+    }
     const cartKey = getCartStorageKey(newTokens);
     if (cartKey) {
       try {
@@ -140,6 +144,7 @@ function App() {
   function onLogout() {
     setTokens(null);
     localStorage.removeItem('nativeglow_tokens');
+    localStorage.removeItem('nativeglow_google_profile');
     setCartItems([]);
     setLatestCartItem(null);
   }
@@ -185,8 +190,9 @@ function App() {
   }, [cartItems, cartStorageKey]);
 
   return (
-    <HashRouter>
-      <Routes>
+    <HelmetProvider>
+      <HashRouter>
+        <Routes>
         <Route path="/site/:vendor_slug/*" element={<VendorSiteLayout />}>
           <Route index element={<VendorSiteHome />} />
           <Route path="products" element={<VendorSiteProducts />} />
@@ -359,19 +365,20 @@ function App() {
             </AdminLayout>
           }
         />
-      </Routes>
+        </Routes>
 
-      {authMessage ? (
-        <div className="fixed right-4 top-4 z-[60] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow">
-          <div className="flex items-center gap-3">
-            <span>{authMessage}</span>
-            <button type="button" onClick={() => setAuthMessage('')} className="rounded-md border border-amber-300 px-2 py-1 text-xs">Dismiss</button>
+        {authMessage ? (
+          <div className="fixed right-4 top-4 z-[60] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow">
+            <div className="flex items-center gap-3">
+              <span>{authMessage}</span>
+              <button type="button" onClick={() => setAuthMessage('')} className="rounded-md border border-amber-300 px-2 py-1 text-xs">Dismiss</button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <StickyCartBar totalItems={totalItems} latestCartItem={latestCartItem} />
-    </HashRouter>
+        <StickyCartBar totalItems={totalItems} latestCartItem={latestCartItem} />
+      </HashRouter>
+    </HelmetProvider>
   );
 }
 

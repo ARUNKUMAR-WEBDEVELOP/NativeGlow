@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
+import NeoCard from '../../components/ui/NeoCard';
+import NeoButton from '../../components/ui/NeoButton';
+import NeoInput from '../../components/ui/NeoInput';
 
 function getErrorMessage(err) {
   const payload = err?.payload;
@@ -80,41 +83,39 @@ function VendorLogin() {
 
   return (
     <section className="max-w-xl">
-      <div className="rounded-3xl border border-sage/20 bg-gradient-to-br from-[#f8f7ef] via-[#edf3e6] to-[#e8dcc9] p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage">Vendor Portal</p>
+      <NeoCard className="rounded-3xl bg-gradient-to-br from-violet-100/80 via-fuchsia-100/70 to-sky-100/80 p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-700">Vendor Portal</p>
         <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Vendor Login</h1>
-        <p className="mt-2 text-sm text-zinc-700">Access your vendor dashboard to manage products and orders.</p>
-      </div>
+        <p className="mt-2 text-sm text-zinc-700">Access your vendor dashboard to manage products, orders, and fulfillment flow.</p>
+      </NeoCard>
 
-      <form onSubmit={onSubmit} className="mt-5 space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <input
+      <form onSubmit={onSubmit} className="mt-5 space-y-3 rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur">
+        <NeoInput
           type="email"
           name="email"
           value={form.email}
           onChange={onChange}
           placeholder="Email"
-          className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
         />
-        <input
+        <NeoInput
           type="password"
           name="password"
           value={form.password}
           onChange={onChange}
           placeholder="Password"
-          className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
         />
 
-        <button
+        <NeoButton
           type="submit"
           disabled={isSubmitting || !canSubmit}
-          className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full sm:w-auto"
         >
           {isSubmitting ? 'Signing in...' : 'Vendor Sign In'}
-        </button>
+        </NeoButton>
 
         <p className="text-sm text-zinc-600">
           New seller?{' '}
-          <Link to="/vendor/register" className="font-semibold text-sage underline">
+          <Link to="/vendor/register" className="font-semibold text-violet-700 underline">
             Register as Vendor
           </Link>
         </p>

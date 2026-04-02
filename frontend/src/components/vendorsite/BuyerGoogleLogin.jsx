@@ -76,7 +76,8 @@ export default function BuyerGoogleLogin({
         login({
           accessToken: payload?.access_token,
           buyerName: payload?.buyer_name || googleProfile?.name || '',
-          buyerEmail: googleProfile?.email || '',
+          buyerEmail: payload?.buyer_email || googleProfile?.email || '',
+          buyerPicture: payload?.buyer_picture || googleProfile?.picture || '',
         });
       } catch (err) {
         setError(err?.message || 'Google login failed.');
@@ -90,8 +91,23 @@ export default function BuyerGoogleLogin({
   if (isLoggedIn) {
     return (
       <div className={`flex items-center gap-2 ${className}`.trim()}>
+        {buyer?.buyerPicture ? (
+          <img
+            src={buyer.buyerPicture}
+            alt={buyer?.buyerName || 'Buyer'}
+            className="h-7 w-7 rounded-full border object-cover"
+            style={{ borderColor: 'var(--primary)' }}
+          />
+        ) : (
+          <span
+            className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+            style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
+          >
+            {String(buyer?.buyerName || 'B').charAt(0).toUpperCase()}
+          </span>
+        )}
         <span className="text-sm font-semibold" style={{ color: 'var(--site-text)' }}>
-          Welcome, {buyer?.buyerName || 'Buyer'}!
+          {buyer?.buyerName || 'Buyer'}
         </span>
         {showLogout ? (
           <button

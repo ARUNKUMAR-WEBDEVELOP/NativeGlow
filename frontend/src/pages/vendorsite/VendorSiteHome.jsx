@@ -2,11 +2,12 @@
 import { useParams } from 'react-router-dom';
 import { theme } from '../../styles/designSystem';
 import ProductCard3D from '../../components/common/ProductCard3D';
+import platformContent from '../../content/platformContent';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
 // â”€â”€â”€ NAVBAR COMPONENT â”€â”€â”€
-function Navbar({ vendorData, scrolled, onMenuToggle }) {
+function Navbar({ vendorData, scrolled, vendorSiteContent }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBuyerLoggedIn, setIsBuyerLoggedIn] = useState(false);
 
@@ -41,6 +42,19 @@ function Navbar({ vendorData, scrolled, onMenuToggle }) {
               >
                 {vendorData?.business_name || 'Store'}
               </h2>
+              <div className="mt-1">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[12px] font-semibold"
+                  style={{
+                    borderColor: `${theme.colors.primary}25`,
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    color: theme.colors.primary,
+                  }}
+                >
+                  <span style={{ color: '#22c55e' }}>✓</span>
+                  {vendorSiteContent.verified_badge}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -145,6 +159,7 @@ function FadeUpElement({ children }) {
 // â”€â”€â”€ MAIN VENDOR SITE HOME â”€â”€â”€
 export default function VendorSiteHome() {
   const { vendor_slug } = useParams();
+  const { vendor_site: vendorSiteContent } = platformContent;
   const [vendorData, setVendorData] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -221,7 +236,7 @@ export default function VendorSiteHome() {
   return (
     <div>
       {/* Navbar */}
-      <Navbar vendorData={vendorData} scrolled={scrolled} />
+      <Navbar vendorData={vendorData} scrolled={scrolled} vendorSiteContent={vendorSiteContent} />
 
       {/* Hero Section */}
       <section
@@ -422,11 +437,15 @@ export default function VendorSiteHome() {
             </h2>
 
             <div className="grid gap-8 md:grid-cols-3">
-              {[
-                { step: '1', icon: 'ðŸ›ï¸', title: 'Browse Products', desc: 'Explore our collection of natural products' },
-                { step: '2', icon: 'ðŸ’³', title: 'Pay via UPI', desc: 'Secure payment through WhatsApp or UPI' },
-                { step: '3', icon: 'ðŸ“¦', title: 'Get Delivered', desc: 'Receive your order at your doorstep' },
-              ].map(item => (
+              {vendorSiteContent.order_steps.map((item) => {
+                const iconMap = {
+                  search: '🔎',
+                  phone: '📱',
+                  truck: '🚚',
+                };
+                const iconSymbol = iconMap[item.icon] || '•';
+
+                return (
                 <div
                   key={item.step}
                   className="text-center card-3d p-6 rounded-2xl border"
@@ -435,18 +454,19 @@ export default function VendorSiteHome() {
                     backgroundColor: theme.colors.cream,
                   }}
                 >
-                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <div className="text-sm font-bold mb-2" style={{ color: theme.colors.primaryGlow }}>
+                    {item.step}
+                  </div>
+                  <div className="text-4xl mb-4">{iconSymbol}</div>
                   <h4
                     className="text-xl font-bold mb-2"
                     style={{ color: theme.colors.charcoal }}
                   >
                     {item.title}
                   </h4>
-                  <p style={{ color: theme.colors.muted }} className="text-sm">
-                    {item.desc}
-                  </p>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </FadeUpElement>
@@ -498,7 +518,10 @@ export default function VendorSiteHome() {
 
             {/* Bottom */}
             <div className="border-t border-white/20 pt-6 text-center text-sm opacity-60">
-              <p>Powered by NativeGlow ðŸŒ¿</p>
+              <p>{vendorSiteContent.powered_by}</p>
+              <p className="mx-auto mt-2 max-w-[600px] text-[12px] leading-5 opacity-70">
+                {vendorSiteContent.disclaimer}
+              </p>
             </div>
           </div>
         </FadeUpElement>

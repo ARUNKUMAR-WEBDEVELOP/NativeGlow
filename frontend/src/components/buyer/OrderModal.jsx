@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import BuyerGoogleLogin from '../vendorsite/BuyerGoogleLogin';
 import { BuyerAuthProvider, useBuyerAuth } from '../vendorsite/BuyerAuthContext';
+import platformContent from '../../content/platformContent';
 
 function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug }) {
   const { buyer, isLoggedIn } = useBuyerAuth();
+  const { vendor_site: vendorSiteContent } = platformContent;
   const [step, setStep] = useState(0);
   const [continueAsGuest, setContinueAsGuest] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -382,6 +384,10 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         {/* STEP 2: Payment Instructions */}
         {step === 2 && (
           <form onSubmit={handleStep2Submit} className="space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm leading-6 text-blue-800">{vendorSiteContent.payment_note}</p>
+            </div>
+
             {/* Payment Instruction Box */}
             <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-lg">
               <p className="text-center text-2xl font-bold text-amber-900 mb-4">

@@ -71,6 +71,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
       accessToken: token,
       buyerName: profile?.buyerName || '',
       buyerEmail: profile?.buyerEmail || '',
+      buyerPicture: profile?.buyerPicture || '',
     });
   }, [vendorSlug]);
 
@@ -84,6 +85,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
       accessToken: payload.accessToken,
       buyerName: payload.buyerName || '',
       buyerEmail: payload.buyerEmail || '',
+      buyerPicture: payload.buyerPicture || '',
     };
 
     localStorage.setItem(getTokenKey(vendorSlug), nextBuyer.accessToken);
@@ -92,6 +94,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
       JSON.stringify({
         buyerName: nextBuyer.buyerName,
         buyerEmail: nextBuyer.buyerEmail,
+        buyerPicture: nextBuyer.buyerPicture,
       })
     );
 
