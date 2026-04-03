@@ -1,10 +1,18 @@
 import axios from 'axios'
 
-const API_BASE =
+function normalizeApiBase(url) {
+  return String(url || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api$/, '');
+}
+
+const API_BASE = normalizeApiBase(
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV
     ? 'http://127.0.0.1:8000'
     : 'https://nativeglow.onrender.com')
+)
 
 const API = axios.create({
   baseURL: API_BASE,
