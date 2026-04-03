@@ -6,7 +6,6 @@ const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
   { to: '/vendor/register', label: 'Sell on NativeGlow' },
-  { to: '/login', label: 'Google Login' },
 ];
 
 const footerLinks = [
@@ -34,20 +33,20 @@ function SiteLayout({ isAuthenticated = false, onLogout }) {
           </div>
           <nav className="flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-1 lg:justify-end">
             {navLinks.map((item) => (
-              item.to === '/login' ? (
-                <Link key={item.to} to={item.to}>
-                  <NeoButton className="whitespace-nowrap px-4 py-2 text-xs sm:text-sm">{item.label}</NeoButton>
-                </Link>
-              ) : (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="whitespace-nowrap rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-xs font-semibold text-zinc-700 transition duration-300 hover:-translate-y-0.5 hover:bg-white sm:text-sm"
-                >
-                  {item.label}
-                </Link>
-              )
+              <Link
+                key={item.to}
+                to={item.to}
+                className="whitespace-nowrap rounded-2xl border border-white/70 bg-white/70 px-3 py-2 text-xs font-semibold text-zinc-700 transition duration-300 hover:-translate-y-0.5 hover:bg-white sm:text-sm"
+              >
+                {item.label}
+              </Link>
             ))}
+
+            {!isAuthenticated ? (
+              <Link to="/login">
+                <NeoButton className="whitespace-nowrap px-4 py-2 text-xs sm:text-sm">Google Login</NeoButton>
+              </Link>
+            ) : null}
 
             {isAuthenticated ? (
               <div className="ml-1 flex items-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-2 py-1">

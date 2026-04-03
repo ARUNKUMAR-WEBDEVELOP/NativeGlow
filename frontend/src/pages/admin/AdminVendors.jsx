@@ -36,6 +36,7 @@ export default function AdminVendors() {
   const [actionLoading, setActionLoading] = useState(null);
 
   const statusFilter = searchParams.get('status') || 'all';
+  const authFilter = searchParams.get('auth') || 'all';
 
   // Fetch vendors on load
   useEffect(() => {
@@ -73,6 +74,14 @@ export default function AdminVendors() {
       }
     }
 
+    if (authFilter !== 'all') {
+      if (authFilter === 'google') {
+        filtered = filtered.filter((v) => Boolean(v.registered_via_google));
+      } else if (authFilter === 'legacy') {
+        filtered = filtered.filter((v) => !v.registered_via_google);
+      }
+    }
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -85,7 +94,7 @@ export default function AdminVendors() {
     }
 
     setFilteredVendors(filtered);
-  }, [vendors, statusFilter, searchQuery]);
+  }, [vendors, statusFilter, authFilter, searchQuery]);
 
   // Handle approve vendor
   const handleApprove = async (vendorId) => {
@@ -258,6 +267,34 @@ export default function AdminVendors() {
           >
             Maintenance Due
           </button>
+          <button
+            onClick={() => {
+              const nextParams = new URLSearchParams(searchParams);
+              nextParams.set('auth', 'google');
+              setSearchParams(nextParams);
+            }}
+            className={`rounded-lg px-4 py-2 font-medium transition-all ${
+              authFilter === 'google'
+                ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50'
+                : 'border border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-600'
+            }`}
+          >
+            Google Auth
+          </button>
+          <button
+            onClick={() => {
+              const nextParams = new URLSearchParams(searchParams);
+              nextParams.set('auth', 'legacy');
+              setSearchParams(nextParams);
+            }}
+            className={`rounded-lg px-4 py-2 font-medium transition-all ${
+              authFilter === 'legacy'
+                ? 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/50'
+                : 'border border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-600'
+            }`}
+          >
+            Legacy Accounts
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -280,6 +317,7 @@ export default function AdminVendors() {
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Owner</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Account Email</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Auth</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">City</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Registered On</th>
               <th className="px-6 py-4 text-right text-sm font-semibold text-slate-300">
@@ -300,7 +338,7 @@ export default function AdminVendors() {
           <tbody>
             {filteredVendors.length === 0 ? (
               <tr>
-                <td colSpan="10" className="px-6 py-8 text-center text-slate-400">
+                <td colSpan="11" className="px-6 py-8 text-center text-slate-400">
                   No vendors found
                 </td>
               </tr>
@@ -315,6 +353,16 @@ export default function AdminVendors() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.email || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-slate-300">
+                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${vendor.registered_via_google ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-700/40 text-slate-300'}`}>
+                      {vendor.registered_via_google ? 'Google Auth' : 'Manual'}
+                    </span>
+                    {vendor.registered_via_google ? (
+                      <div className="mt-1 text-[11px] text-slate-400">
+                        {vendor.google_email_verified ? 'Email verified' : 'Email unverified'}
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="px-6 py-4 text-sm text-slate-300">{vendor.city || '-'}</td>
                   <td className="px-6 py-4 text-sm text-slate-300">
                     {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : '-'}

@@ -4,14 +4,24 @@ from .models import Vendor, VendorApplication, MaintenancePayment
 
 @admin.register(Vendor)
 class VendorAdmin(admin.ModelAdmin):
-    list_display = ('business_name', 'email', 'city', 'is_approved', 'is_active', 'maintenance_due', 'created_at')
-    list_filter = ('is_approved', 'is_active', 'maintenance_due', 'created_at')
+    list_display = (
+        'business_name',
+        'email',
+        'city',
+        'registered_via_google',
+        'google_email_verified',
+        'is_approved',
+        'is_active',
+        'maintenance_due',
+        'created_at',
+    )
+    list_filter = ('registered_via_google', 'google_email_verified', 'is_approved', 'is_active', 'maintenance_due', 'created_at')
     search_fields = ('business_name', 'email', 'full_name')
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Authentication', {
-            'fields': ('full_name', 'email', 'password'),
+            'fields': ('full_name', 'email', 'password', 'google_id', 'registered_via_google', 'google_email_verified'),
         }),
         ('Business Details', {
             'fields': ('business_name', 'vendor_slug', 'city', 'whatsapp_number'),
