@@ -11,6 +11,13 @@ import platformContent from '../../content/platformContent';
 export default function HomePage() {
   const [loadingHighlights, setLoadingHighlights] = useState(true);
 
+  const scrollToHowItWorks = () => {
+    const section = document.getElementById('how-it-works');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const {
     brand,
     hero,
@@ -67,7 +74,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/vendor/register"><NeoButton>{hero.cta_primary}</NeoButton></Link>
-              <Link to="/login"><NeoButton variant="secondary">{hero.cta_secondary}</NeoButton></Link>
+              <NeoButton type="button" variant="secondary" onClick={scrollToHowItWorks}>{hero.cta_secondary}</NeoButton>
             </div>
             <div className="space-y-1 text-sm text-white/85">
               {hero.trust_points.map((point) => (
@@ -106,7 +113,7 @@ export default function HomePage() {
       </RevealOnScroll>
 
       <RevealOnScroll>
-        <section className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur sm:p-7">
+        <section id="how-it-works" className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur sm:p-7">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">{problem.heading}</p>

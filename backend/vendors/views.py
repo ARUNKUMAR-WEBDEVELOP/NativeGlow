@@ -306,6 +306,8 @@ class VendorRegisterView(generics.CreateAPIView):
                 'email': vendor.email,
                 'business_name': vendor.business_name,
                 'vendor_slug': vendor.vendor_slug,
+                'store_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
+                'manage_url': '/vendor/dashboard/products',
                 'city': vendor.city,
                 'registered_via_google': vendor.registered_via_google,
                 'google_email_verified': vendor.google_email_verified,
