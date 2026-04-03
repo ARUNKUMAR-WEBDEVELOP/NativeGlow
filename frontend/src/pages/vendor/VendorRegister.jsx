@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
@@ -16,28 +16,6 @@ const CATEGORY_OPTIONS = [
   { label: 'Hair Oil', value: 'hair_oil' },
   { label: 'Other', value: 'other' },
 ];
-
-function decodeGoogleCredential(credential) {
-  if (!credential || typeof credential !== 'string') {
-    return null;
-  }
-
-  try {
-    const parts = credential.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = JSON.parse(atob(payload));
-    return {
-      name: decoded?.name || '',
-      email: decoded?.email || '',
-      picture: decoded?.picture || '',
-    };
-  } catch {
-    return null;
-  }
-}
 
 const STEP_FIELDS = {
   1: ['full_name', 'email', 'password', 'confirm_password', 'whatsapp_number', 'city'],
@@ -81,17 +59,10 @@ function FieldError({ message }) {
 
 export default function VendorRegister() {
   const navigate = useNavigate();
-  const googleBtnRef = useRef(null);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [success, setSuccess] = useState(null);
-  const [googleReady, setGoogleReady] = useState(false);
-  const [googleIdentity, setGoogleIdentity] = useState(null);
-  const [googleToken, setGoogleToken] = useState('');
-  const [googleMessage, setGoogleMessage] = useState('');
-
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   const {
     control,
@@ -125,66 +96,18 @@ export default function VendorRegister() {
   const knownFields = useMemo(() => new Set(Object.values(STEP_FIELDS).flat()), []);
 
   useEffect(() => {
-    if (!googleClientId) {
+    try {
+      const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
+      if (profile?.name) {
+        setValue('full_name', profile.name, { shouldDirty: false, shouldValidate: false });
+      }
+      if (profile?.email) {
+        setValue('email', profile.email, { shouldDirty: false, shouldValidate: false });
+      }
+    } catch {
       return;
     }
-
-    let mounted = true;
-
-    const initializeGoogle = () => {
-      if (!mounted || !window.google?.accounts?.id || !googleBtnRef.current) {
-        return;
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          setApiError('');
-          setGoogleMessage('');
-          const credential = response?.credential || '';
-          const decodedProfile = decodeGoogleCredential(credential);
-
-          setGoogleToken(credential);
-          setGoogleIdentity(decodedProfile);
-
-          if (decodedProfile?.name) {
-            setValue('full_name', decodedProfile.name, { shouldDirty: true, shouldValidate: true });
-          }
-          if (decodedProfile?.email) {
-            setValue('email', decodedProfile.email, { shouldDirty: true, shouldValidate: true });
-          }
-
-          setGoogleMessage('Google account verified. Complete the remaining details to submit your vendor request.');
-        },
-      });
-
-      googleBtnRef.current.innerHTML = '';
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: 'outline',
-        size: 'large',
-        type: 'standard',
-        shape: 'pill',
-        text: 'continue_with',
-        width: 320,
-      });
-      setGoogleReady(true);
-    };
-
-    if (!window.google?.accounts?.id) {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = initializeGoogle;
-      document.body.appendChild(script);
-    } else {
-      initializeGoogle();
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [googleClientId, setValue]);
+  }, [setValue]);
 
   const goNext = async () => {
     const valid = await trigger(STEP_FIELDS[step]);
@@ -203,10 +126,6 @@ export default function VendorRegister() {
     setSubmitting(true);
     setApiError('');
     try {
-      if (!googleToken) {
-        throw new Error('Please verify your account with Google before submitting.');
-      }
-
       const payload = {
         full_name: values.full_name,
         email: values.email,
@@ -222,7 +141,6 @@ export default function VendorRegister() {
         bank_account_number: values.bank_account_number,
         bank_ifsc: values.bank_ifsc.toUpperCase(),
         account_holder_name: values.account_holder_name,
-        google_token: googleToken,
       };
 
       const { data } = await registerVendor(payload);
@@ -299,31 +217,12 @@ export default function VendorRegister() {
         <aside className="rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur">
           <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Vendor Registration</p>
           <h2 className="mt-2 text-xl font-bold text-zinc-900">Create your store account</h2>
-          <p className="mt-2 text-sm text-zinc-600">Simple 3-step process. Works well on mobile and desktop.</p>
+          <p className="mt-2 text-sm text-zinc-600">Sign in to NativeGlow first, and your account details will be used here automatically.</p>
 
           <div className="mt-5 rounded-2xl border border-violet-100 bg-white/85 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Google verification</p>
-            <p className="mt-1 text-sm text-zinc-600">Vendor registration requires a verified Google account before submission.</p>
-            {!googleClientId ? (
-              <p className="mt-2 text-xs text-amber-700">Google login is not configured. Set VITE_GOOGLE_CLIENT_ID in the frontend and GOOGLE_CLIENT_ID in the backend.</p>
-            ) : (
-              <div className="mt-3" ref={googleBtnRef} />
-            )}
-            {googleClientId && !googleReady ? (
-              <p className="mt-2 text-xs text-zinc-500">Preparing Google sign-in...</p>
-            ) : null}
-            {googleIdentity ? (
-              <div className="mt-3 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                {googleIdentity.picture ? (
-                  <img src={googleIdentity.picture} alt={googleIdentity.name || 'Google account'} className="h-9 w-9 rounded-full object-cover" />
-                ) : null}
-                <div>
-                  <p className="font-semibold">{googleIdentity.name || 'Google account verified'}</p>
-                  <p className="text-xs">{googleIdentity.email || 'Google email verified'}</p>
-                </div>
-              </div>
-            ) : null}
-            {googleMessage ? <p className="mt-2 text-xs text-emerald-700">{googleMessage}</p> : null}
+            <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Connected account</p>
+            <p className="mt-1 text-sm text-zinc-600">This form pulls your logged-in NativeGlow profile if you already signed in.</p>
+            <p className="mt-2 text-xs text-zinc-500">If you are not signed in yet, go to Google Login first and come back here.</p>
           </div>
 
           <div className="mt-5 h-2 w-full rounded-full bg-zinc-200">
@@ -448,12 +347,6 @@ export default function VendorRegister() {
                   <FieldError message={errors.terms_accepted?.message} />
                 </div>
               </>
-            ) : null}
-
-            {step === 3 && !googleToken ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Verify your Google account above before submitting this form.
-              </p>
             ) : null}
 
             {step === 3 ? (
