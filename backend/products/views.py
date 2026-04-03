@@ -1,12 +1,12 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Q, Count, Sum
 from django.db.models.functions import TruncMonth
 
 from .models import Category, Product
 from vendors.models import Vendor
+from vendors.authentication import VendorJWTAuthentication
 from orders.models import Order
 from .serializers import (
     CategorySerializer,
@@ -141,7 +141,7 @@ class VendorProductCreateView(generics.CreateAPIView):
     """
     serializer_class = VendorProductCreateSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def create(self, request, *args, **kwargs):
         """Create product and set vendor from JWT token."""
@@ -205,7 +205,7 @@ class VendorProductListView(generics.ListAPIView):
     """
     serializer_class = VendorProductListSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def get_queryset(self):
         """Filter products by logged-in vendor from JWT token."""
@@ -233,7 +233,7 @@ class VendorProductEditView(generics.UpdateAPIView):
     """
     serializer_class = VendorProductUpdateSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -290,7 +290,7 @@ class VendorProductDeleteView(generics.DestroyAPIView):
     Vendor deletes product only if no active orders
     """
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -350,7 +350,7 @@ class VendorProductStatusView(generics.UpdateAPIView):
     """
     serializer_class = VendorProductStatusSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -413,7 +413,7 @@ class VendorProductQuantityView(generics.UpdateAPIView):
     """
     serializer_class = VendorProductQuantitySerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -485,7 +485,7 @@ class VendorProductDiscountView(generics.UpdateAPIView):
     """PATCH /api/vendor/products/<id>/discount/"""
     serializer_class = VendorProductDiscountSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -522,7 +522,7 @@ class VendorProductVisibilityView(generics.UpdateAPIView):
     """PATCH /api/vendor/products/<id>/visibility/"""
     serializer_class = VendorProductVisibilitySerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -558,7 +558,7 @@ class VendorProductFeatureView(generics.UpdateAPIView):
     """PATCH /api/vendor/products/<id>/feature/"""
     serializer_class = VendorProductFeatureSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -593,7 +593,7 @@ class VendorProductFeatureView(generics.UpdateAPIView):
 class VendorProductReorderView(APIView):
     """PATCH /api/vendor/products/reorder/"""
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def patch(self, request):
         serializer = VendorProductReorderSerializer(data=request.data)

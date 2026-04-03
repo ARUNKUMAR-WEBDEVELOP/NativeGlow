@@ -1,6 +1,5 @@
 from rest_framework import generics, permissions, response, status
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.utils import timezone
@@ -10,6 +9,7 @@ from django.conf import settings
 from .models import Order
 from .payment import create_stub_payment_intent
 from buyers.authentication import BuyerJWTAuthentication
+from vendors.authentication import VendorJWTAuthentication
 from .serializers import (
     OrderCreateSerializer,
     OrderReadSerializer,
@@ -225,7 +225,7 @@ class VendorOrderListView(generics.ListAPIView):
     JWT-protected vendor endpoint to list own orders only.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     serializer_class = VendorOrderListSerializer
 
     def get_queryset(self):
@@ -243,7 +243,7 @@ class VendorOrderStatusUpdateView(generics.UpdateAPIView):
     JWT-protected vendor endpoint to update own order status.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
     serializer_class = VendorOrderStatusUpdateSerializer
     lookup_field = 'id'
 

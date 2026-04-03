@@ -62,7 +62,18 @@ function VendorLogin() {
       });
 
       localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(tokens));
-      navigate('/vendor/dashboard/products', { replace: true });
+      if (tokens?.access) {
+        localStorage.setItem('vendor_token', tokens.access);
+      }
+
+      const vendorSlug = tokens?.vendor?.vendor_slug;
+      const isApproved = Boolean(tokens?.vendor?.is_approved);
+
+      if (vendorSlug && isApproved) {
+        navigate(`/site/${vendorSlug}`, { replace: true });
+      } else {
+        navigate('/vendor/dashboard/products', { replace: true });
+      }
     } catch (err) {
       const message = getErrorMessage(err);
       if (message.toLowerCase().includes('pending admin approval')) {

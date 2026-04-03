@@ -23,7 +23,15 @@ const API = axios.create({
 
 API.interceptors.request.use(
   (config) => {
-    const vendorToken = localStorage.getItem('vendor_token')
+    let vendorToken = localStorage.getItem('vendor_token')
+    if (!vendorToken) {
+      try {
+        const vendorSession = JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null')
+        vendorToken = vendorSession?.access || ''
+      } catch {
+        vendorToken = ''
+      }
+    }
     const buyerToken = localStorage.getItem('buyer_token')
     const adminToken = localStorage.getItem('admin_token')
 
@@ -42,6 +50,7 @@ API.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       localStorage.removeItem('vendor_token')
+      localStorage.removeItem('nativeglow_vendor_tokens')
       localStorage.removeItem('buyer_token')
       localStorage.removeItem('admin_token')
     }

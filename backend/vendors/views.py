@@ -10,9 +10,9 @@ from rest_framework import generics, permissions, status, exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Vendor, VendorApplication
+from .authentication import VendorJWTAuthentication
 from orders.models import OrderItem
 from admins.models import MaintenanceFee
 from .serializers import (
@@ -392,6 +392,7 @@ class VendorLoginView(APIView):
         try:
             refresh = RefreshToken()
             refresh['vendor_id'] = vendor.id
+            refresh['user_id'] = vendor.id
             refresh['email'] = vendor.email
             refresh['is_vendor'] = True
             refresh['role'] = 'vendor'  # Add role field for endpoint authorization
@@ -416,8 +417,10 @@ class VendorLoginView(APIView):
                     'email': vendor.email,
                     'business_name': vendor.business_name,
                     'vendor_slug': vendor.vendor_slug,
+                    'store_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
                     'city': vendor.city,
                     'is_approved': vendor.is_approved,
+                    'site_status': vendor.site_status,
                 }
             },
             status=status.HTTP_200_OK
@@ -545,7 +548,7 @@ class VendorProfileView(generics.RetrieveUpdateAPIView):
     """
     serializer_class = VendorProfileSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def get_object(self):
         """
@@ -596,7 +599,7 @@ class VendorMaintenanceListView(APIView):
     Response includes month, amount, is_paid, payment_mode, verified_by_admin, submitted_at.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def get_vendor(self):
         """Extract Vendor object from JWT token."""
@@ -671,7 +674,7 @@ class VendorMaintenancePayView(APIView):
       - payment_screenshot: image file (required)
     """
     permission_classes = (permissions.IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
+    authentication_classes = (VendorJWTAuthentication,)
 
     def get_vendor(self):
         """Extract Vendor object from JWT token."""
