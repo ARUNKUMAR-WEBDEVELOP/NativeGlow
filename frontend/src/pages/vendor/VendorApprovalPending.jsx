@@ -42,19 +42,28 @@ export default function VendorApprovalPending() {
         setError('');
 
         if (response?.is_approved) {
+          const approvedVendorSlug = response?.vendor_slug || response?.vendor?.vendor_slug || '';
+
           if (response?.vendor_token) {
             const vendorSession = {
               access: response.vendor_token,
               refresh: response.refresh || '',
               id: response.vendor_id,
-              vendor_slug: response.vendor_slug,
+              vendor_slug: approvedVendorSlug,
               email: response.email || email,
               full_name: response.full_name,
             };
             localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(vendorSession));
+            if (approvedVendorSlug) {
+              localStorage.setItem('vendor_slug', approvedVendorSlug);
+            }
           }
 
-          navigate(response?.management_url || '/vendor/dashboard/products', { replace: true });
+          const privateManagementUrl = approvedVendorSlug
+            ? `/site/${approvedVendorSlug}/vendor/dashboard/products`
+            : '/vendor/dashboard/products';
+
+          navigate(response?.management_url || privateManagementUrl, { replace: true });
           return;
         }
       } catch (err) {

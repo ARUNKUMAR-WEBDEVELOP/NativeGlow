@@ -70,7 +70,7 @@ function VendorLogin() {
       const isApproved = Boolean(tokens?.vendor?.is_approved);
 
       if (vendorSlug && isApproved) {
-        navigate(`/site/${vendorSlug}`, { replace: true });
+        navigate(`/site/${vendorSlug}/vendor/dashboard/products`, { replace: true });
       } else {
         navigate('/vendor/dashboard/products', { replace: true });
       }
