@@ -141,7 +141,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
     
     Note: Password is auto-generated if not provided.
     Generated password is returned in response so vendor knows their login credentials.
-    Instagram and YouTube URLs are required for vendor verification and brand authenticity.
+    Social media URL (Instagram or YouTube) is required for vendor verification and brand authenticity.
     """
     password = serializers.CharField(
         write_only=True,
@@ -155,8 +155,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         allow_blank=True
     )
     google_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    instagram_url = serializers.CharField(required=True, allow_blank=False)
-    youtube_url = serializers.CharField(required=True, allow_blank=False)
+    social_media_url = serializers.CharField(required=True, allow_blank=False, write_only=True)
 
     class Meta:
         model = Vendor
@@ -164,7 +163,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
             'full_name', 'email', 'password', 'confirm_password',
             'google_token',
             'business_name', 'whatsapp_number', 'city',
-            'product_category', 'instagram_url', 'youtube_url',
+            'product_category', 'social_media_url',
             'natural_only_confirmed', 'terms_accepted',
             'upi_id', 'bank_account_number', 'bank_ifsc', 'account_holder_name'
         )
@@ -192,31 +191,25 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         attrs.pop('password', None)
         attrs.pop('confirm_password', None)
 
-        # Validate Instagram URL for vendor verification
-        instagram_url = (attrs.get('instagram_url') or '').strip()
-        if not instagram_url:
+        # Validate social media URL (Instagram or YouTube) for vendor verification
+        social_media_url = (attrs.get('social_media_url') or '').strip()
+        if not social_media_url:
             raise serializers.ValidationError({
-                'instagram_url': 'Instagram URL is required for vendor verification.'
+                'social_media_url': 'Instagram or YouTube profile is required for vendor verification.'
             })
-        # Basic validation: must contain instagram.com or be a handle like @username
-        if not (('instagram.com' in instagram_url.lower()) or re.match(r'^@[a-zA-Z0-9_]+$', instagram_url)):
+        
+        # Check if it's a valid Instagram or YouTube URL/handle
+        lower_url = social_media_url.lower()
+        is_handle = re.match(r'^@[a-zA-Z0-9_]+$', social_media_url)
+        is_instagram = 'instagram.com' in lower_url
+        is_youtube = 'youtube.com' in lower_url or 'youtu.be' in lower_url
+        
+        if not (is_handle or is_instagram or is_youtube):
             raise serializers.ValidationError({
-                'instagram_url': 'Please enter a valid Instagram URL (instagram.com/...) or handle (@username).'
+                'social_media_url': 'Please enter a valid Instagram (instagram.com/... or @handle) or YouTube (youtube.com/... or @channel) profile.'
             })
-        attrs['instagram_url'] = instagram_url
-
-        # Validate YouTube URL for vendor verification  
-        youtube_url = (attrs.get('youtube_url') or '').strip()
-        if not youtube_url:
-            raise serializers.ValidationError({
-                'youtube_url': 'YouTube channel URL is required for vendor verification.'
-            })
-        # Basic validation: must contain youtube.com, youtu.be, or be a handle like @username
-        if not (('youtube.com' in youtube_url.lower() or 'youtu.be' in youtube_url.lower()) or re.match(r'^@[a-zA-Z0-9_]+$', youtube_url)):
-            raise serializers.ValidationError({
-                'youtube_url': 'Please enter a valid YouTube URL (youtube.com/... or @channel) or handle (@username).'
-            })
-        attrs['youtube_url'] = youtube_url
+        
+        attrs['social_media_url'] = social_media_url
 
         google_token = (attrs.get('google_token') or '').strip()
         requested_email = (attrs.get('email') or '').strip().lower()
@@ -263,6 +256,9 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         """Create vendor with smart auto-generated password from email + phone."""
         from django.contrib.auth.hashers import make_password
 
+        # Map social_media_url to instagram_url field in the model
+        social_media_url = validated_data.pop('social_media_url', '')
+        
         # Generate or use provided password
         password = (validated_data.pop('_raw_password', '') or '').strip()
         
@@ -296,6 +292,10 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         validated_data['google_id'] = google_id
         validated_data['google_email_verified'] = validated_data.pop('_google_email_verified', False)
         validated_data['registered_via_google'] = bool(google_id)
+        
+        # Map social_media_url to instagram_url field
+        if social_media_url:
+            validated_data['instagram_url'] = social_media_url
 
         vendor = Vendor.objects.create(**validated_data)
         

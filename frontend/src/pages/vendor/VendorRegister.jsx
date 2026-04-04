@@ -19,7 +19,7 @@ const CATEGORY_OPTIONS = [
 
 const STEP_FIELDS = {
   1: ['full_name', 'email', 'password', 'confirm_password', 'whatsapp_number', 'city'],
-  2: ['business_name', 'product_category', 'instagram_url', 'youtube_url', 'natural_only_confirmed', 'terms_accepted'],
+  2: ['business_name', 'product_category', 'social_media_url', 'natural_only_confirmed', 'terms_accepted'],
   3: ['upi_id', 'account_holder_name', 'bank_account_number', 'bank_ifsc'],
 };
 
@@ -38,22 +38,18 @@ const schema = yup.object({
   city: yup.string().trim().min(2, 'Enter city').required('City is required'),
   business_name: yup.string().trim().min(2, 'Enter business name').required('Business name is required'),
   product_category: yup.array().min(1, 'Select at least one category').required(),
-  instagram_url: yup
+  social_media_url: yup
     .string()
     .trim()
-    .test('valid-instagram', 'Enter a valid Instagram URL (instagram.com/...)', function(value) {
+    .test('valid-social-media', 'Enter a valid Instagram or YouTube URL or handle', function(value) {
       if (!value) return false;
-      return value.includes('instagram.com') || value.match(/^@[a-zA-Z0-9_]+$/);
+      const lower = value.toLowerCase();
+      const isHandle = /^@[a-zA-Z0-9_]+$/.test(value);
+      const isYoutube = lower.includes('youtube.com') || lower.includes('youtu.be');
+      const isInstagram = lower.includes('instagram.com');
+      return isHandle || isYoutube || isInstagram;
     })
-    .required('Instagram URL is required for vendor verification'),
-  youtube_url: yup
-    .string()
-    .trim()
-    .test('valid-youtube', 'Enter a valid YouTube URL (youtube.com/... or @username)', function(value) {
-      if (!value) return false;
-      return value.includes('youtube.com') || value.includes('youtu.be') || value.match(/^@[a-zA-Z0-9_]+$/);
-    })
-    .required('YouTube channel URL is required for vendor verification'),
+    .required('Instagram or YouTube URL/handle is required for vendor verification'),
   natural_only_confirmed: yup.boolean().oneOf([true], 'You must confirm this'),
   terms_accepted: yup.boolean().oneOf([true], 'You must accept terms'),
   upi_id: yup.string().trim().required('UPI ID is required'),
@@ -99,8 +95,7 @@ export default function VendorRegister() {
       city: '',
       business_name: '',
       product_category: [],
-      instagram_url: '',
-      youtube_url: '',
+      social_media_url: '',
       natural_only_confirmed: false,
       terms_accepted: false,
       upi_id: '',
@@ -153,8 +148,7 @@ export default function VendorRegister() {
         whatsapp_number: values.whatsapp_number,
         city: values.city,
         product_category: values.product_category,
-        instagram_url: values.instagram_url,
-        youtube_url: values.youtube_url,
+        social_media_url: values.social_media_url,
         natural_only_confirmed: values.natural_only_confirmed,
         terms_accepted: values.terms_accepted,
         upi_id: values.upi_id,
@@ -360,21 +354,14 @@ export default function VendorRegister() {
 
                 <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
                   <p className="text-sm font-semibold text-amber-900">📱 Vendor Verification Required</p>
-                  <p className="mt-1 text-xs text-amber-800">Add your Instagram and YouTube URLs so customers can verify your existing brand presence. Admin will review these before approval.</p>
+                  <p className="mt-1 text-xs text-amber-800">Add either your Instagram or YouTube profile so customers can verify your existing brand presence. Admin will review this before approval.</p>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-zinc-700">Instagram URL</label>
-                  <p className="mb-2 text-xs text-zinc-500">Link to your Instagram profile (e.g. instagram.com/yourshop or @yourshop)</p>
-                  <Controller name="instagram_url" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="https://instagram.com/yourshop or @yourshop" />} />
-                  <FieldError message={errors.instagram_url?.message} />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-zinc-700">YouTube Channel URL</label>
-                  <p className="mb-2 text-xs text-zinc-500">Link to your YouTube channel (e.g. youtube.com/@yourchannel or @yourchannel)</p>
-                  <Controller name="youtube_url" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="https://youtube.com/@yourchannel or @yourchannel" />} />
-                  <FieldError message={errors.youtube_url?.message} />
+                  <label className="mb-1 block text-sm font-semibold text-zinc-700">Social Media Profile (Instagram or YouTube)</label>
+                  <p className="mb-2 text-xs text-zinc-500">Enter your Instagram handle (@yourhandle), Instagram URL, YouTube channel handle (@channel), or YouTube URL</p>
+                  <Controller name="social_media_url" control={control} render={({ field }) => <NeoInput {...field} className={inputClass} placeholder="@yourhandle or https://instagram.com/yourshop" />} />
+                  <FieldError message={errors.social_media_url?.message} />
                 </div>
 
                 <div className="space-y-2 rounded-xl border border-violet-100 bg-white/80 p-3">
