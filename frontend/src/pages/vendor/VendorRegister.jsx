@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
@@ -7,6 +7,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { registerVendor } from '../../services/vendorService';
 import NeoButton from '../../components/ui/NeoButton';
 import NeoInput from '../../components/ui/NeoInput';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const CATEGORY_OPTIONS = [
   { label: 'Face Wash', value: 'face_wash' },
@@ -71,10 +73,13 @@ function FieldError({ message }) {
 
 export default function VendorRegister() {
   const navigate = useNavigate();
+  const googleBtnRef = useRef();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [success, setSuccess] = useState(null);
+  const [googleToken, setGoogleToken] = useState(null);
+  const [googleProfile, setGoogleProfile] = useState(null);
 
   const {
     control,
@@ -111,6 +116,17 @@ export default function VendorRegister() {
   useEffect(() => {
     try {
       const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
+      const tokens = JSON.parse(localStorage.getItem('nativeglow_tokens') || 'null');
+      if (!profile?.email || !tokens?.access) {
+        // Google login required - redirect to login page
+        navigate('/vendor/login?redirect=register');
+        return;
+      }
+      // Auto-populate from Google profile
+      setGoogleProfile(profile);
+      if (googleToken) {
+        setGoogleToken(tokens.access);
+      }
       if (profile?.name) {
         setValue('full_name', profile.name, { shouldDirty: false, shouldValidate: false });
       }
@@ -118,9 +134,9 @@ export default function VendorRegister() {
         setValue('email', profile.email, { shouldDirty: false, shouldValidate: false });
       }
     } catch {
-      return;
+      navigate('/vendor/login?redirect=register');
     }
-  }, [setValue]);
+  }, [setValue, navigate]);
 
   const goNext = async () => {
     const valid = await trigger(STEP_FIELDS[step]);
@@ -138,10 +154,22 @@ export default function VendorRegister() {
   const onSubmit = async (values) => {
     setSubmitting(true);
     setApiError('');
+    
+    // Get Google credential from stored tokens
+    const tokens = JSON.parse(localStorage.getItem('nativeglow_tokens') || 'null');
+    const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
+    
+    if (!tokens?.access || !profile?.email) {
+      setApiError('Google login session lost. Please sign in again.');
+      setSubmitting(false);
+      navigate('/vendor/login?redirect=register');
+      return;
+    }
+    
     try {
       const payload = {
         full_name: values.full_name,
-        email: values.email,
+        email: profile.email, // Force Google-verified email
         password: values.password,
         confirm_password: values.confirm_password,
         business_name: values.business_name,
@@ -155,10 +183,11 @@ export default function VendorRegister() {
         bank_account_number: values.bank_account_number,
         bank_ifsc: values.bank_ifsc.toUpperCase(),
         account_holder_name: values.account_holder_name,
+        google_token: tokens.access, // Include Google token for authentication
       };
 
       const { data } = await registerVendor(payload);
-      setSuccess(data || { email: values.email, business_name: values.business_name });
+      setSuccess(data || { email: profile.email, business_name: values.business_name });
     } catch (err) {
       const payload = err?.response?.data;
       
@@ -170,16 +199,17 @@ export default function VendorRegister() {
           if (knownFields.has(name)) {
             setError(name, { type: 'server', message });
             errorSummary.push(`• ${name}: ${message}`);
+          } else {
+            errorSummary.push(`${name}: ${message}`);
           }
         });
         
-        // If we found field errors, show them together with a helpful message
+        // If we found errors, show them
         if (errorSummary.length > 0) {
           setApiError(
-            `Please fix these issues before continuing:\n${errorSummary.join('\n')}`
+            `Registration failed:\n${errorSummary.join('\n')}`
           );
         } else {
-          // Show generic error if no specific fields were identified
           setApiError(
             payload?.detail ||
               'Registration failed. Please check all required fields are filled correctly.'
@@ -248,12 +278,12 @@ export default function VendorRegister() {
         <aside className="rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur">
           <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Vendor Registration</p>
           <h2 className="mt-2 text-xl font-bold text-zinc-900">Create your store account</h2>
-          <p className="mt-2 text-sm text-zinc-600">Sign in to NativeGlow first, and your account details will be used here automatically.</p>
+          <p className="mt-2 text-sm text-zinc-600">Complete this form using your verified Google account for secure authentication.</p>
 
-          <div className="mt-5 rounded-2xl border border-violet-100 bg-white/85 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Connected account</p>
-            <p className="mt-1 text-sm text-zinc-600">This form pulls your logged-in NativeGlow profile if you already signed in.</p>
-            <p className="mt-2 text-xs text-zinc-500">If you are not signed in yet, go to Google Login first and come back here.</p>
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">✓ Google Login Verified</p>
+            <p className="mt-1 text-sm text-emerald-900">{googleProfile?.email || 'Your Google account'}</p>
+            <p className="mt-2 text-xs text-emerald-800">Your identity is verified. Fill out the form below to complete vendor registration.</p>
           </div>
 
           <div className="mt-5 h-2 w-full rounded-full bg-zinc-200">
@@ -270,7 +300,7 @@ export default function VendorRegister() {
 
         <section className="rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur sm:p-7">
           {apiError ? (
-            <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{apiError}</p>
+            <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 whitespace-pre-wrap">{apiError}</p>
           ) : null}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">

@@ -154,7 +154,7 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True
     )
-    google_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    google_token = serializers.CharField(write_only=True, required=True, allow_blank=False, help_text='Google login is mandatory for vendor registration')
     social_media_url = serializers.CharField(required=True, allow_blank=False, write_only=True)
 
     class Meta:
@@ -211,42 +211,33 @@ class VendorRegisterSerializer(serializers.ModelSerializer):
         
         attrs['social_media_url'] = social_media_url
 
+        # Google login is MANDATORY for vendor registration
         google_token = (attrs.get('google_token') or '').strip()
-        requested_email = (attrs.get('email') or '').strip().lower()
+        if not google_token:
+            raise serializers.ValidationError({
+                'google_token': 'Google login is required for vendor registration. Sign in with your Google account first.'
+            })
+        
+        google_identity = verify_google_token(google_token)
+        google_email = google_identity['email']
+        google_id = google_identity['google_id']
 
-        if google_token:
-            google_identity = verify_google_token(google_token)
-            google_email = google_identity['email']
-            google_id = google_identity['google_id']
+        if Vendor.objects.filter(google_id=google_id).exists():
+            raise serializers.ValidationError({
+                'google_token': 'This Google account is already linked to an existing vendor account.'
+            })
 
-            if requested_email and requested_email != google_email:
-                raise serializers.ValidationError({
-                    'email': 'Email must match your verified Google account email.'
-                })
+        if Vendor.objects.filter(email__iexact=google_email).exists():
+            raise serializers.ValidationError({
+                'email': 'A vendor with this email already exists.'
+            })
 
-            if Vendor.objects.filter(google_id=google_id).exists():
-                raise serializers.ValidationError({
-                    'google_token': 'This Google account is already linked to an existing vendor account.'
-                })
-
-            if Vendor.objects.filter(email__iexact=google_email).exists():
-                raise serializers.ValidationError({
-                    'email': 'A vendor with this email already exists.'
-                })
-
-            attrs['email'] = google_email
-            if not (attrs.get('full_name') or '').strip() and google_identity.get('name'):
-                attrs['full_name'] = google_identity['name']
-            attrs['_google_id'] = google_id
-            attrs['_google_email_verified'] = bool(google_identity.get('email_verified'))
-        else:
-            if not requested_email:
-                raise serializers.ValidationError({'email': 'Email is required.'})
-            if Vendor.objects.filter(email__iexact=requested_email).exists():
-                raise serializers.ValidationError({'email': 'A vendor with this email already exists.'})
-            attrs['email'] = requested_email
-            attrs['_google_id'] = None
-            attrs['_google_email_verified'] = False
+        # Force email to be the Google-verified email
+        attrs['email'] = google_email
+        if not (attrs.get('full_name') or '').strip() and google_identity.get('name'):
+            attrs['full_name'] = google_identity['name']
+        attrs['_google_id'] = google_id
+        attrs['_google_email_verified'] = bool(google_identity.get('email_verified'))
 
         attrs.pop('google_token', None)
 
