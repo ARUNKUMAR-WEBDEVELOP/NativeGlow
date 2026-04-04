@@ -144,7 +144,10 @@ export default function VendorSetupWizard() {
       }
 
       if (localStorage.getItem('setup_complete') === 'true') {
-        navigate('/vendor/dashboard', { replace: true });
+        const path = vendorSlug
+          ? `/site/${vendorSlug}/vendor/dashboard`
+          : '/vendor/dashboard';
+        navigate(path, { replace: true });
         return;
       }
 
@@ -612,7 +615,7 @@ why you started..."
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/vendor/dashboard', { replace: true })}
+                onClick={() => navigate(vendorSlug ? `/site/${vendorSlug}/vendor/dashboard` : '/vendor/dashboard', { replace: true })}
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
               >
                 Go to Dashboard

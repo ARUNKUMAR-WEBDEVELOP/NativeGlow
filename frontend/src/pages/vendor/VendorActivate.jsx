@@ -71,10 +71,15 @@ export default function VendorActivate() {
           localStorage.setItem('vendor_slug', vendorSlug);
           localStorage.setItem(
             'nativeglow_vendor_tokens',
-            JSON.stringify({ access: accessToken })
+            JSON.stringify({ access: accessToken, vendor_slug: vendorSlug })
           );
 
-          navigate(isFirstLogin ? '/vendor/dashboard/setup' : '/vendor/dashboard', {
+          const fallbackPath = isFirstLogin ? '/vendor/dashboard/setup' : '/vendor/dashboard';
+          const targetPath = vendorSlug
+            ? `/site/${vendorSlug}${fallbackPath}`
+            : fallbackPath;
+
+          navigate(targetPath, {
             replace: true,
           });
           return;

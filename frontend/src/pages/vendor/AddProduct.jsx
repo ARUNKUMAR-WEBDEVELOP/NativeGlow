@@ -7,6 +7,18 @@ const API_BASE =
 
 function AddProduct() {
   const navigate = useNavigate();
+  const vendorSlug = useMemo(() => {
+    try {
+      const session = JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
+      return session?.vendor?.vendor_slug || session?.vendor_slug || localStorage.getItem('vendor_slug') || '';
+    } catch {
+      return localStorage.getItem('vendor_slug') || '';
+    }
+  }, []);
+
+  const productsPath = vendorSlug
+    ? `/site/${vendorSlug}/vendor/dashboard/products`
+    : '/vendor/dashboard/products';
   const [form, setForm] = useState({
     title: '',
     category_type: 'face_wash',
@@ -243,7 +255,7 @@ function AddProduct() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate('/vendor/dashboard/products')}
+              onClick={() => navigate(productsPath)}
               className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700"
               disabled={loading}
             >

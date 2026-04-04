@@ -213,6 +213,12 @@ function VendorProducts() {
   }, [location.state, vendorSession?.vendor?.vendor_slug]);
 
   const showLoginSuccessBanner = Boolean(location.state?.loginSuccess);
+  const ordersPath = vendorSession?.vendor?.vendor_slug
+    ? `/site/${vendorSession.vendor.vendor_slug}/vendor/dashboard/orders`
+    : '/vendor/dashboard/orders';
+  const addProductPath = vendorSession?.vendor?.vendor_slug
+    ? `/site/${vendorSession.vendor.vendor_slug}/vendor/dashboard/products/new`
+    : '/vendor/dashboard/products/new';
 
   const authHeaders = useMemo(
     () => ({
@@ -562,7 +568,7 @@ function VendorProducts() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate('/vendor/dashboard/orders')}
+            onClick={() => navigate(ordersPath)}
             className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
           >
             Manage Orders
@@ -580,7 +586,7 @@ function VendorProducts() {
 
           <button
             type="button"
-            onClick={() => navigate('/vendor/dashboard/products/new')}
+            onClick={() => navigate(addProductPath)}
             className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white"
           >
             Add New Product

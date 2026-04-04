@@ -317,6 +317,54 @@ function App() {
               </VendorProtectedRoute>
             }
           />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard/setup"
+            element={
+              <VendorProtectedRoute>
+                <VendorSetupWizard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard/products"
+            element={
+              <VendorProtectedRoute>
+                <VendorProducts />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard/orders"
+            element={
+              <VendorProtectedRoute>
+                <VendorOrders />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard/maintenance"
+            element={
+              <VendorProtectedRoute>
+                <VendorMaintenance />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/site/:vendor_slug/vendor/dashboard/products/new"
+            element={
+              <VendorProtectedRoute>
+                <AddProduct />
+              </VendorProtectedRoute>
+            }
+          />
           <Route path="/store/:vendor_slug" element={<VendorStorePage />} />
           <Route path="/track" element={<OrderTrackPage />} />
           <Route path="/track/:order_code" element={<OrderTrackPage />} />

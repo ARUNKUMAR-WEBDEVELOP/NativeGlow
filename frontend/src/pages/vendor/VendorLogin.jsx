@@ -69,8 +69,12 @@ function VendorLogin() {
       const vendorSlug = tokens?.vendor?.vendor_slug;
       const isApproved = Boolean(tokens?.vendor?.is_approved);
 
-      if (isApproved) {
-        navigate('/vendor/dashboard/products', {
+      if (vendorSlug) {
+        localStorage.setItem('vendor_slug', vendorSlug);
+      }
+
+      if (isApproved && vendorSlug) {
+        navigate(`/site/${vendorSlug}/vendor/dashboard/products`, {
           replace: true,
           state: {
             loginSuccess: true,
