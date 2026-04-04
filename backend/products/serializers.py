@@ -144,7 +144,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
-        """Create product with vendor from request and set status to pending."""
+        """Create product with vendor from request and auto-approve for active vendors."""
         from django.utils.text import slugify
         
         vendor = self.context['request'].vendor  # Vendor extracted from JWT
@@ -162,7 +162,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         
         validated_data['slug'] = slug
         validated_data['vendor'] = vendor
-        validated_data['status'] = 'pending'  # Always pending initially
+        validated_data['status'] = 'approved'
         validated_data['admin_rejection_reason'] = ''
         
         # Auto-set inventory_qty from available_quantity
@@ -216,11 +216,9 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         )
 
     def update(self, instance, validated_data):
-        """Reset approval_status to pending if product was previously approved."""
-        # If product was approved, reset to pending on edit
-        if instance.status == 'approved':
-            instance.status = 'pending'
-            instance.admin_rejection_reason = ''
+        """Keep vendor-owned product approved after edits for storefront continuity."""
+        instance.status = 'approved'
+        instance.admin_rejection_reason = ''
         
         # Update all provided fields
         for attr, value in validated_data.items():

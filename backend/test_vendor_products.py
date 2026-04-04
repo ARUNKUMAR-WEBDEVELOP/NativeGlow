@@ -96,7 +96,7 @@ class VendorProductAPITestCase(APITestCase):
         response = self.client.post('/api/vendor/products/add/', data, format='json')
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'pending')
+        self.assertEqual(response.data['status'], 'approved')
         self.assertEqual(response.data['title'], 'Organic Shampoo')
         self.assertIn('message', response.data)
         print("✅ Test 1a: Add product success - PASSED")
@@ -200,8 +200,8 @@ class VendorProductAPITestCase(APITestCase):
         self.assertEqual(response.data['price'], 349.00)
         print("✅ Test 3a: Edit product success - PASSED")
 
-    def test_edit_product_resets_approved_status(self):
-        """Test editing approved product resets status to pending"""
+    def test_edit_product_keeps_approved_status(self):
+        """Test editing approved product keeps status approved"""
         # Set product to approved first
         self.product.status = 'approved'
         self.product.save()
@@ -216,9 +216,9 @@ class VendorProductAPITestCase(APITestCase):
         )
         
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['status'], 'pending')
-        self.assertIn('reset', response.data['message'].lower())
-        print("✅ Test 3b: Edit product resets approved status - PASSED")
+        self.assertEqual(response.data['status'], 'approved')
+        self.assertIn('updated', response.data['message'].lower())
+        print("✅ Test 3b: Edit product keeps approved status - PASSED")
 
     def test_edit_product_not_found(self):
         """Test edit fails for non-existent product"""

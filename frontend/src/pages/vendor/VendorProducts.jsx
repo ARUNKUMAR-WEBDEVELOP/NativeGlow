@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   DndContext,
   closestCenter,
@@ -174,6 +174,7 @@ function SortableProductRow({
 
 function VendorProducts() {
   const navigate = useNavigate();
+  const location = useLocation();
   const vendorSession = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
@@ -201,6 +202,17 @@ function VendorProducts() {
   const [discountModalProduct, setDiscountModalProduct] = useState(null);
   const [discountLoading, setDiscountLoading] = useState(false);
   const [operationLoading, setOperationLoading] = useState({});
+
+  const publicStorePath = useMemo(() => {
+    const stateStoreUrl = location.state?.storeUrl;
+    if (stateStoreUrl) {
+      return stateStoreUrl;
+    }
+    const slug = vendorSession?.vendor?.vendor_slug;
+    return slug ? `/site/${slug}` : null;
+  }, [location.state, vendorSession?.vendor?.vendor_slug]);
+
+  const showLoginSuccessBanner = Boolean(location.state?.loginSuccess);
 
   const authHeaders = useMemo(
     () => ({
@@ -536,18 +548,44 @@ function VendorProducts() {
 
   return (
     <section className="space-y-4">
+      {showLoginSuccessBanner ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Vendor portal ready. Manage products and orders here, and use "View Public Store" to open your client-facing pages.
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900">My Products</h2>
-          <p className="text-sm text-zinc-600">Manage your product catalog and stock availability.</p>
+          <p className="text-sm text-zinc-600">Manage products, pricing, stock, and storefront visibility from one place.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/vendor/dashboard/products/new')}
-          className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white"
-        >
-          Add New Product
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/vendor/dashboard/orders')}
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
+          >
+            Manage Orders
+          </button>
+
+          {publicStorePath ? (
+            <button
+              type="button"
+              onClick={() => window.open(publicStorePath, '_blank', 'noopener,noreferrer')}
+              className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
+            >
+              View Public Store
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => navigate('/vendor/dashboard/products/new')}
+            className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white"
+          >
+            Add New Product
+          </button>
+        </div>
       </div>
 
       {success ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}

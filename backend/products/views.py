@@ -137,7 +137,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 class VendorProductCreateView(generics.CreateAPIView):
     """
     POST /api/vendor/products/add/
-    Vendor adds new product with automatic approval_status='pending'
+    Vendor adds new product with automatic approval for active vendors
     """
     serializer_class = VendorProductCreateSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -183,7 +183,7 @@ class VendorProductCreateView(generics.CreateAPIView):
                     'title': serializer.instance.title,
                     'slug': serializer.instance.slug,
                     'status': serializer.instance.status,
-                    'message': 'Product created successfully! Awaiting admin approval.'
+                    'message': 'Product created successfully and is now live in your store.'
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -229,7 +229,7 @@ class VendorProductListView(generics.ListAPIView):
 class VendorProductEditView(generics.UpdateAPIView):
     """
     PUT /api/vendor/products/<id>/edit/
-    Vendor edits their product. If approved, resets to pending.
+    Vendor edits their product and keeps it live.
     """
     serializer_class = VendorProductUpdateSerializer
     permission_classes = (permissions.IsAuthenticated,)
@@ -251,7 +251,7 @@ class VendorProductEditView(generics.UpdateAPIView):
             return Product.objects.none()
 
     def update(self, request, *args, **kwargs):
-        """Update product and reset approval status if needed."""
+        """Update product details while preserving approved storefront status."""
         try:
             partial = kwargs.pop('partial', False)
             instance = self.get_object()
@@ -259,9 +259,7 @@ class VendorProductEditView(generics.UpdateAPIView):
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
             
-            status_msg = 'pending' if instance.status == 'pending' else (
-                'Product updated. Status reset to pending for admin review.'
-            )
+            status_msg = 'Product updated successfully.'
             
             return Response(
                 {

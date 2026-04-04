@@ -69,8 +69,14 @@ function VendorLogin() {
       const vendorSlug = tokens?.vendor?.vendor_slug;
       const isApproved = Boolean(tokens?.vendor?.is_approved);
 
-      if (vendorSlug && isApproved) {
-        navigate(`/site/${vendorSlug}/vendor/dashboard/products`, { replace: true });
+      if (isApproved) {
+        navigate('/vendor/dashboard/products', {
+          replace: true,
+          state: {
+            loginSuccess: true,
+            storeUrl: vendorSlug ? `/site/${vendorSlug}` : null,
+          },
+        });
       } else {
         navigate('/vendor/dashboard/products', { replace: true });
       }
@@ -97,7 +103,7 @@ function VendorLogin() {
       <NeoCard className="rounded-3xl bg-gradient-to-br from-violet-100/80 via-fuchsia-100/70 to-sky-100/80 p-6">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-700">Vendor Portal</p>
         <h1 className="mt-2 font-display text-5xl leading-[0.95] text-zinc-900 max-md:text-4xl">Vendor Login</h1>
-        <p className="mt-2 text-sm text-zinc-700">Access your vendor dashboard to manage products, orders, and fulfillment flow.</p>
+        <p className="mt-2 text-sm text-zinc-700">Access your private vendor portal first. You can open your public client store anytime after login.</p>
       </NeoCard>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-3 rounded-2xl border border-violet-100 bg-white/80 p-5 shadow-sm backdrop-blur">
