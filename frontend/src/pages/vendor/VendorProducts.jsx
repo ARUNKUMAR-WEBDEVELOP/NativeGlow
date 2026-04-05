@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useSortable } from '@dnd-kit/sortable';
 import EditProductModal from './EditProductModal';
 import DiscountModal from './DiscountModal';
+import platformContent from '../../content/platformContent';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -195,6 +196,7 @@ function SortableProductRow({
 function VendorProducts() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { brand } = platformContent;
   const vendorSession = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
@@ -249,12 +251,34 @@ function VendorProducts() {
   }, [location.state?.storeUrl, vendorSlug]);
 
   const showLoginSuccessBanner = Boolean(location.state?.loginSuccess);
+  const vendorDisplayName =
+    vendorSession?.vendor?.business_name ||
+    vendorSession?.vendor?.full_name ||
+    vendorSession?.vendor?.name ||
+    vendorSlug ||
+    'Vendor Store';
   const ordersPath = vendorSlug
     ? `/site/${vendorSlug}/vendor/dashboard/orders`
     : '/vendor/dashboard/orders';
   const addProductPath = vendorSlug
     ? `/site/${vendorSlug}/vendor/dashboard/products/new`
     : '/vendor/dashboard/products/new';
+  const publicStoreDisplayUrl = useMemo(() => {
+    if (!publicStorePath) {
+      return '';
+    }
+    if (publicStorePath.startsWith('http://') || publicStorePath.startsWith('https://')) {
+      return publicStorePath;
+    }
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return `${window.location.origin}${publicStorePath}`;
+    }
+    return publicStorePath;
+  }, [publicStorePath]);
+
+  const goToAddProduct = () => {
+    navigate(addProductPath);
+  };
 
   const handleOpenOrders = (event) => {
     event.preventDefault();
@@ -265,7 +289,7 @@ function VendorProducts() {
   const handleOpenAddProduct = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    navigate(addProductPath);
+    goToAddProduct();
   };
 
   const handleOpenPublicStore = (event) => {
@@ -620,8 +644,14 @@ function VendorProducts() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-900">My Products</h2>
+          <h2 className="text-2xl font-semibold text-zinc-900">{vendorDisplayName} Products</h2>
           <p className="text-sm text-zinc-600">Manage products, pricing, stock, and storefront visibility from one place.</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            Brand: {brand?.name || 'NativeGlow'} | Vendor Site: {vendorSlug ? `/site/${vendorSlug}` : 'Not available yet'}
+          </p>
+          {publicStoreDisplayUrl ? (
+            <p className="mt-1 break-all text-xs text-emerald-700">Public Store URL: {publicStoreDisplayUrl}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -689,7 +719,19 @@ function VendorProducts() {
 
                 {!loading && products.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-zinc-500">No products found.</td>
+                    <td colSpan={10} className="px-3 py-8 text-center text-zinc-600">
+                      <p className="font-semibold text-zinc-800">No products found for {vendorDisplayName}.</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Add your first product and it will appear on your separate client store: {vendorSlug ? `/site/${vendorSlug}` : 'vendor site pending'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={goToAddProduct}
+                        className="mt-3 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white"
+                      >
+                        Add First Product
+                      </button>
+                    </td>
                   </tr>
                 ) : null}
 
