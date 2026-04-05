@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { theme } from '../../styles/designSystem';
 import Button from '../../components/common/Button';
@@ -57,11 +57,11 @@ function buildLast7DayChart(orders) {
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePath }) {
   const navigate = useNavigate();
   const navItems = [
-    { icon: 'ðŸ“Š', label: 'Dashboard', tab: 'dashboard' },
-    { icon: 'ðŸ“¦', label: 'My Products', tab: 'products' },
-    { icon: 'âž•', label: 'Add Product', tab: 'add' },
-    { icon: 'ðŸ›’', label: 'My Orders', tab: 'orders', badge: vendorData?.pending_orders || 0 },
-    { icon: 'ðŸª', label: 'View My Store', path: storePath || '#', external: true },
+    { label: 'Dashboard', tab: 'dashboard' },
+    { label: 'My Products', tab: 'products' },
+    { label: 'Add Product', tab: 'add' },
+    { label: 'My Orders', tab: 'orders', badge: vendorData?.pending_orders || 0 },
+    { label: 'View My Store', path: storePath || '#', external: true },
   ];
 
   const handleLogout = () => {
@@ -145,7 +145,6 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
               onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}20`)}
               onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
             >
-              <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>
               {item.badge > 0 && (
                 <span
@@ -171,7 +170,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
             onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}60`)}
             onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}40`)}
           >
-            Logout ðŸšª
+            Logout
           </button>
         </div>
       </div>
@@ -195,7 +194,7 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
             onClick={onMenuToggle}
             className="lg:hidden text-2xl"
           >
-            â˜°
+            ☰
           </button>
           <h1
             className="text-2xl font-bold"
@@ -238,7 +237,7 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
             >
               {vendorData?.business_name?.split(' ')[0] || 'Vendor'}
             </span>
-            <span className="text-lg">â–¼</span>
+            <span className="text-lg">▼</span>
           </div>
         </div>
       </div>
@@ -262,7 +261,7 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
 }
 
 // â”€â”€â”€ STATS CARD COMPONENT â”€â”€â”€
-function StatsCard({ label, value, icon }) {
+function StatsCard({ label, value }) {
   return (
     <div
       className="card-3d group rounded-2xl border p-6 transition-all duration-300"
@@ -271,22 +270,19 @@ function StatsCard({ label, value, icon }) {
         backgroundColor: theme.colors.cream,
       }}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p
-            className="text-sm font-semibold"
-            style={{ color: theme.colors.muted }}
-          >
-            {label}
-          </p>
-          <p
-            className="mt-2 text-4xl font-bold"
-            style={{ color: theme.colors.primary, fontFamily: theme.fonts.heading }}
-          >
-            {value}
-          </p>
-        </div>
-        <span className="text-3xl">{icon}</span>
+      <div className="space-y-2">
+        <p
+          className="text-sm font-semibold"
+          style={{ color: theme.colors.muted }}
+        >
+          {label}
+        </p>
+        <p
+          className="text-4xl font-bold"
+          style={{ color: theme.colors.primary, fontFamily: theme.fonts.heading }}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -344,6 +340,22 @@ export default function VendorDashboard() {
       setActiveTab(tabFromQuery);
     }
   }, [location.search]);
+
+  // Vendor slug validation - ensure vendor can only access their own dashboard
+  useEffect(() => {
+    if (!routeVendorSlug || !vendorData?.vendor_slug) {
+      return;
+    }
+    
+    // If the URL has a vendor_slug but it doesn't match the logged-in vendor's slug, redirect
+    if (routeVendorSlug && vendorData?.vendor_slug && routeVendorSlug !== vendorData?.vendor_slug) {
+      // Redirect to the correct vendor's dashboard
+      const correctPath = `/site/${vendorData.vendor_slug}/vendor/dashboard`;
+      const params = new URLSearchParams(location.search || '');
+      const newUrl = `${correctPath}${params.toString() ? `?${params.toString()}` : ''}`;
+      navigate(newUrl, { replace: true });
+    }
+  }, [routeVendorSlug, vendorData?.vendor_slug, navigate, location.search]);
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -546,7 +558,7 @@ export default function VendorDashboard() {
                   : 'text-zinc-600 border-transparent hover:text-zinc-900'
               }`}
             >
-              📊 Dashboard
+              Dashboard
             </button>
             <button
               onClick={() => setTabAndUrl('products')}
@@ -556,7 +568,7 @@ export default function VendorDashboard() {
                   : 'text-zinc-600 border-transparent hover:text-zinc-900'
               }`}
             >
-              📦 My Products
+              My Products
             </button>
             <button
               onClick={() => setTabAndUrl('add')}
@@ -566,7 +578,7 @@ export default function VendorDashboard() {
                   : 'text-zinc-600 border-transparent hover:text-zinc-900'
               }`}
             >
-              ➕ Add Product
+              Add Product
             </button>
             <button
               onClick={() => setTabAndUrl('orders')}
@@ -576,7 +588,7 @@ export default function VendorDashboard() {
                   : 'text-zinc-600 border-transparent hover:text-zinc-900'
               }`}
             >
-              🛒 Orders
+              Orders
             </button>
           </div>
         </div>
@@ -599,7 +611,7 @@ export default function VendorDashboard() {
                 className="text-2xl sm:text-3xl font-bold"
                 style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}
               >
-                {timeGreeting()}, {vendorData?.business_name || 'Vendor'}! 🌿
+                {timeGreeting()}, {vendorData?.business_name || 'Vendor'}!
               </h2>
               <p
                 className="mt-2 text-sm sm:text-base"
@@ -629,21 +641,21 @@ export default function VendorDashboard() {
                   onClick={handleCopyStoreLink}
                   className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
                 >
-                  📋 Copy Link
+                  Copy Link
                 </button>
                 <button
                   type="button"
                   onClick={handleShareOnWhatsApp}
                   className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
                 >
-                  📲 Share on WhatsApp
+                  Share on WhatsApp
                 </button>
                 <button
                   type="button"
                   onClick={() => window.open(storeUrl, '_blank')}
                   className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
                 >
-                  ↗ View Store
+                  View My Store
                 </button>
               </div>
             </div>
@@ -806,7 +818,7 @@ export default function VendorDashboard() {
                             className="text-sm"
                             style={{ color: theme.colors.charcoal }}
                           >
-                            â€¢ <strong>{product.name}</strong> ({product.quantity} units)
+                            • <strong>{product.name}</strong> ({product.quantity} units)
                           </p>
                         ))}
                       </div>
@@ -1025,3 +1037,5 @@ export default function VendorDashboard() {
     </div>
   );
 }
+
+
