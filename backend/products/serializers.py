@@ -375,6 +375,8 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
     vendor_upi = serializers.CharField(
         source='vendor.upi_id', read_only=True, default=None
     )
+    category = serializers.CharField(source='category_type', read_only=True)
+    discounted_price = serializers.SerializerMethodField()
     images = ProductImageSerializer(many=True, read_only=True)
     ingredients_list = serializers.SerializerMethodField()
 
@@ -383,11 +385,17 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'slug', 'description', 'price',
             'available_quantity', 'is_natural_certified',
+            'discount_percent', 'discounted_price',
             'ingredients', 'ingredients_list',
-            'category_name', 'vendor_business_name',
+            'category', 'category_name', 'vendor_business_name',
             'vendor_whatsapp', 'vendor_upi',
             'images', 'created_at',
         )
+
+    def get_discounted_price(self, obj):
+        if (obj.discount_percent or 0) > 0:
+            return obj.discounted_price
+        return None
 
     def get_ingredients_list(self, obj):
         """Parse ingredients string into list."""

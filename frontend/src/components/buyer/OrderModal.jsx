@@ -8,7 +8,6 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
   const { buyer, isLoggedIn } = useBuyerAuth();
   const { vendor_site: vendorSiteContent } = platformContent;
   const [step, setStep] = useState(0);
-  const [continueAsGuest, setContinueAsGuest] = useState(false);
   const [loading, setLoading] = useState(false);
   const [prefillLoading, setPrefillLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -33,12 +32,8 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
       setStep(1);
       return;
     }
-    if (continueAsGuest) {
-      setStep(1);
-      return;
-    }
     setStep(0);
-  }, [isLoggedIn, continueAsGuest]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn || !buyer?.accessToken) {
@@ -220,23 +215,12 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         {step === 0 && (
           <div className="space-y-4 text-center">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-semibold text-emerald-900">Sign in to track your order easily</p>
+              <p className="text-sm font-semibold text-emerald-900">Login is required before placing an order.</p>
             </div>
 
             <div className="flex items-center justify-center">
               <BuyerGoogleLogin vendorSlug={vendorSlug} showLogout={false} />
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setContinueAsGuest(true);
-                setStep(1);
-              }}
-              className="text-sm font-semibold text-zinc-700 underline underline-offset-2 hover:text-zinc-900"
-            >
-              Continue as Guest
-            </button>
           </div>
         )}
 

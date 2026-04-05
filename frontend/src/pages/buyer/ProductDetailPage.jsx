@@ -1,10 +1,26 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
 
+function getBuyerTokenKey(vendorSlug) {
+  return `buyer_token_${vendorSlug}`;
+}
+
+function isBuyerLoggedIn(vendorSlug) {
+  if (!vendorSlug) {
+    return false;
+  }
+  return Boolean(localStorage.getItem(getBuyerTokenKey(vendorSlug)));
+}
+
+function getNextPath(vendorSlug, productId) {
+  return `/store/${vendorSlug}/products/${productId}`;
+}
+
 function ProductDetailPage() {
   const { vendor_slug, product_id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
 
   // State management
@@ -16,6 +32,9 @@ function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+
+  const loggedIn = isBuyerLoggedIn(vendor_slug);
 
   // Fetch product detail
   useEffect(() => {
@@ -25,9 +44,15 @@ function ProductDetailPage() {
       try {
         const data = await api.getProductDetail(vendor_slug, product_id);
         if (active) {
-          setProduct(data.product);
-          setVendor(data.vendor);
+          setProduct(data);
+          setVendor({
+            business_name: data.vendor_business_name,
+            whatsapp_number: data.vendor_whatsapp,
+            upi_id: data.vendor_upi,
+            city: data.vendor_city || '',
+          });
           setQuantity(1);
+          setActionMessage('');
         }
       } catch (err) {
         if (active) {
@@ -53,9 +78,66 @@ function ProductDetailPage() {
   const handleQuantityChange = (value) => {
     if (value > 0 && value <= product.available_quantity) {
       setQuantity(value);
-      setOrderData({ ...orderData, quantity: value });
     }
   };
+
+  const redirectToLogin = () => {
+    const nextPath = getNextPath(vendor_slug, product_id);
+    navigate(`/site/${vendor_slug}/login?next=${encodeURIComponent(nextPath)}`);
+  };
+
+  const handleRequireLoginAction = (callback) => {
+    if (!loggedIn) {
+      redirectToLogin();
+      return;
+    }
+    callback();
+  };
+
+  const handleAddToCart = () => {
+    handleRequireLoginAction(() => {
+      const storageKey = `vendor_store_cart_${vendor_slug}`;
+      let current = [];
+      try {
+        current = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      } catch {
+        current = [];
+      }
+
+      const unitPrice = Number(product?.discounted_price ?? product?.price ?? 0);
+      const existing = current.find((item) => item.id === product.id);
+      const next = existing
+        ? current.map((item) =>
+            item.id === product.id
+              ? { ...item, qty: Math.min((item.qty || 1) + quantity, product.available_quantity || 999) }
+              : item
+          )
+        : [
+            ...current,
+            {
+              id: product.id,
+              name: product?.name || 'Product',
+              image: (product.images && product.images[0] && (product.images[0].image_url || product.images[0].image)) || null,
+              price: unitPrice,
+              qty: quantity,
+            },
+          ];
+
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      setActionMessage('Product added to cart.');
+    });
+  };
+
+  useEffect(() => {
+    if (location.state?.openOrder) {
+      if (loggedIn) {
+        setShowOrderModal(true);
+      } else {
+        redirectToLogin();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, loggedIn]);
 
   // Loading state
   if (loading) {
@@ -133,8 +215,14 @@ function ProductDetailPage() {
     );
   }
 
-  const mainImage = product.images?.length > 0 ? product.images[selectedImageIndex]?.image : null;
+  const mainImage =
+    product.images?.length > 0
+      ? (product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
+      : null;
   const ingredientsList = product.ingredients_list || [];
+  const basePrice = Number(product.price || 0);
+  const discountedPrice = Number(product.discounted_price || 0);
+  const hasDiscount = discountedPrice > 0 && discountedPrice < basePrice;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-orange-50 pt-20 pb-20">
@@ -188,7 +276,7 @@ function ProductDetailPage() {
                     }`}
                   >
                     <img
-                      src={img.image}
+                      src={img.image_url || img.image}
                       alt={`${product.name} ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -210,9 +298,9 @@ function ProductDetailPage() {
                     100% Natural 🌿
                   </span>
                 )}
-                {product.category && (
+                {(product.category || product.category_name) && (
                   <span className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {product.category}
+                    {product.category || product.category_name}
                   </span>
                 )}
               </div>
@@ -220,7 +308,17 @@ function ProductDetailPage() {
 
             {/* Price & Availability */}
             <div>
-              <p className="text-4xl font-bold text-emerald-600 mb-3">₹{product.price.toFixed(0)}</p>
+              {hasDiscount ? (
+                <div className="mb-3 flex items-center gap-3">
+                  <p className="text-4xl font-bold text-emerald-600">₹{discountedPrice.toFixed(0)}</p>
+                  <p className="text-lg text-gray-400 line-through">₹{basePrice.toFixed(0)}</p>
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                    {Number(product.discount_percent || 0)}% OFF
+                  </span>
+                </div>
+              ) : (
+                <p className="text-4xl font-bold text-emerald-600 mb-3">₹{basePrice.toFixed(0)}</p>
+              )}
               <div className="flex items-center gap-4">
                 <span className={`text-sm font-medium ${
                   product.available_quantity > 0 ? 'text-green-600' : 'text-red-600'
@@ -294,7 +392,7 @@ function ProductDetailPage() {
                     +
                   </button>
                   <span className="text-sm text-gray-500 ml-4">
-                    Total: ₹{(product.price * quantity).toFixed(0)}
+                    Total: ₹{((hasDiscount ? discountedPrice : basePrice) * quantity).toFixed(0)}
                   </span>
                 </div>
               </div>
@@ -304,21 +402,25 @@ function ProductDetailPage() {
             {product.available_quantity > 0 && (
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setShowOrderModal(true)}
+                  onClick={() => handleRequireLoginAction(() => setShowOrderModal(true))}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition"
                 >
                   Order Now
                 </button>
-                <a
-                  href={`https://wa.me/${vendor.whatsapp?.replace(/\D/g, '') || ''}?text=Hi%20I%27m%20interested%20in%20${encodeURIComponent(product.name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={handleAddToCart}
                   className="flex-1 border-2 border-emerald-600 text-emerald-600 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition text-center"
                 >
-                  Chat on WhatsApp
-                </a>
+                  Add to Cart
+                </button>
               </div>
             )}
+
+            {actionMessage ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {actionMessage}
+              </div>
+            ) : null}
 
             {product.available_quantity === 0 && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
@@ -351,7 +453,7 @@ function ProductDetailPage() {
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Location</p>
-                  <p className="font-semibold text-gray-900">📍 {vendor.city}</p>
+                  <p className="font-semibold text-gray-900">📍 {vendor.city || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Status</p>
@@ -416,6 +518,7 @@ function ProductDetailPage() {
           quantity={quantity}
           onClose={() => setShowOrderModal(false)}
           onSuccess={() => setShowOrderModal(false)}
+          vendorSlug={vendor_slug}
         />
       )}
     </div>
