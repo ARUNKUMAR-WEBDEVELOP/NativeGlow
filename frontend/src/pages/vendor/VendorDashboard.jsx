@@ -60,15 +60,10 @@ function resolveVendorSlug({ routeVendorSlug, vendorData, tokenPayload, vendorSe
   return (
     routeVendorSlug ||
     vendorData?.vendor_slug ||
-    vendorData?.slug ||
-    vendorData?.username ||
     tokenPayload?.vendor_slug ||
-    tokenPayload?.slug ||
     tokenPayload?.vendor?.vendor_slug ||
-    tokenPayload?.vendor?.slug ||
     vendorSession?.vendor?.vendor_slug ||
     vendorSession?.vendor_slug ||
-    vendorSession?.vendor?.slug ||
     storedVendorSlug ||
     ''
   );

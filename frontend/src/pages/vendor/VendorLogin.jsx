@@ -51,12 +51,9 @@ function getErrorMessage(err) {
 function resolveVendorSlug(tokens, tokenPayload) {
   return (
     tokenPayload?.vendor_slug ||
-    tokenPayload?.slug ||
     tokenPayload?.vendor?.vendor_slug ||
-    tokenPayload?.vendor?.slug ||
     tokens?.vendor?.vendor_slug ||
     tokens?.vendor_slug ||
-    tokens?.vendor?.slug ||
     ''
   );
 }

@@ -41,7 +41,6 @@ function getVendorSlugFromSession() {
       tokenPayload?.vendor_slug ||
       session?.vendor?.vendor_slug ||
       session?.vendor_slug ||
-      session?.vendor?.slug ||
       localStorage.getItem('vendor_slug') ||
       ''
     );
