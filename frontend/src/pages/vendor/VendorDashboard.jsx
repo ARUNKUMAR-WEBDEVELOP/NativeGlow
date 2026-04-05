@@ -10,6 +10,49 @@ import OrderList from '../../components/vendor/OrderList';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
+function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+function buildLast7DayChart(orders) {
+  const days = [];
+  const today = new Date();
+
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({
+      key,
+      day: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+      orders: 0,
+    });
+  }
+
+  const indexByKey = new Map(days.map((item, idx) => [item.key, idx]));
+  orders.forEach((order) => {
+    const key = String(order?.created_at || '').slice(0, 10);
+    const idx = indexByKey.get(key);
+    if (idx !== undefined) {
+      days[idx].orders += 1;
+    }
+  });
+
+  return days.map(({ day, orders }) => ({ day, orders }));
+}
+
 // â”€â”€â”€ SIDEBAR COMPONENT â”€â”€â”€
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePath }) {
   const navigate = useNavigate();
@@ -255,8 +298,28 @@ export default function VendorDashboard() {
   const navigate = useNavigate();
   const { vendor_slug: routeVendorSlug } = useParams();
   const { brand } = platformContent;
+  const vendorSession = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
+    } catch {
+      return null;
+    }
+  }, []);
+  const tokenPayload = useMemo(() => parseJwtPayload(vendorSession?.access), [vendorSession?.access]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [vendorData, setVendorData] = useState(null);
+  const [vendorData, setVendorData] = useState(() => ({
+    business_name:
+      vendorSession?.vendor?.business_name ||
+      vendorSession?.business_name ||
+      vendorSession?.vendor?.name ||
+      'Your Store',
+    vendor_slug:
+      routeVendorSlug ||
+      tokenPayload?.vendor_slug ||
+      vendorSession?.vendor?.vendor_slug ||
+      vendorSession?.vendor_slug ||
+      '',
+  }));
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
@@ -285,40 +348,93 @@ export default function VendorDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('vendor_token');
+        const token = vendorSession?.access || localStorage.getItem('vendor_token');
         if (!token) {
           navigate('/vendor/login');
           return;
         }
 
-        const response = await fetch(`${API_BASE}/vendor/dashboard/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const headers = { Authorization: `Bearer ${token}` };
+        const [productsRes, ordersRes] = await Promise.all([
+          fetch(`${API_BASE}/vendor/products/`, { headers }),
+          fetch(`${API_BASE}/vendor/orders/`, { headers }),
+        ]);
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('vendor_token');
-            navigate('/vendor/login');
-          }
-          throw new Error('Failed to load dashboard');
+        if (productsRes.status === 401 || ordersRes.status === 401) {
+          localStorage.removeItem('vendor_token');
+          localStorage.removeItem('nativeglow_vendor_tokens');
+          navigate('/vendor/login');
+          return;
         }
 
-        const data = await response.json();
-        setVendorData(data.vendor);
-        setStats(data.stats);
-        setChartData(data.chart_data || []);
-        setRecentOrders(data.recent_orders || []);
-        setLowStockProducts(data.low_stock_products || []);
-        setMaintenanceDue(data.maintenance_fee_due || false);
+        const products = productsRes.ok ? await productsRes.json() : [];
+        const orders = ordersRes.ok ? await ordersRes.json() : [];
+        const productList = Array.isArray(products) ? products : [];
+        const orderList = Array.isArray(orders) ? orders : [];
+
+        const now = new Date();
+        const thisMonth = now.getMonth();
+        const thisYear = now.getFullYear();
+        const todayKey = now.toISOString().slice(0, 10);
+
+        const ordersThisMonth = orderList.filter((o) => {
+          const d = new Date(o?.created_at);
+          return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        });
+
+        const pendingOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'pending').length;
+        const deliveredOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'delivered').length;
+        const totalOrdersToday = orderList.filter((o) => String(o?.created_at || '').slice(0, 10) === todayKey).length;
+
+        const sortedRecentOrders = [...orderList]
+          .sort((a, b) => new Date(b?.created_at).getTime() - new Date(a?.created_at).getTime())
+          .slice(0, 8);
+
+        const lowStock = productList
+          .filter((p) => Number(p?.available_quantity || 0) < 5)
+          .slice(0, 6)
+          .map((p) => ({
+            name: p?.title || p?.name || 'Product',
+            quantity: Number(p?.available_quantity || 0),
+          }));
+
+        setVendorData((prev) => ({
+          ...prev,
+          business_name:
+            vendorSession?.vendor?.business_name ||
+            vendorSession?.business_name ||
+            prev?.business_name ||
+            'Your Store',
+          vendor_slug:
+            routeVendorSlug ||
+            tokenPayload?.vendor_slug ||
+            vendorSession?.vendor?.vendor_slug ||
+            vendorSession?.vendor_slug ||
+            prev?.vendor_slug ||
+            '',
+        }));
+
+        setStats({
+          total_products: productList.length,
+          orders_this_month: ordersThisMonth.length,
+          pending_orders: pendingOrders,
+          delivered_orders: deliveredOrders,
+          total_orders_today: totalOrdersToday,
+        });
+        setChartData(buildLast7DayChart(orderList));
+        setRecentOrders(sortedRecentOrders);
+        setLowStockProducts(lowStock);
+        setMaintenanceDue(false);
+        setError('');
       } catch (err) {
-        setError(err.message);
+        setError(err?.message || 'Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [navigate]);
+  }, [navigate, routeVendorSlug, tokenPayload?.vendor_slug, vendorSession?.access, vendorSession?.business_name, vendorSession?.vendor?.business_name, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
 
   if (loading) {
     return (
