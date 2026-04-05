@@ -11,6 +11,10 @@ function formatPrice(value) {
   return `Rs ${toNumber(value).toLocaleString('en-IN')}`;
 }
 
+function getProductCategory(product) {
+  return String(product?.category || product?.category_type || '').trim();
+}
+
 export default function VendorSiteProducts() {
   const { vendor_slug: vendorSlug } = useParams();
   const { allProducts, categories } = useVendorSite();
@@ -19,7 +23,7 @@ export default function VendorSiteProducts() {
   const pills = useMemo(() => {
     const categoryList = Array.isArray(categories) && categories.length
       ? categories
-      : Array.from(new Set(allProducts.map((p) => p?.category).filter(Boolean)));
+      : Array.from(new Set(allProducts.map((p) => getProductCategory(p)).filter(Boolean)));
     return ['All', ...categoryList];
   }, [allProducts, categories]);
 
@@ -27,7 +31,7 @@ export default function VendorSiteProducts() {
     if (activeCategory === 'All') {
       return allProducts;
     }
-    return allProducts.filter((product) => String(product?.category || '').toLowerCase() === activeCategory.toLowerCase());
+    return allProducts.filter((product) => getProductCategory(product).toLowerCase() === activeCategory.toLowerCase());
   }, [allProducts, activeCategory]);
 
   return (
@@ -96,6 +100,12 @@ export default function VendorSiteProducts() {
           );
         })}
       </div>
+
+      {filteredProducts.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center text-sm text-zinc-500">
+          No products are live for this category yet.
+        </div>
+      ) : null}
     </div>
   );
 }
