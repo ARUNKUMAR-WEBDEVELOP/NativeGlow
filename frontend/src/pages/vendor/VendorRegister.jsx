@@ -80,6 +80,8 @@ export default function VendorRegister() {
   const [success, setSuccess] = useState(null);
   const [googleToken, setGoogleToken] = useState(null);
   const [googleProfile, setGoogleProfile] = useState(null);
+  const [googleRequired, setGoogleRequired] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const {
     control,
@@ -118,23 +120,24 @@ export default function VendorRegister() {
       const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
       const tokens = JSON.parse(localStorage.getItem('nativeglow_tokens') || 'null');
       if (!profile?.email || !tokens?.access) {
-        // Google login required - redirect to login page
-        navigate('/vendor/login?redirect=register');
+        setGoogleRequired(true);
+        setAuthChecked(true);
         return;
       }
       // Auto-populate from Google profile
+      setGoogleRequired(false);
       setGoogleProfile(profile);
-      if (googleToken) {
-        setGoogleToken(tokens.access);
-      }
+      setGoogleToken(tokens.access);
       if (profile?.name) {
         setValue('full_name', profile.name, { shouldDirty: false, shouldValidate: false });
       }
       if (profile?.email) {
         setValue('email', profile.email, { shouldDirty: false, shouldValidate: false });
       }
+      setAuthChecked(true);
     } catch {
-      navigate('/vendor/login?redirect=register');
+      setGoogleRequired(true);
+      setAuthChecked(true);
     }
   }, [setValue, navigate]);
 
@@ -261,6 +264,49 @@ export default function VendorRegister() {
         <footer className="border-t bg-white">
           <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-zinc-500 sm:px-6">NativeGlow vendor onboarding</div>
         </footer>
+      </div>
+    );
+  }
+
+  if (!authChecked || googleRequired) {
+    return (
+      <div className="min-h-screen bg-brand-soft">
+        <header className="border-b border-white/70 bg-white/65 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+            <Link to="/" className="text-xl font-bold text-emerald-700">NativeGlow</Link>
+            <NeoButton variant="secondary" onClick={() => navigate('/vendor/login?redirect=register')} className="px-3 py-2 text-sm">
+              Google Login
+            </NeoButton>
+          </div>
+        </header>
+
+        <main className="mx-auto flex min-h-[calc(100vh-73px)] max-w-3xl items-center px-4 py-12 sm:px-6">
+          <section className="w-full rounded-3xl border border-amber-200 bg-white/85 p-6 shadow-sm backdrop-blur sm:p-8">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Google sign-in required</p>
+              <h1 className="mt-2 text-2xl font-bold text-zinc-900">Please sign in with Google first</h1>
+              <p className="mt-3 text-sm leading-6 text-zinc-700">
+                Vendor registration is only available to verified Google accounts. Sign in with Google first, then come back to complete your vendor details.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-zinc-700">
+                This keeps vendor accounts authenticated and prevents invalid registrations.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <NeoButton type="button" onClick={() => navigate('/vendor/login?redirect=register')} className="w-full">
+                Continue with Google
+              </NeoButton>
+              <NeoButton type="button" variant="secondary" onClick={() => navigate('/vendor/login')} className="w-full">
+                Go to Vendor Login
+              </NeoButton>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-violet-100 bg-white/80 p-4 text-sm text-zinc-600">
+              After Google sign-in, this page will automatically show your verified name and email.
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
