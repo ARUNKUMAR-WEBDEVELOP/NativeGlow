@@ -235,6 +235,29 @@ function VendorProducts() {
     ? `/site/${vendorSlug}/vendor/dashboard/products/new`
     : '/vendor/dashboard/products/new';
 
+  const handleOpenOrders = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(ordersPath);
+  };
+
+  const handleOpenAddProduct = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigate(addProductPath);
+  };
+
+  const handleOpenPublicStore = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!publicStorePath) {
+      setError('Public store URL is not available for this vendor yet.');
+      return;
+    }
+    // Use in-app navigation to avoid popup blockers in embedded browsers.
+    navigate(publicStorePath);
+  };
+
   const authHeaders = useMemo(
     () => ({
       'Content-Type': 'application/json',
@@ -583,7 +606,7 @@ function VendorProducts() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate(ordersPath)}
+            onClick={handleOpenOrders}
             className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800"
           >
             Manage Orders
@@ -592,7 +615,7 @@ function VendorProducts() {
           {publicStorePath ? (
             <button
               type="button"
-              onClick={() => window.open(publicStorePath, '_blank', 'noopener,noreferrer')}
+              onClick={handleOpenPublicStore}
               className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700"
             >
               View Public Store
@@ -601,7 +624,7 @@ function VendorProducts() {
 
           <button
             type="button"
-            onClick={() => navigate(addProductPath)}
+            onClick={handleOpenAddProduct}
             className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white"
           >
             Add New Product
