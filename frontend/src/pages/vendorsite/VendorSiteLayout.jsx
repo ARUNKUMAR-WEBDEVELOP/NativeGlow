@@ -94,7 +94,7 @@ export default function VendorSiteLayout() {
       setErrorStatus(null);
 
       try {
-        const res = await fetch(`${getApiBase()}/products/store/${vendorSlug}/`);
+        const res = await fetch(`${getApiBase()}/site/${vendorSlug}/`);
 
         if (!res.ok) {
           if (!cancelled) {
@@ -108,11 +108,30 @@ export default function VendorSiteLayout() {
         }
 
         const data = await res.json();
+        const normalizedVendor = data?.vendor || data || null;
+        const normalizedProducts = Array.isArray(data?.all_products)
+          ? data.all_products
+          : Array.isArray(data?.products)
+            ? data.products
+            : [];
+        const normalizedFeatured = Array.isArray(data?.featured_products)
+          ? data.featured_products
+          : normalizedProducts.filter((p) => p?.is_featured);
+        const normalizedCategories = Array.isArray(data?.categories) && data.categories.length
+          ? data.categories
+          : Array.from(
+            new Set(
+              normalizedProducts
+                .map((p) => p?.category || p?.category_type)
+                .filter(Boolean)
+            )
+          );
+
         if (!cancelled) {
-          setVendor(data?.vendor || data || null);
-          setFeaturedProducts(Array.isArray(data?.featured_products) ? data.featured_products : []);
-          setAllProducts(Array.isArray(data?.all_products) ? data.all_products : []);
-          setCategories(Array.isArray(data?.categories) ? data.categories : []);
+          setVendor(normalizedVendor);
+          setFeaturedProducts(normalizedFeatured);
+          setAllProducts(normalizedProducts);
+          setCategories(normalizedCategories);
         }
       } catch (err) {
         if (!cancelled) {
