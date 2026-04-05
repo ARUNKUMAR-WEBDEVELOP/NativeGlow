@@ -4,11 +4,34 @@ import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 
+import { api } from '../../api';
 import { registerVendor } from '../../services/vendorService';
 import NeoButton from '../../components/ui/NeoButton';
 import NeoInput from '../../components/ui/NeoInput';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+function decodeGoogleCredential(credential) {
+  if (!credential || typeof credential !== 'string') {
+    return null;
+  }
+
+  try {
+    const parts = credential.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(payload));
+    return {
+      name: decoded?.name || '',
+      email: decoded?.email || '',
+      picture: decoded?.picture || '',
+    };
+  } catch {
+    return null;
+  }
+}
 
 const CATEGORY_OPTIONS = [
   { label: 'Face Wash', value: 'face_wash' },
@@ -73,7 +96,7 @@ function FieldError({ message }) {
 
 export default function VendorRegister() {
   const navigate = useNavigate();
-  const googleBtnRef = useRef();
+  const googleBtnRef = useRef(null);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
@@ -82,6 +105,8 @@ export default function VendorRegister() {
   const [googleProfile, setGoogleProfile] = useState(null);
   const [googleRequired, setGoogleRequired] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleAuthError, setGoogleAuthError] = useState('');
 
   const {
     control,
@@ -140,6 +165,79 @@ export default function VendorRegister() {
       setAuthChecked(true);
     }
   }, [setValue, navigate]);
+
+  useEffect(() => {
+    if (!googleRequired || !GOOGLE_CLIENT_ID) {
+      return;
+    }
+
+    let mounted = true;
+
+    const initializeGoogle = () => {
+      if (!mounted || !window.google?.accounts?.id || !googleBtnRef.current) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          setGoogleAuthError('');
+          try {
+            const tokens = await api.googleLogin(response.credential);
+            const decodedProfile = decodeGoogleCredential(response.credential);
+            const profile = {
+              name: tokens?.user_name || decodedProfile?.name || '',
+              email: tokens?.user_email || decodedProfile?.email || '',
+              picture: tokens?.user_picture || decodedProfile?.picture || '',
+            };
+
+            localStorage.setItem('nativeglow_tokens', JSON.stringify(tokens));
+            localStorage.setItem('nativeglow_google_profile', JSON.stringify(profile));
+
+            setGoogleToken(tokens?.access || '');
+            setGoogleProfile(profile);
+            setGoogleRequired(false);
+            setAuthChecked(true);
+
+            if (profile?.name) {
+              setValue('full_name', profile.name, { shouldDirty: false, shouldValidate: false });
+            }
+            if (profile?.email) {
+              setValue('email', profile.email, { shouldDirty: false, shouldValidate: false });
+            }
+          } catch (err) {
+            setGoogleAuthError(err.message || 'Google login failed.');
+          }
+        },
+      });
+
+      googleBtnRef.current.innerHTML = '';
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: 'outline',
+        size: 'large',
+        type: 'standard',
+        shape: 'pill',
+        text: 'continue_with',
+        width: 320,
+      });
+      setGoogleReady(true);
+    };
+
+    if (!window.google?.accounts?.id) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogle;
+      document.body.appendChild(script);
+    } else {
+      initializeGoogle();
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [googleRequired, setValue]);
 
   const goNext = async () => {
     const valid = await trigger(STEP_FIELDS[step]);
@@ -274,8 +372,8 @@ export default function VendorRegister() {
         <header className="border-b border-white/70 bg-white/65 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
             <Link to="/" className="text-xl font-bold text-emerald-700">NativeGlow</Link>
-            <NeoButton variant="secondary" onClick={() => navigate('/vendor/login?redirect=register')} className="px-3 py-2 text-sm">
-              Google Login
+            <NeoButton variant="secondary" onClick={() => navigate('/vendor/login')} className="px-3 py-2 text-sm">
+              Vendor Login
             </NeoButton>
           </div>
         </header>
@@ -293,13 +391,20 @@ export default function VendorRegister() {
               </p>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <NeoButton type="button" onClick={() => navigate('/vendor/login?redirect=register')} className="w-full">
-                Continue with Google
-              </NeoButton>
-              <NeoButton type="button" variant="secondary" onClick={() => navigate('/vendor/login')} className="w-full">
-                Go to Vendor Login
-              </NeoButton>
+            <div className="mt-6 rounded-2xl border border-violet-100 bg-white/80 p-4">
+              <h2 className="text-sm font-semibold text-zinc-800">Continue with Google</h2>
+              <p className="mt-1 text-xs text-zinc-500">Use the Google button below to authenticate, then return to complete registration.</p>
+              {!GOOGLE_CLIENT_ID ? (
+                <p className="mt-3 text-xs text-amber-700">Google login is not configured yet. Set VITE_GOOGLE_CLIENT_ID in the frontend and GOOGLE_CLIENT_ID in the backend.</p>
+              ) : (
+                <div className="mt-3" ref={googleBtnRef} />
+              )}
+              {GOOGLE_CLIENT_ID && !googleReady ? (
+                <p className="mt-2 text-xs text-zinc-500">Preparing Google sign in...</p>
+              ) : null}
+              {googleAuthError ? (
+                <p className="mt-2 text-xs text-rose-600">{googleAuthError}</p>
+              ) : null}
             </div>
 
             <div className="mt-6 rounded-2xl border border-violet-100 bg-white/80 p-4 text-sm text-zinc-600">
