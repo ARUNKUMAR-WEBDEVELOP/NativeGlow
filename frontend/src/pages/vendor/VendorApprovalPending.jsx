@@ -61,8 +61,8 @@ export default function VendorApprovalPending() {
           }
 
           const fallbackPath = approvedVendorSlug
-            ? `/site/${approvedVendorSlug}/vendor/dashboard/products`
-            : '/vendor/dashboard/products';
+            ? `/site/${approvedVendorSlug}/vendor/dashboard`
+            : '/vendor/dashboard';
 
           navigate(response?.management_url || fallbackPath, { replace: true });
           return;

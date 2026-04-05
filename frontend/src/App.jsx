@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import SiteLayout from './layout/SiteLayout';
 import AdminLayout from './layout/AdminLayout';
@@ -12,10 +12,7 @@ import VendorActivate from './pages/vendor/VendorActivate';
 import VendorSetupWizard from './pages/vendor/VendorSetupWizard';
 import VendorApprovalPending from './pages/vendor/VendorApprovalPending';
 import VendorDashboard from './pages/vendor/VendorDashboard';
-import VendorProducts from './pages/vendor/VendorProducts';
-import VendorOrders from './pages/vendor/VendorOrders';
 import VendorMaintenance from './pages/vendor/VendorMaintenance';
-import AddProduct from './pages/vendor/AddProduct';
 import VendorStorePage from './pages/buyer/VendorStorePage';
 import LoginPage from './pages/auth/LoginPage';
 import AboutUsPage from './pages/AboutUsPage';
@@ -61,6 +58,14 @@ function getCartStorageKey(tokens) {
   const payload = parseJwtPayload(tokens?.access);
   const userId = payload?.user_id;
   return userId ? `nativeglow_cart_${userId}` : null;
+}
+
+function VendorDashboardTabRedirect({ tab }) {
+  const { vendor_slug: vendorSlug } = useParams();
+  const target = vendorSlug
+    ? `/site/${vendorSlug}/vendor/dashboard?tab=${tab}`
+    : `/vendor/dashboard?tab=${tab}`;
+  return <Navigate to={target} replace />;
 }
 
 function App() {
@@ -289,7 +294,7 @@ function App() {
             path="/vendor/dashboard/products"
             element={
               <VendorProtectedRoute>
-                <VendorProducts />
+                <VendorDashboardTabRedirect tab="products" />
               </VendorProtectedRoute>
             }
           />
@@ -297,7 +302,7 @@ function App() {
             path="/vendor/dashboard/orders"
             element={
               <VendorProtectedRoute>
-                <VendorOrders />
+                <VendorDashboardTabRedirect tab="orders" />
               </VendorProtectedRoute>
             }
           />
@@ -313,7 +318,7 @@ function App() {
             path="/vendor/dashboard/products/new"
             element={
               <VendorProtectedRoute>
-                <AddProduct />
+                <VendorDashboardTabRedirect tab="add" />
               </VendorProtectedRoute>
             }
           />
@@ -337,7 +342,7 @@ function App() {
             path="/site/:vendor_slug/vendor/dashboard/products"
             element={
               <VendorProtectedRoute>
-                <VendorProducts />
+                <VendorDashboardTabRedirect tab="products" />
               </VendorProtectedRoute>
             }
           />
@@ -345,7 +350,7 @@ function App() {
             path="/site/:vendor_slug/vendor/dashboard/orders"
             element={
               <VendorProtectedRoute>
-                <VendorOrders />
+                <VendorDashboardTabRedirect tab="orders" />
               </VendorProtectedRoute>
             }
           />
@@ -361,7 +366,7 @@ function App() {
             path="/site/:vendor_slug/vendor/dashboard/products/new"
             element={
               <VendorProtectedRoute>
-                <AddProduct />
+                <VendorDashboardTabRedirect tab="add" />
               </VendorProtectedRoute>
             }
           />

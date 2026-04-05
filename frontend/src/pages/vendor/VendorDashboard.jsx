@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { theme } from '../../styles/designSystem';
 import Button from '../../components/common/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -11,17 +11,14 @@ import OrderList from '../../components/vendor/OrderList';
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
 // â”€â”€â”€ SIDEBAR COMPONENT â”€â”€â”€
-function Sidebar({ isOpen, onClose, vendorData }) {
+function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePath }) {
   const navigate = useNavigate();
   const navItems = [
-    { icon: 'ðŸ“Š', label: 'Dashboard', path: '/vendor/dashboard' },
-    { icon: 'ðŸ“¦', label: 'My Products', path: '/vendor/products' },
-    { icon: 'âž•', label: 'Add Product', path: '/vendor/add-product' },
-    { icon: 'ðŸ›’', label: 'My Orders', path: '/vendor/orders', badge: vendorData?.pending_orders || 0 },
-    { icon: 'ðŸ‘¥', label: 'Customers', path: '/vendor/customers' },
-    { icon: 'ðŸ’°', label: 'Maintenance Fee', path: '/vendor/maintenance' },
-    { icon: 'ðŸª', label: 'View My Store', path: '#', external: true },
-    { icon: 'âš™ï¸', label: 'Settings', path: '/vendor/settings' },
+    { icon: 'ðŸ“Š', label: 'Dashboard', tab: 'dashboard' },
+    { icon: 'ðŸ“¦', label: 'My Products', tab: 'products' },
+    { icon: 'âž•', label: 'Add Product', tab: 'add' },
+    { icon: 'ðŸ›’', label: 'My Orders', tab: 'orders', badge: vendorData?.pending_orders || 0 },
+    { icon: 'ðŸª', label: 'View My Store', path: storePath || '#', external: true },
   ];
 
   const handleLogout = () => {
@@ -31,7 +28,10 @@ function Sidebar({ isOpen, onClose, vendorData }) {
 
   const handleNavigation = (item) => {
     if (item.external) {
-      window.open(vendorData?.store_url || '#', '_blank');
+      window.open(item.path || '#', '_blank');
+    } else if (item.tab) {
+      onSelectTab(item.tab);
+      onClose();
     } else {
       navigate(item.path);
       onClose();
@@ -91,9 +91,13 @@ function Sidebar({ isOpen, onClose, vendorData }) {
         <nav className="space-y-1 px-4 py-6">
           {navItems.map((item) => (
             <button
-              key={item.path}
+              key={item.path || item.tab}
               onClick={() => handleNavigation(item)}
-              className="relative flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all text-white/90 hover:text-white"
+              className={`relative flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                activeTab === item.tab
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/90 hover:text-white'
+              }`}
               style={{ hover: { backgroundColor: `${theme.colors.primaryGlow}20` } }}
               onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primaryGlow}20`)}
               onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
@@ -247,7 +251,9 @@ function StatsCard({ label, value, icon }) {
 
 // â”€â”€â”€ MAIN DASHBOARD COMPONENT â”€â”€â”€
 export default function VendorDashboard() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { vendor_slug: routeVendorSlug } = useParams();
   const { brand } = platformContent;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vendorData, setVendorData] = useState(null);
@@ -258,7 +264,23 @@ export default function VendorDashboard() {
   const [maintenanceDue, setMaintenanceDue] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');  const [activeTab, setActiveTab] = useState('dashboard');
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const setTabAndUrl = (tab) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(location.search || '');
+    params.set('tab', tab);
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const tabFromQuery = params.get('tab');
+    if (tabFromQuery && ['dashboard', 'products', 'add', 'orders'].includes(tabFromQuery)) {
+      setActiveTab(tabFromQuery);
+    }
+  }, [location.search]);
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -342,8 +364,9 @@ export default function VendorDashboard() {
 
   const pendingOrders = Number(stats?.pending_orders || 0);
   const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
-  const vendorSlug = vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || 'vendor-store';
-  const storeUrl = `https://nativeglow.com/site/${vendorSlug}`;
+  const vendorSlug = routeVendorSlug || vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || 'vendor-store';
+  const storePath = `/site/${vendorSlug}`;
+  const storeUrl = `${window.location.origin}${storePath}`;
   const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name} 🌿\nBrowse and order directly here:\n${storeUrl}`;
 
   const welcomeLine2 =
@@ -382,6 +405,9 @@ export default function VendorDashboard() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         vendorData={vendorData}
+        activeTab={activeTab}
+        onSelectTab={setTabAndUrl}
+        storePath={storeUrl}
       />
 
       {/* Main Content */}
@@ -397,7 +423,7 @@ export default function VendorDashboard() {
         <div className="border-b" style={{ borderColor: `${theme.colors.muted}20`, backgroundColor: 'white' }}>
           <div className="flex gap-1 px-4 sm:px-6 lg:px-8 overflow-x-auto">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => setTabAndUrl('dashboard')}
               className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
                 activeTab === 'dashboard'
                   ? 'text-blue-600 border-blue-600'
@@ -407,7 +433,7 @@ export default function VendorDashboard() {
               📊 Dashboard
             </button>
             <button
-              onClick={() => setActiveTab('products')}
+              onClick={() => setTabAndUrl('products')}
               className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
                 activeTab === 'products'
                   ? 'text-blue-600 border-blue-600'
@@ -417,7 +443,7 @@ export default function VendorDashboard() {
               📦 My Products
             </button>
             <button
-              onClick={() => setActiveTab('add')}
+              onClick={() => setTabAndUrl('add')}
               className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
                 activeTab === 'add'
                   ? 'text-blue-600 border-blue-600'
@@ -427,7 +453,7 @@ export default function VendorDashboard() {
               ➕ Add Product
             </button>
             <button
-              onClick={() => setActiveTab('orders')}
+              onClick={() => setTabAndUrl('orders')}
               className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
                 activeTab === 'orders'
                   ? 'text-blue-600 border-blue-600'
@@ -582,21 +608,21 @@ export default function VendorDashboard() {
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => navigate('/vendor/add-product')}
+                onClick={() => setTabAndUrl('add')}
               >
                 + Add Product
               </Button>
               <Button
                 variant="secondary"
                 size="md"
-                onClick={() => navigate('/vendor/orders')}
+                onClick={() => setTabAndUrl('orders')}
               >
                 View Orders
               </Button>
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => window.open(vendorData?.store_url || '#', '_blank')}
+                onClick={() => window.open(storeUrl, '_blank')}
               >
                 View My Store
               </Button>
@@ -623,7 +649,7 @@ export default function VendorDashboard() {
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => navigate('/vendor/dashboard/products/new')}
+                  onClick={() => setTabAndUrl('add')}
                   className="mt-5"
                 >
                   + Add Product
@@ -671,7 +697,7 @@ export default function VendorDashboard() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => navigate('/vendor/products')}
+                        onClick={() => setTabAndUrl('products')}
                         className="mt-4"
                       >
                         Update Inventory
@@ -813,7 +839,7 @@ export default function VendorDashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate('/vendor/orders')}
+                    onClick={() => setTabAndUrl('orders')}
                   >
                     View All Orders â†’
                   </Button>
@@ -863,8 +889,8 @@ export default function VendorDashboard() {
             {activeTab === 'add' && (
               <div>
                 <ProductForm 
-                  onSuccess={() => setActiveTab('products')}
-                  onCancel={() => setActiveTab('products')}
+                  onSuccess={() => setTabAndUrl('products')}
+                  onCancel={() => setTabAndUrl('products')}
                 />
               </div>
             )}

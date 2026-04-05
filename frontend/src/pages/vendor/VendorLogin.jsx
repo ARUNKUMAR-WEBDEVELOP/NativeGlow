@@ -97,7 +97,7 @@ function VendorLogin() {
       }
 
       if (isApproved && vendorSlug) {
-        navigate(`/site/${vendorSlug}/vendor/dashboard/products`, {
+        navigate(`/site/${vendorSlug}/vendor/dashboard`, {
           replace: true,
           state: {
             loginSuccess: true,
@@ -105,7 +105,7 @@ function VendorLogin() {
           },
         });
       } else {
-        navigate('/vendor/dashboard/products', { replace: true });
+        navigate('/vendor/dashboard', { replace: true });
       }
     } catch (err) {
       const message = getErrorMessage(err);
