@@ -13,9 +13,9 @@ function ProductForm({ onSuccess, onCancel }) {
     price: '',
     available_quantity: 0,
     is_natural_certified: false,
-    image: null,
+    images: [], // Array of image files
   });
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewUrls, setPreviewUrls] = useState([]); // Array of preview URLs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,19 +29,19 @@ function ProductForm({ onSuccess, onCancel }) {
   }, []);
 
   useEffect(() => {
-    if (!form.image) {
-      setPreviewUrl('');
+    if (!form.images || form.images.length === 0) {
+      setPreviewUrls([]);
       return undefined;
     }
-    const objectUrl = URL.createObjectURL(form.image);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [form.image]);
+    const urls = form.images.map(img => URL.createObjectURL(img));
+    setPreviewUrls(urls);
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [form.images]);
 
   const onInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     if (type === 'file') {
-      setForm((prev) => ({ ...prev, image: files?.[0] || null }));
+      setForm((prev) => ({ ...prev, images: Array.from(files || []) }));
       return;
     }
     setForm((prev) => ({
@@ -79,8 +79,13 @@ function ProductForm({ onSuccess, onCancel }) {
       formData.append('product_type', 'skincare');
       formData.append('unit', 'pcs');
 
-      if (form.image) {
-        formData.append('image', form.image);
+      // Append all image files
+      form.images.forEach((image, index) => {
+        formData.append(`image_${index}`, image);
+      });
+      // Also append the first image as 'image' for backward compatibility
+      if (form.images.length > 0) {
+        formData.append('image', form.images[0]);
       }
 
       const res = await fetch(`${API_BASE}/vendor/products/add/`, {
@@ -111,7 +116,7 @@ function ProductForm({ onSuccess, onCancel }) {
         price: '',
         available_quantity: 0,
         is_natural_certified: false,
-        image: null,
+        images: [],
       });
 
       // Call onSuccess callback after a short delay to show the success message
@@ -213,19 +218,28 @@ function ProductForm({ onSuccess, onCancel }) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Image</label>
+            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Images (upload 1 or more)</label>
             <input
               type="file"
-              name="image"
+              name="images"
               accept="image/*"
+              multiple
               onChange={onInputChange}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             />
-            {previewUrl ? (
+            {previewUrls.length > 0 && (
               <div className="mt-3">
-                <img src={previewUrl} alt="Preview" className="h-36 w-36 rounded-lg border border-zinc-200 object-cover" />
+                <p className="text-xs text-zinc-600 mb-2">{previewUrls.length} image(s) selected</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {previewUrls.map((url, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={url} alt={`Preview ${idx + 1}`} className="h-24 w-24 rounded-lg border border-zinc-200 object-cover" />
+                      <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{idx + 1}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : null}
+            )}
           </div>
 
           <label className="flex items-start gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
