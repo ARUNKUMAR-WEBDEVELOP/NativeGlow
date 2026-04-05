@@ -35,14 +35,16 @@ function hasValidVendorSession() {
 function getVendorSlugFromSession() {
   try {
     const session = JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
+    const tokenPayload = parseJwtPayload(session?.access);
     return (
+      tokenPayload?.vendor_slug ||
       session?.vendor?.vendor_slug ||
       session?.vendor_slug ||
-      localStorage.getItem('vendor_slug') ||
+      session?.vendor?.slug ||
       ''
     );
   } catch {
-    return localStorage.getItem('vendor_slug') || '';
+    return '';
   }
 }
 
@@ -52,6 +54,7 @@ function VendorProtectedRoute({ children }) {
 
   if (!hasValidVendorSession()) {
     localStorage.removeItem('nativeglow_vendor_tokens');
+    localStorage.removeItem('vendor_slug');
     return <Navigate to="/vendor/login" state={{ from: location.pathname }} replace />;
   }
 

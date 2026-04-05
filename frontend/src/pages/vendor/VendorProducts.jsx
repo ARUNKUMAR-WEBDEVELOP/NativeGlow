@@ -23,6 +23,22 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
+function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
 function statusBadgeClasses(status) {
   if (status === 'approved') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
@@ -185,19 +201,20 @@ function VendorProducts() {
 
   const vendorSlug = useMemo(() => {
     const slugFromState = location.state?.storeUrl?.replace('/site/', '').trim();
+    const tokenPayload = parseJwtPayload(vendorSession?.access);
     const slugFromSession =
+      tokenPayload?.vendor_slug ||
       vendorSession?.vendor?.vendor_slug ||
       vendorSession?.vendor_slug ||
       vendorSession?.vendor?.slug ||
       '';
-    const slugFromStorage = localStorage.getItem('vendor_slug') || '';
 
-    const normalized = slugFromSession || slugFromStorage || slugFromState || '';
+    const normalized = slugFromSession || slugFromState || '';
     if (normalized) {
       localStorage.setItem('vendor_slug', normalized);
     }
     return normalized;
-  }, [location.state?.storeUrl, vendorSession?.vendor?.slug, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
+  }, [location.state?.storeUrl, vendorSession?.access, vendorSession?.vendor?.slug, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
 
   // DnD-kit sensors
   const sensors = useSensors(

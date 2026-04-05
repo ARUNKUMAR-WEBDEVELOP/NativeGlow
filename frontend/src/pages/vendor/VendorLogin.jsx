@@ -5,6 +5,22 @@ import NeoCard from '../../components/ui/NeoCard';
 import NeoButton from '../../components/ui/NeoButton';
 import NeoInput from '../../components/ui/NeoInput';
 
+function parseJwtPayload(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
 function getErrorMessage(err) {
   const payload = err?.payload;
   if (!payload) {
@@ -61,12 +77,15 @@ function VendorLogin() {
         password: form.password,
       });
 
+      localStorage.removeItem('vendor_slug');
       localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(tokens));
       if (tokens?.access) {
         localStorage.setItem('vendor_token', tokens.access);
       }
 
+      const tokenPayload = parseJwtPayload(tokens?.access);
       const vendorSlug =
+        tokenPayload?.vendor_slug ||
         tokens?.vendor?.vendor_slug ||
         tokens?.vendor_slug ||
         tokens?.vendor?.slug ||
