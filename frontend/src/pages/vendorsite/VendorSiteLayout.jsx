@@ -94,7 +94,7 @@ export default function VendorSiteLayout() {
       setErrorStatus(null);
 
       try {
-        const res = await fetch(`${getApiBase()}/site/${vendorSlug}/`);
+        const res = await fetch(`${getApiBase()}/products/store/${vendorSlug}/`);
 
         if (!res.ok) {
           if (!cancelled) {
@@ -114,9 +114,9 @@ export default function VendorSiteLayout() {
           setAllProducts(Array.isArray(data?.all_products) ? data.all_products : []);
           setCategories(Array.isArray(data?.categories) ? data.categories : []);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          setErrorStatus(500);
+          setErrorStatus(err?.status || 500);
           setVendor(null);
           setFeaturedProducts([]);
           setAllProducts([]);

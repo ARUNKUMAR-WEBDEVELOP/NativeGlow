@@ -8,7 +8,9 @@ import ProductForm from '../../components/vendor/ProductForm';
 import ProductList from '../../components/vendor/ProductList';
 import OrderList from '../../components/vendor/OrderList';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -524,7 +526,8 @@ export default function VendorDashboard() {
   const vendorSlug = resolvedVendorSlug;
   const hasStoreSlug = Boolean(vendorSlug);
   const storePath = hasStoreSlug ? `/site/${vendorSlug}` : '';
-  const storeUrl = hasStoreSlug ? `${window.location.origin}/#${storePath}` : '';
+  const appBasePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  const storeUrl = hasStoreSlug ? `${window.location.origin}${appBasePath}/#${storePath}` : '';
   const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name}.\nBrowse and order directly here:\n${storeUrl}`;
 
   const welcomeLine2 =
@@ -535,6 +538,11 @@ export default function VendorDashboard() {
       : 'Share your store link to start receiving orders today';
 
   const handleCopyStoreLink = async () => {
+    if (!hasStoreSlug || !storeUrl) {
+      setToastMessage('Store link not ready yet. Please login again.');
+      window.setTimeout(() => setToastMessage(''), 2400);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(storeUrl);
       setToastMessage('Link copied! Share it on WhatsApp and Instagram');
@@ -555,13 +563,27 @@ export default function VendorDashboard() {
     window.open(waUrl, '_blank');
   };
 
-  const handleOpenStore = () => {
+  const handleOpenStore = async () => {
     if (!hasStoreSlug) {
       setToastMessage('Store link not ready yet. Please login again.');
       window.setTimeout(() => setToastMessage(''), 2400);
       return;
     }
-    window.location.assign(storeUrl);
+
+    try {
+      const checkRes = await fetch(`${API_BASE}/site/${vendorSlug}/`);
+      if (!checkRes.ok) {
+        setToastMessage(`Store is not available yet (status ${checkRes.status}). Please complete vendor setup.`);
+        window.setTimeout(() => setToastMessage(''), 3000);
+        return;
+      }
+    } catch {
+      setToastMessage('Could not connect to store service. Please try again.');
+      window.setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+
+    navigate(storePath, { replace: false });
   };
 
   return (

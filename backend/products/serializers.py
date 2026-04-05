@@ -134,6 +134,8 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     Serializer for vendor adding new products.
     POST /api/vendor/products/add/
     """
+    sku = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Product
         fields = (
@@ -146,6 +148,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create product with vendor from request and auto-approve for active vendors."""
         from django.utils.text import slugify
+        from uuid import uuid4
         
         vendor = self.context['request'].vendor  # Vendor extracted from JWT
         
@@ -161,6 +164,12 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
             counter += 1
         
         validated_data['slug'] = slug
+        if not validated_data.get('sku'):
+            sku_base = slug.upper().replace('-', '')[:16] or 'PROD'
+            sku = f"{sku_base}-{uuid4().hex[:6].upper()}"
+            while Product.objects.filter(sku=sku).exists():
+                sku = f"{sku_base}-{uuid4().hex[:6].upper()}"
+            validated_data['sku'] = sku
         validated_data['vendor'] = vendor
         validated_data['status'] = 'approved'
         validated_data['admin_rejection_reason'] = ''

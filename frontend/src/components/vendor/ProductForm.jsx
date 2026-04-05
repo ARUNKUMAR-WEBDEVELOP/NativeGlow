@@ -60,8 +60,8 @@ function ProductForm({ onSuccess, onCancel }) {
       return;
     }
 
-    if (!Array.isArray(form.images) || form.images.length < 2) {
-      setError('Please upload at least 2 product images.');
+    if (!Array.isArray(form.images) || form.images.length < 1) {
+      setError('Please upload at least 1 product image.');
       return;
     }
 
@@ -258,7 +258,7 @@ function ProductForm({ onSuccess, onCancel }) {
             <span>This product is 100% natural and safe</span>
           </label>
 
-          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex flex-col items-stretch gap-2 rounded-xl border border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex flex-col items-stretch gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-zinc-500">After saving, your product appears in My Products.</p>
             <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             <button
@@ -272,7 +272,7 @@ function ProductForm({ onSuccess, onCancel }) {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-sage px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <>
