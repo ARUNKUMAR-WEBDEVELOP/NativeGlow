@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Category, Product, ProductImage, ProductVariant
+from vendors.models import Vendor
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -339,7 +340,7 @@ class PublicVendorSerializer(serializers.ModelSerializer):
     member_since = serializers.SerializerMethodField()
 
     class Meta:
-        model = 'vendors.Vendor'
+        model = Vendor
         fields = (
             'business_name', 'city', 'whatsapp_number',
             'total_products', 'member_since',
