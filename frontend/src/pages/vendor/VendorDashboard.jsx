@@ -4,6 +4,9 @@ import { theme } from '../../styles/designSystem';
 import Button from '../../components/common/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import platformContent from '../../content/platformContent';
+import ProductForm from '../../components/vendor/ProductForm';
+import ProductList from '../../components/vendor/ProductList';
+import OrderList from '../../components/vendor/OrderList';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
@@ -255,8 +258,7 @@ export default function VendorDashboard() {
   const [maintenanceDue, setMaintenanceDue] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
+  const [error, setError] = useState('');  const [activeTab, setActiveTab] = useState('dashboard');
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -386,14 +388,63 @@ export default function VendorDashboard() {
       <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">
         {/* Header */}
         <Header
-          pageTitle="Dashboard"
+          pageTitle={activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'products' ? 'My Products' : activeTab === 'add' ? 'Add Product' : 'My Orders'}
           vendorData={vendorData}
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         />
 
+        {/* Tabs Navigation */}
+        <div className="border-b" style={{ borderColor: `${theme.colors.muted}20`, backgroundColor: 'white' }}>
+          <div className="flex gap-1 px-4 sm:px-6 lg:px-8 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
+                activeTab === 'dashboard'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-zinc-600 border-transparent hover:text-zinc-900'
+              }`}
+            >
+              📊 Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
+                activeTab === 'products'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-zinc-600 border-transparent hover:text-zinc-900'
+              }`}
+            >
+              📦 My Products
+            </button>
+            <button
+              onClick={() => setActiveTab('add')}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
+                activeTab === 'add'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-zinc-600 border-transparent hover:text-zinc-900'
+              }`}
+            >
+              ➕ Add Product
+            </button>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
+                activeTab === 'orders'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-zinc-600 border-transparent hover:text-zinc-900'
+              }`}
+            >
+              🛒 Orders
+            </button>
+          </div>
+        </div>
+
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+            {/* Dashboard Tab */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-8">
             {/* Welcome Banner */}
             <div
               className="rounded-2xl border p-6 sm:p-8"
@@ -794,6 +845,36 @@ export default function VendorDashboard() {
                 >
                   Share My Store
                 </Button>
+              </div>
+            )}
+            </div>
+            )}
+
+            {/* Products Tab */}
+            {activeTab === 'products' && (
+              <div>
+                <h2 className="text-2xl font-semibold text-zinc-900 mb-4">My Products</h2>
+                <p className="text-sm text-zinc-600 mb-6">Manage products, pricing, stock, and storefront visibility from one place.</p>
+                <ProductList />
+              </div>
+            )}
+
+            {/* Add Product Tab */}
+            {activeTab === 'add' && (
+              <div>
+                <ProductForm 
+                  onSuccess={() => setActiveTab('products')}
+                  onCancel={() => setActiveTab('products')}
+                />
+              </div>
+            )}
+
+            {/* Orders Tab */}
+            {activeTab === 'orders' && (
+              <div>
+                <h2 className="text-2xl font-semibold text-zinc-900 mb-4">My Orders</h2>
+                <p className="text-sm text-zinc-600 mb-6">Manage order status and keep buyers updated.</p>
+                <OrderList />
               </div>
             )}
           </div>
