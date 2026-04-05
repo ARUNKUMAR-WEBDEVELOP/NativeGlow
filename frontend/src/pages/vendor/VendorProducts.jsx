@@ -183,6 +183,22 @@ function VendorProducts() {
     }
   }, []);
 
+  const vendorSlug = useMemo(() => {
+    const slugFromState = location.state?.storeUrl?.replace('/site/', '').trim();
+    const slugFromSession =
+      vendorSession?.vendor?.vendor_slug ||
+      vendorSession?.vendor_slug ||
+      vendorSession?.vendor?.slug ||
+      '';
+    const slugFromStorage = localStorage.getItem('vendor_slug') || '';
+
+    const normalized = slugFromSession || slugFromStorage || slugFromState || '';
+    if (normalized) {
+      localStorage.setItem('vendor_slug', normalized);
+    }
+    return normalized;
+  }, [location.state?.storeUrl, vendorSession?.vendor?.slug, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
+
   // DnD-kit sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -208,16 +224,15 @@ function VendorProducts() {
     if (stateStoreUrl) {
       return stateStoreUrl;
     }
-    const slug = vendorSession?.vendor?.vendor_slug;
-    return slug ? `/site/${slug}` : null;
-  }, [location.state, vendorSession?.vendor?.vendor_slug]);
+    return vendorSlug ? `/site/${vendorSlug}` : null;
+  }, [location.state?.storeUrl, vendorSlug]);
 
   const showLoginSuccessBanner = Boolean(location.state?.loginSuccess);
-  const ordersPath = vendorSession?.vendor?.vendor_slug
-    ? `/site/${vendorSession.vendor.vendor_slug}/vendor/dashboard/orders`
+  const ordersPath = vendorSlug
+    ? `/site/${vendorSlug}/vendor/dashboard/orders`
     : '/vendor/dashboard/orders';
-  const addProductPath = vendorSession?.vendor?.vendor_slug
-    ? `/site/${vendorSession.vendor.vendor_slug}/vendor/dashboard/products/new`
+  const addProductPath = vendorSlug
+    ? `/site/${vendorSlug}/vendor/dashboard/products/new`
     : '/vendor/dashboard/products/new';
 
   const authHeaders = useMemo(

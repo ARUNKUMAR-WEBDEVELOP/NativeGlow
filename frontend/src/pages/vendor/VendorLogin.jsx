@@ -66,7 +66,11 @@ function VendorLogin() {
         localStorage.setItem('vendor_token', tokens.access);
       }
 
-      const vendorSlug = tokens?.vendor?.vendor_slug;
+      const vendorSlug =
+        tokens?.vendor?.vendor_slug ||
+        tokens?.vendor_slug ||
+        tokens?.vendor?.slug ||
+        '';
       const isApproved = Boolean(tokens?.vendor?.is_approved);
 
       if (vendorSlug) {
