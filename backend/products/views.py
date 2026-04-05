@@ -664,8 +664,7 @@ class PublicVendorStoreView(generics.RetrieveAPIView):
             vendor=vendor,
             status='approved',
             is_active=True,
-            is_visible=True,
-            available_quantity__gt=0
+            is_visible=True
         ).order_by('-created_at')
         
         products_serializer = PublicProductSerializer(products, many=True, context={'request': request})
@@ -729,7 +728,6 @@ class StoreSearchView(APIView):
             status='approved',
             is_active=True,
             is_visible=True,
-            available_quantity__gt=0,
             vendor__is_approved=True,
             vendor__is_active=True
         )
@@ -776,7 +774,6 @@ class StoreCategoriesView(APIView):
                     products__status='approved',
                     products__is_active=True,
                     products__is_visible=True,
-                    products__available_quantity__gt=0,
                     products__vendor__is_approved=True,
                     products__vendor__is_active=True
                 )
@@ -811,7 +808,6 @@ class StoreFeaturedView(APIView):
             status='approved',
             is_active=True,
             is_visible=True,
-            available_quantity__gt=0,
             vendor__is_approved=True,
             vendor__is_active=True
         ).annotate(

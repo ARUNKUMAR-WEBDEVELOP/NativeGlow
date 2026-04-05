@@ -420,6 +420,8 @@ class SiteProductSerializer(serializers.ModelSerializer):
             'slug',
             'description',
             'price',
+            'available_quantity',
+            'is_natural_certified',
             'discount_percent',
             'discounted_price',
             'category',
