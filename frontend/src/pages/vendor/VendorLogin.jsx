@@ -48,6 +48,28 @@ function getErrorMessage(err) {
   return err?.message || 'Login failed. Please try again.';
 }
 
+function resolveVendorSlug(tokens, tokenPayload) {
+  return (
+    tokenPayload?.vendor_slug ||
+    tokenPayload?.slug ||
+    tokenPayload?.vendor?.vendor_slug ||
+    tokenPayload?.vendor?.slug ||
+    tokens?.vendor?.vendor_slug ||
+    tokens?.vendor_slug ||
+    tokens?.vendor?.slug ||
+    ''
+  );
+}
+
+function resolveVendorApproval(tokens, tokenPayload) {
+  return Boolean(
+    tokens?.vendor?.is_approved ??
+      tokens?.is_approved ??
+      tokenPayload?.is_approved ??
+      tokenPayload?.vendor?.is_approved
+  );
+}
+
 function VendorLogin() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -85,13 +107,8 @@ function VendorLogin() {
       }
 
       const tokenPayload = parseJwtPayload(tokens?.access);
-      const vendorSlug =
-        tokenPayload?.vendor_slug ||
-        tokens?.vendor?.vendor_slug ||
-        tokens?.vendor_slug ||
-        tokens?.vendor?.slug ||
-        '';
-      const isApproved = Boolean(tokens?.vendor?.is_approved);
+      const vendorSlug = resolveVendorSlug(tokens, tokenPayload);
+      const isApproved = resolveVendorApproval(tokens, tokenPayload);
 
       if (vendorSlug) {
         localStorage.setItem('vendor_slug', vendorSlug);
@@ -99,12 +116,13 @@ function VendorLogin() {
         localStorage.removeItem('vendor_slug');
       }
 
-      if (isApproved && vendorSlug) {
+      if (vendorSlug) {
         navigate(`/site/${vendorSlug}/vendor/dashboard`, {
           replace: true,
           state: {
             loginSuccess: true,
-            storeUrl: vendorSlug ? `/site/${vendorSlug}` : null,
+            storeUrl: `/#/site/${vendorSlug}`,
+            isApproved,
           },
         });
       } else {

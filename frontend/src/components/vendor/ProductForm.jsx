@@ -143,7 +143,7 @@ function ProductForm({ onSuccess, onCancel }) {
         <h3 className="text-xl font-semibold text-zinc-900">Add New Product</h3>
         <p className="mt-1 text-sm text-zinc-600">Create a product listing and it will be live immediately in your store.</p>
 
-        <form onSubmit={onSubmit} className="mt-4 space-y-4">
+        <form onSubmit={onSubmit} className="mt-4 space-y-4 pb-20">
           <div>
             <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Name</label>
             <input
@@ -258,9 +258,9 @@ function ProductForm({ onSuccess, onCancel }) {
             <span>This product is 100% natural and safe</span>
           </label>
 
-          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur">
+          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex flex-col items-stretch gap-2 rounded-xl border border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-zinc-500">After saving, your product appears in My Products.</p>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             <button
               type="button"
               onClick={onCancel}

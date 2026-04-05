@@ -54,6 +54,24 @@ function buildLast7DayChart(orders) {
   return days.map(({ day, orders }) => ({ day, orders }));
 }
 
+function resolveVendorSlug({ routeVendorSlug, vendorData, tokenPayload, vendorSession, storedVendorSlug }) {
+  return (
+    routeVendorSlug ||
+    vendorData?.vendor_slug ||
+    vendorData?.slug ||
+    vendorData?.username ||
+    tokenPayload?.vendor_slug ||
+    tokenPayload?.slug ||
+    tokenPayload?.vendor?.vendor_slug ||
+    tokenPayload?.vendor?.slug ||
+    vendorSession?.vendor?.vendor_slug ||
+    vendorSession?.vendor_slug ||
+    vendorSession?.vendor?.slug ||
+    storedVendorSlug ||
+    ''
+  );
+}
+
 // Sidebar component
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore }) {
   const navigate = useNavigate();
@@ -329,6 +347,13 @@ export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
+  const resolvedVendorSlug = resolveVendorSlug({
+    routeVendorSlug,
+    vendorData,
+    tokenPayload,
+    vendorSession,
+    storedVendorSlug,
+  });
 
   const setTabAndUrl = (tab) => {
     setActiveTab(tab);
@@ -347,19 +372,19 @@ export default function VendorDashboard() {
 
   // Vendor slug validation - ensure vendor can only access their own dashboard
   useEffect(() => {
-    if (!routeVendorSlug || !vendorData?.vendor_slug) {
+    if (!routeVendorSlug || !resolvedVendorSlug) {
       return;
     }
     
     // If the URL has a vendor_slug but it doesn't match the logged-in vendor's slug, redirect
-    if (routeVendorSlug && vendorData?.vendor_slug && routeVendorSlug !== vendorData?.vendor_slug) {
+    if (routeVendorSlug !== resolvedVendorSlug) {
       // Redirect to the correct vendor's dashboard
-      const correctPath = `/site/${vendorData.vendor_slug}/vendor/dashboard`;
+      const correctPath = `/site/${resolvedVendorSlug}/vendor/dashboard`;
       const params = new URLSearchParams(location.search || '');
       const newUrl = `${correctPath}${params.toString() ? `?${params.toString()}` : ''}`;
       navigate(newUrl, { replace: true });
     }
-  }, [routeVendorSlug, vendorData?.vendor_slug, navigate, location.search]);
+  }, [routeVendorSlug, resolvedVendorSlug, navigate, location.search]);
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -496,7 +521,7 @@ export default function VendorDashboard() {
 
   const pendingOrders = Number(stats?.pending_orders || 0);
   const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
-  const vendorSlug = routeVendorSlug || vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || storedVendorSlug || '';
+  const vendorSlug = resolvedVendorSlug;
   const hasStoreSlug = Boolean(vendorSlug);
   const storePath = hasStoreSlug ? `/site/${vendorSlug}` : '';
   const storeUrl = hasStoreSlug ? `${window.location.origin}/#${storePath}` : '';
