@@ -5,7 +5,7 @@ import ProductCard3D from '../../components/common/ProductCard3D';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
 
-// â”€â”€â”€ NAVBAR COMPONENT â”€â”€â”€
+// ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ NAVBAR COMPONENT ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬
 function Navbar({ vendorData, scrolled, onMenuToggle }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBuyerLoggedIn, setIsBuyerLoggedIn] = useState(false);
@@ -32,7 +32,7 @@ function Navbar({ vendorData, scrolled, onMenuToggle }) {
               className="h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold"
               style={{ backgroundColor: theme.colors.primaryGlow }}
             >
-              ðŸŒ¿
+              ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿
             </div>
             <div>
               <h2
@@ -83,7 +83,7 @@ function Navbar({ vendorData, scrolled, onMenuToggle }) {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden text-2xl"
             >
-              â˜°
+              ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°
             </button>
           </div>
         </div>
@@ -110,7 +110,7 @@ function Navbar({ vendorData, scrolled, onMenuToggle }) {
   );
 }
 
-// â”€â”€â”€ FADE-UP ANIMATION DIRECTIVE â”€â”€â”€
+// ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ FADE-UP ANIMATION DIRECTIVE ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬
 function FadeUpElement({ children }) {
   const ref = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -142,7 +142,7 @@ function FadeUpElement({ children }) {
   );
 }
 
-// â”€â”€â”€ MAIN VENDOR SITE HOME â”€â”€â”€
+// ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ MAIN VENDOR SITE HOME ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬
 export default function VendorSiteHome() {
   const { vendor_slug } = useParams();
   const [vendorData, setVendorData] = useState(null);
@@ -151,35 +151,36 @@ export default function VendorSiteHome() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const productsRef = useRef(null);
 
   // Fetch vendor data and products
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const vendorRes = await fetch(`${API_BASE}/vendor/site/${vendor_slug}/`);
-        if (!vendorRes.ok) throw new Error('Vendor not found');
-        const vendor = await vendorRes.json();
-        setVendorData(vendor);
+        const res = await fetch(`${API_BASE}/site/${vendor_slug}/`);
+        if (!res.ok) throw new Error('Vendor not found');
+        const data = await res.json();
+        setVendorData(data.vendor);
+        setError(null);
 
         // Apply theme to document root
-        if (vendor.site_theme) {
+        if (data.vendor?.site_theme) {
           const root = document.documentElement;
-          const themeColors = vendor.site_theme;
+          const themeColors = data.vendor.site_theme;
           Object.entries(themeColors).forEach(([key, value]) => {
             root.style.setProperty(`--${key}`, value);
           });
         }
 
-        // Fetch products
-        const productsRes = await fetch(`${API_BASE}/vendor/${vendor.id}/products/`);
-        const products = await productsRes.json();
-        setAllProducts(Array.isArray(products) ? products : []);
+        const allProds = Array.isArray(data.all_products) ? data.all_products : [];
+        const featuredProds = Array.isArray(data.featured_products) ? data.featured_products : [];
+        setAllProducts(allProds);
+        setFeaturedProducts(featuredProds.length > 0 ? featuredProds : allProds.slice(0, 8));
 
-        // Featured products (first 8)
-        setFeaturedProducts(Array.isArray(products) ? products.slice(0, 8) : []);
       } catch (err) {
-        console.error('Failed to load vendor data:', err);
+        console.error('Failed to load store:', err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -200,14 +201,14 @@ export default function VendorSiteHome() {
 
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(allProducts.map(p => p.category).filter(Boolean)));
+    const cats = Array.from(new Set(allProducts.map(p => p.category_type).filter(Boolean)));
     return ['All', ...cats];
   }, [allProducts]);
 
   // Filter products by category
   const filteredProducts = useMemo(() => {
     if (activeCategory === 'All') return allProducts;
-    return allProducts.filter(p => p.category === activeCategory);
+    return allProducts.filter(p => p.category_type === activeCategory);
   }, [allProducts, activeCategory]);
 
   if (loading) {
@@ -250,7 +251,7 @@ export default function VendorSiteHome() {
 
             {vendorData?.is_natural_certified && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                <span>âœ…</span>
+                <span>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
                 <span className="text-sm font-semibold">Verified Natural Seller</span>
               </div>
             )}
@@ -267,7 +268,7 @@ export default function VendorSiteHome() {
 
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <span className="text-2xl">â†“</span>
+          <span className="text-2xl">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“</span>
         </div>
       </section>
 
@@ -403,7 +404,7 @@ export default function VendorSiteHome() {
                 className="px-6 py-3 rounded-lg font-semibold text-white"
                 style={{ backgroundColor: theme.colors.primary }}
               >
-                Read Our Full Story â†’
+                Read Our Full Story ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢
               </button>
             </div>
           </div>
@@ -423,9 +424,9 @@ export default function VendorSiteHome() {
 
             <div className="grid gap-8 md:grid-cols-3">
               {[
-                { step: '1', icon: 'ðŸ›ï¸', title: 'Browse Products', desc: 'Explore our collection of natural products' },
-                { step: '2', icon: 'ðŸ’³', title: 'Pay via UPI', desc: 'Secure payment through WhatsApp or UPI' },
-                { step: '3', icon: 'ðŸ“¦', title: 'Get Delivered', desc: 'Receive your order at your doorstep' },
+                { step: '1', icon: 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â', title: 'Browse Products', desc: 'Explore our collection of natural products' },
+                { step: '2', icon: 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³', title: 'Pay via UPI', desc: 'Secure payment through WhatsApp or UPI' },
+                { step: '3', icon: 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦', title: 'Get Delivered', desc: 'Receive your order at your doorstep' },
               ].map(item => (
                 <div
                   key={item.step}
@@ -461,7 +462,7 @@ export default function VendorSiteHome() {
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: theme.colors.primaryGlow }}>
-                    ðŸŒ¿
+                    ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿
                   </div>
                   <span className="font-bold">{vendorData?.business_name}</span>
                 </div>
@@ -484,12 +485,12 @@ export default function VendorSiteHome() {
                 <div className="flex gap-3">
                   {vendorData?.instagram_url && (
                     <a href={vendorData.instagram_url} target="_blank" rel="noreferrer" className="text-lg hover:opacity-80">
-                      ðŸ“¸
+                      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸
                     </a>
                   )}
                   {vendorData?.youtube_url && (
                     <a href={vendorData.youtube_url} target="_blank" rel="noreferrer" className="text-lg hover:opacity-80">
-                      â–¶ï¸
+                      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
                     </a>
                   )}
                 </div>
@@ -498,7 +499,7 @@ export default function VendorSiteHome() {
 
             {/* Bottom */}
             <div className="border-t border-white/20 pt-6 text-center text-sm opacity-60">
-              <p>Powered by NativeGlow ðŸŒ¿</p>
+              <p>Powered by NativeGlow ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿</p>
             </div>
           </div>
         </FadeUpElement>
@@ -518,7 +519,7 @@ export default function VendorSiteHome() {
             boxShadow: `0 0 20px ${theme.colors.primaryGlow}40`,
           }}
         >
-          ðŸ’¬
+          ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬
         </a>
       )}
     </div>
