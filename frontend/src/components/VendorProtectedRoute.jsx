@@ -10,7 +10,8 @@ function parseJwtPayload(token) {
   }
   try {
     const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
@@ -41,10 +42,11 @@ function getVendorSlugFromSession() {
       session?.vendor?.vendor_slug ||
       session?.vendor_slug ||
       session?.vendor?.slug ||
+      localStorage.getItem('vendor_slug') ||
       ''
     );
   } catch {
-    return '';
+    return localStorage.getItem('vendor_slug') || '';
   }
 }
 

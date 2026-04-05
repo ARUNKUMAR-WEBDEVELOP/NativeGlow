@@ -258,7 +258,9 @@ function ProductForm({ onSuccess, onCancel }) {
             <span>This product is 100% natural and safe</span>
           </label>
 
-          <div className="flex items-center gap-2">
+          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur">
+            <p className="text-xs text-zinc-500">After saving, your product appears in My Products.</p>
+            <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onCancel}
@@ -278,11 +280,11 @@ function ProductForm({ onSuccess, onCancel }) {
                   Saving Product...
                 </>
               ) : (
-                'Save Product'
+                'Save and Publish'
               )}
             </button>
+            </div>
           </div>
-          <p className="text-xs text-zinc-500">After saving, you will be redirected to My Products.</p>
         </form>
       </div>
 

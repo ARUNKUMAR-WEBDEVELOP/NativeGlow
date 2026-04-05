@@ -20,7 +20,8 @@ function parseJwtPayload(token) {
   }
   try {
     const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
@@ -54,14 +55,14 @@ function buildLast7DayChart(orders) {
 }
 
 // Sidebar component
-function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePath }) {
+function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore }) {
   const navigate = useNavigate();
   const navItems = [
     { label: 'Dashboard', tab: 'dashboard' },
     { label: 'My Products', tab: 'products' },
     { label: 'Add Product', tab: 'add' },
     { label: 'My Orders', tab: 'orders', badge: vendorData?.pending_orders || 0 },
-    { label: 'View My Store', path: storePath || '#', external: true },
+    { label: 'View My Store', path: '#', external: true },
   ];
 
   const handleLogout = () => {
@@ -71,7 +72,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
 
   const handleNavigation = (item) => {
     if (item.external) {
-      window.location.assign(item.path || '#');
+      onOpenStore();
     } else if (item.tab) {
       onSelectTab(item.tab);
       onClose();
@@ -327,6 +328,8 @@ export default function VendorDashboard() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
+
   const setTabAndUrl = (tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(location.search || '');
@@ -493,9 +496,10 @@ export default function VendorDashboard() {
 
   const pendingOrders = Number(stats?.pending_orders || 0);
   const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
-  const vendorSlug = routeVendorSlug || vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || 'vendor-store';
-  const storePath = `/site/${vendorSlug}`;
-  const storeUrl = `${window.location.origin}/#${storePath}`;
+  const vendorSlug = routeVendorSlug || vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || storedVendorSlug || '';
+  const hasStoreSlug = Boolean(vendorSlug);
+  const storePath = hasStoreSlug ? `/site/${vendorSlug}` : '';
+  const storeUrl = hasStoreSlug ? `${window.location.origin}/#${storePath}` : '';
   const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name}.\nBrowse and order directly here:\n${storeUrl}`;
 
   const welcomeLine2 =
@@ -517,8 +521,22 @@ export default function VendorDashboard() {
   };
 
   const handleShareOnWhatsApp = () => {
+    if (!hasStoreSlug) {
+      setToastMessage('Store link not ready yet. Please login again.');
+      window.setTimeout(() => setToastMessage(''), 2400);
+      return;
+    }
     const waUrl = `https://wa.me/?text=${encodeURIComponent(whatsappShareMessage)}`;
     window.open(waUrl, '_blank');
+  };
+
+  const handleOpenStore = () => {
+    if (!hasStoreSlug) {
+      setToastMessage('Store link not ready yet. Please login again.');
+      window.setTimeout(() => setToastMessage(''), 2400);
+      return;
+    }
+    window.location.assign(storeUrl);
   };
 
   return (
@@ -536,7 +554,7 @@ export default function VendorDashboard() {
         vendorData={vendorData}
         activeTab={activeTab}
         onSelectTab={setTabAndUrl}
-        storePath={storeUrl}
+        onOpenStore={handleOpenStore}
       />
 
       {/* Main Content */}
@@ -653,7 +671,7 @@ export default function VendorDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.location.assign(storeUrl)}
+                  onClick={handleOpenStore}
                   className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
                 >
                   View My Store
@@ -747,7 +765,7 @@ export default function VendorDashboard() {
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => window.location.assign(storeUrl)}
+                onClick={handleOpenStore}
               >
                 View My Store
               </Button>

@@ -15,7 +15,8 @@ function parseJwtPayload(token) {
   }
   try {
     const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
   } catch {
     return null;
   }
@@ -94,6 +95,8 @@ function VendorLogin() {
 
       if (vendorSlug) {
         localStorage.setItem('vendor_slug', vendorSlug);
+      } else {
+        localStorage.removeItem('vendor_slug');
       }
 
       if (isApproved && vendorSlug) {
