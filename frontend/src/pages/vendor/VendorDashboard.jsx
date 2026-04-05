@@ -53,7 +53,7 @@ function buildLast7DayChart(orders) {
   return days.map(({ day, orders }) => ({ day, orders }));
 }
 
-// â”€â”€â”€ SIDEBAR COMPONENT â”€â”€â”€
+// Sidebar component
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePath }) {
   const navigate = useNavigate();
   const navItems = [
@@ -71,7 +71,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
 
   const handleNavigation = (item) => {
     if (item.external) {
-      window.open(item.path || '#', '_blank');
+      window.location.assign(item.path || '#');
     } else if (item.tab) {
       onSelectTab(item.tab);
       onClose();
@@ -105,7 +105,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
           onClick={onClose}
           className="absolute right-4 top-4 text-2xl text-white lg:hidden"
         >
-          âœ•
+          x
         </button>
 
         {/* Logo & Business Name */}
@@ -114,7 +114,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
             className="flex h-16 w-16 items-center justify-center rounded-xl text-2xl"
             style={{ backgroundColor: theme.colors.primaryGlow }}
           >
-            ðŸŒ¿
+            NG
           </div>
           <div>
             <h2 className="font-semibold text-white" style={{ fontFamily: theme.fonts.heading }}>
@@ -178,7 +178,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, storePat
   );
 }
 
-// â”€â”€â”€ HEADER COMPONENT â”€â”€â”€
+// Header component
 function Header({ pageTitle, vendorData, onMenuToggle }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -211,8 +211,9 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
             style={{ backgroundColor: `${theme.colors.muted}10` }}
             onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.muted}20`)}
             onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.muted}10`)}
+            aria-label="Notifications"
           >
-            ðŸ””
+            N
             <span
               className="absolute top-1 right-1 h-2 w-2 rounded-full"
               style={{ backgroundColor: theme.colors.danger }}
@@ -260,7 +261,7 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
   );
 }
 
-// â”€â”€â”€ STATS CARD COMPONENT â”€â”€â”€
+// Stats card component
 function StatsCard({ label, value }) {
   return (
     <div
@@ -288,7 +289,7 @@ function StatsCard({ label, value }) {
   );
 }
 
-// â”€â”€â”€ MAIN DASHBOARD COMPONENT â”€â”€â”€
+// Main dashboard component
 export default function VendorDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -494,8 +495,8 @@ export default function VendorDashboard() {
   const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
   const vendorSlug = routeVendorSlug || vendorData?.vendor_slug || vendorData?.slug || vendorData?.username || 'vendor-store';
   const storePath = `/site/${vendorSlug}`;
-  const storeUrl = `${window.location.origin}${storePath}`;
-  const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name} 🌿\nBrowse and order directly here:\n${storeUrl}`;
+  const storeUrl = `${window.location.origin}/#${storePath}`;
+  const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name}.\nBrowse and order directly here:\n${storeUrl}`;
 
   const welcomeLine2 =
     pendingOrders > 0
@@ -652,7 +653,7 @@ export default function VendorDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.open(storeUrl, '_blank')}
+                  onClick={() => window.location.assign(storeUrl)}
                   className="rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
                 >
                   View My Store
@@ -665,22 +666,18 @@ export default function VendorDashboard() {
               <StatsCard
                 label="Total Products"
                 value={stats?.total_products || 0}
-                icon="ðŸ“¦"
               />
               <StatsCard
                 label="This Month Orders"
                 value={stats?.orders_this_month || 0}
-                icon="ðŸ›’"
               />
               <StatsCard
                 label="Pending Orders"
                 value={stats?.pending_orders || 0}
-                icon="â³"
               />
               <StatsCard
                 label="Delivered Orders"
                 value={stats?.delivered_orders || 0}
-                icon="âœ“"
               />
             </div>
 
@@ -750,7 +747,7 @@ export default function VendorDashboard() {
               <Button
                 variant="ghost"
                 size="md"
-                onClick={() => window.open(storeUrl, '_blank')}
+                onClick={() => window.location.assign(storeUrl)}
               >
                 View My Store
               </Button>
@@ -797,7 +794,7 @@ export default function VendorDashboard() {
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl">âš ï¸</span>
+                    <span className="text-2xl">!</span>
                     <div className="flex-1">
                       <h4
                         className="font-bold"
@@ -846,7 +843,7 @@ export default function VendorDashboard() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
-                      <span className="text-2xl">ðŸ’³</span>
+                      <span className="text-2xl">$</span>
                       <div>
                         <h4
                           className="font-bold"
@@ -932,7 +929,7 @@ export default function VendorDashboard() {
                             {order.buyer_name || 'Unknown'}
                           </td>
                           <td className="px-6 py-3 font-semibold" style={{ color: theme.colors.primary }}>
-                            â‚¹{order.total_amount || 0}
+                            Rs. {order.total_amount || 0}
                           </td>
                           <td className="px-6 py-3">
                             <span
@@ -952,9 +949,6 @@ export default function VendorDashboard() {
                                     : theme.colors.info,
                               }}
                             >
-                              {order.status === 'delivered' && 'âœ“'}
-                              {order.status === 'pending' && 'â³'}
-                              {order.status === 'cancelled' && 'âœ•'}
                               {order.status?.replace('_', ' ').charAt(0).toUpperCase() + order.status?.slice(1) || 'Pending'}
                             </span>
                           </td>
@@ -969,7 +963,7 @@ export default function VendorDashboard() {
                     size="sm"
                     onClick={() => setTabAndUrl('orders')}
                   >
-                    View All Orders â†’
+                    View All Orders
                   </Button>
                 </div>
               </div>
@@ -984,7 +978,6 @@ export default function VendorDashboard() {
                   backgroundColor: `${theme.colors.muted}05`,
                 }}
               >
-                <p className="text-3xl mb-2">ðŸ“­</p>
                 <p className="font-semibold" style={{ color: theme.colors.charcoal }}>
                   No orders yet
                 </p>

@@ -60,6 +60,11 @@ function ProductForm({ onSuccess, onCancel }) {
       return;
     }
 
+    if (!Array.isArray(form.images) || form.images.length < 2) {
+      setError('Please upload at least 2 product images.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -265,18 +270,19 @@ function ProductForm({ onSuccess, onCancel }) {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-sage px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Submitting...
+                  Saving Product...
                 </>
               ) : (
-                'Submit Product'
+                'Save Product'
               )}
             </button>
           </div>
+          <p className="text-xs text-zinc-500">After saving, you will be redirected to My Products.</p>
         </form>
       </div>
 
