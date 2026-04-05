@@ -49,6 +49,10 @@ function statusBadgeClasses(status) {
   return 'border-amber-200 bg-amber-50 text-amber-700';
 }
 
+function getDiscountPercent(product) {
+  return Number(product?.discount_percent ?? product?.discount_percentage ?? 0);
+}
+
 // Sortable row component
 function SortableProductRow({
   product,
@@ -100,9 +104,9 @@ function SortableProductRow({
       </td>
       <td className="px-3 py-3">INR {product.price}</td>
       <td className="px-3 py-3">
-        {(product.discount_percentage || 0) > 0 ? (
+        {getDiscountPercent(product) > 0 ? (
           <span className="rounded-lg bg-orange-100 px-2 py-1 text-xs font-bold text-orange-700">
-            {product.discount_percentage}% OFF
+            {getDiscountPercent(product)}% OFF
           </span>
         ) : (
           <span className="text-xs text-zinc-500">No discount</span>
@@ -166,7 +170,7 @@ function SortableProductRow({
             onClick={() => setDiscountModalProduct(product)}
             className="rounded-lg border border-orange-300 px-2 py-1 text-xs font-semibold text-orange-700"
           >
-            {(product.discount_percentage || 0) > 0 ? 'Edit Discount' : 'Set Discount'}
+            {getDiscountPercent(product) > 0 ? 'Edit Discount' : 'Set Discount'}
           </button>
           <button
             type="button"
@@ -531,7 +535,7 @@ function VendorProducts() {
       const res = await fetch(`${API_BASE}/vendor/products/${productId}/discount/`, {
         method: 'PATCH',
         headers: authHeaders,
-        body: JSON.stringify({ discount_percentage: discountPercentage }),
+        body: JSON.stringify({ discount_percent: discountPercentage }),
       });
 
       if (!res.ok) {
@@ -547,7 +551,7 @@ function VendorProducts() {
 
       setProducts((prev) =>
         prev.map((item) =>
-          item.id === productId ? { ...item, discount_percentage: discountPercentage } : item
+          item.id === productId ? { ...item, discount_percent: discountPercentage } : item
         )
       );
 
@@ -568,14 +572,13 @@ function VendorProducts() {
       return;
     }
 
-    setProducts((items) => {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
-      return arrayMove(items, oldIndex, newIndex);
-    });
+    const oldIndex = products.findIndex((item) => item.id === active.id);
+    const newIndex = products.findIndex((item) => item.id === over.id);
+    const reordered = arrayMove(products, oldIndex, newIndex);
+    setProducts(reordered);
 
-    // Send to backend
-    const newPositions = products.map((product, index) => ({
+    // Send to backend using expected payload key: order
+    const newPositions = reordered.map((product, index) => ({
       id: product.id,
       position: index,
     }));
@@ -585,7 +588,7 @@ function VendorProducts() {
       const res = await fetch(`${API_BASE}/vendor/products/reorder/`, {
         method: 'PATCH',
         headers: authHeaders,
-        body: JSON.stringify({ products: newPositions }),
+        body: JSON.stringify({ order: newPositions }),
       });
 
       if (!res.ok) {

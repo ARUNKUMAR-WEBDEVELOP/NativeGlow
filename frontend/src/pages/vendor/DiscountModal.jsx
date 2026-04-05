@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 
 function DiscountModal({ product, onClose, onApply, loading }) {
-  const [discount, setDiscount] = useState(product?.discount_percentage || 0);
+  const [discount, setDiscount] = useState(product?.discount_percent ?? product?.discount_percentage ?? 0);
 
   useEffect(() => {
-    setDiscount(product?.discount_percentage || 0);
+    setDiscount(product?.discount_percent ?? product?.discount_percentage ?? 0);
   }, [product]);
 
   if (!product) return null;
 
   const originalPrice = Number(product.price || 0);
   const discountedPrice = originalPrice * (1 - discount / 100);
-  const hasExistingDiscount = (product?.discount_percentage || 0) > 0;
+  const hasExistingDiscount = (product?.discount_percent ?? product?.discount_percentage ?? 0) > 0;
 
   const handleApply = () => {
     onApply(discount);

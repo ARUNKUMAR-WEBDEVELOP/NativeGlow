@@ -122,7 +122,7 @@ function AddProduct() {
         throw new Error(detail);
       }
 
-      setSuccess('Product submitted for admin approval');
+      setSuccess('Product created successfully and is now live in your store.');
       setForm({
         title: '',
         category_type: 'face_wash',

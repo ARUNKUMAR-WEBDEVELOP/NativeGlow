@@ -138,7 +138,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         model = Product
         fields = (
             'title', 'name', 'description', 'short_description',
-            'Category_type', 'ingredients', 'price', 'available_quantity',
+            'category_type', 'ingredients', 'price', 'available_quantity',
             'image', 'is_natural_certified', 'sku', 'tags',
             'product_type', 'unit'
         )
@@ -179,6 +179,7 @@ class VendorProductListSerializer(serializers.ModelSerializer):
     """
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     image = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField()
     rejection_reason = serializers.CharField(source='admin_rejection_reason', read_only=True)
     available = serializers.BooleanField(source='is_active', read_only=True)
 
@@ -189,12 +190,17 @@ class VendorProductListSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.image.url)
         return obj.image.url
+
+    def get_discounted_price(self, obj):
+        if (obj.discount_percent or 0) > 0:
+            return obj.discounted_price
+        return None
     
     class Meta:
         model = Product
         fields = (
             'id', 'title', 'name', 'description', 'category_type', 'ingredients',
-            'price', 'available_quantity', 'image',
+            'price', 'discount_percent', 'discounted_price', 'available_quantity', 'image',
             'status', 'status_display', 'available', 'is_active',
             'is_natural_certified', 'rejection_reason',
             'created_at', 'updated_at'
