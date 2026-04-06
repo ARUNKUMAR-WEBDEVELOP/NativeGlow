@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
+import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import {
+  CATEGORY_TYPE_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+  getDefaultVariantRows,
+  getEmptyProductAttributes,
+  sanitizeVariantRows,
+  sanitizeProductAttributes,
+} from '../../components/vendor/productTemplates';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -21,6 +31,7 @@ function AddProduct() {
     : '/dashboard?tab=products';
   const [form, setForm] = useState({
     title: '',
+    product_type: 'skincare',
     category_type: 'face_wash',
     description: '',
     ingredients: '',
@@ -28,6 +39,8 @@ function AddProduct() {
     available_quantity: 0,
     is_natural_certified: false,
     image: null,
+    product_attributes: getEmptyProductAttributes('skincare'),
+    variants: getDefaultVariantRows('skincare'),
   });
   const [previewUrl, setPreviewUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,6 +77,18 @@ function AddProduct() {
       setForm((prev) => ({ ...prev, image: files?.[0] || null }));
       return;
     }
+    if (name === 'product_type') {
+      setForm((prev) => ({
+        ...prev,
+        product_type: value,
+        product_attributes: {
+          ...getEmptyProductAttributes(value),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(value),
+      }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -85,9 +110,12 @@ function AddProduct() {
     try {
       const formData = new FormData();
       const normalizedCategory = form.category_type === 'toner' ? 'other' : form.category_type;
+      const productAttributes = sanitizeProductAttributes(form.product_type, form.product_attributes);
+      const variantsPayload = sanitizeVariantRows(form.variants);
 
       formData.append('title', form.title);
       formData.append('name', form.title);
+      formData.append('product_type', form.product_type);
       formData.append('category_type', normalizedCategory);
       formData.append('description', form.description);
       formData.append('short_description', form.description.slice(0, 140));
@@ -96,8 +124,9 @@ function AddProduct() {
       formData.append('available_quantity', String(form.available_quantity));
       formData.append('is_natural_certified', String(form.is_natural_certified));
       formData.append('tags', '');
-      formData.append('product_type', 'skincare');
       formData.append('unit', 'pcs');
+      formData.append('product_attributes', JSON.stringify(productAttributes));
+      formData.append('variants_payload', JSON.stringify(variantsPayload));
 
       if (form.image) {
         formData.append('image', form.image);
@@ -125,6 +154,7 @@ function AddProduct() {
       setSuccess('Product created successfully and is now live in your store.');
       setForm({
         title: '',
+        product_type: 'skincare',
         category_type: 'face_wash',
         description: '',
         ingredients: '',
@@ -132,6 +162,8 @@ function AddProduct() {
         available_quantity: 0,
         is_natural_certified: false,
         image: null,
+        product_attributes: getEmptyProductAttributes('skincare'),
+        variants: getDefaultVariantRows('skincare'),
       });
     } catch (err) {
       setError(err.message || 'Unable to add product.');
@@ -166,12 +198,27 @@ function AddProduct() {
               onChange={onInputChange}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             >
-              <option value="face_wash">face_wash</option>
-              <option value="soap">soap</option>
-              <option value="serum">serum</option>
-              <option value="toner">toner</option>
-              <option value="moisturizer">moisturizer</option>
-              <option value="other">other</option>
+              {CATEGORY_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Type</label>
+            <select
+              name="product_type"
+              value={form.product_type}
+              onChange={onInputChange}
+              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              {PRODUCT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -224,6 +271,26 @@ function AddProduct() {
               />
             </div>
           </div>
+
+          <ProductAttributeFields
+            productType={form.product_type}
+            attributes={form.product_attributes}
+            onChange={(field, nextValue) =>
+              setForm((prev) => ({
+                ...prev,
+                product_attributes: {
+                  ...prev.product_attributes,
+                  [field]: nextValue,
+                },
+              }))
+            }
+          />
+
+          <ProductVariantsEditor
+            productType={form.product_type}
+            variants={form.variants}
+            onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Image</label>

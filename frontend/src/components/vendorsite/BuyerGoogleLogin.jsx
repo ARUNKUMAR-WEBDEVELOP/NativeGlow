@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useParams } from 'react-router-dom';
 import { useBuyerAuth } from './BuyerAuthContext';
+import { describeGoogleAuthError, isGoogleAuthOriginConfigured } from '../../utils/googleAuth';
 
 function getApiBase() {
   return (
@@ -86,8 +87,18 @@ export default function BuyerGoogleLogin({
         setIsBusy(false);
       }
     },
-    onError: () => setError('Google sign-in was cancelled or failed.'),
+    onError: (err) => setError(describeGoogleAuthError(err) || 'Google sign-in was cancelled or failed.'),
   });
+
+  if (!isGoogleAuthOriginConfigured()) {
+    return (
+      <div className={`flex flex-col gap-1 ${className}`.trim()}>
+        <p className="text-xs text-rose-600">
+          Google sign-in is not authorized for {typeof window !== 'undefined' ? window.location.origin : 'this origin'}.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoggedIn) {
     return (

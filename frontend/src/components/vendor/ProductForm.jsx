@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import ProductAttributeFields from './ProductAttributeFields';
+import ProductVariantsEditor from './ProductVariantsEditor';
+import {
+  CATEGORY_TYPE_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+  getDefaultVariantRows,
+  getEmptyProductAttributes,
+  sanitizeVariantRows,
+  sanitizeProductAttributes,
+} from './productTemplates';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -7,6 +17,7 @@ const API_BASE =
 function ProductForm({ onSuccess, onCancel }) {
   const [form, setForm] = useState({
     title: '',
+    product_type: 'skincare',
     category_type: 'face_wash',
     description: '',
     ingredients: '',
@@ -14,6 +25,8 @@ function ProductForm({ onSuccess, onCancel }) {
     available_quantity: 0,
     is_natural_certified: false,
     images: [], // Array of image files
+    product_attributes: getEmptyProductAttributes('skincare'),
+    variants: getDefaultVariantRows('skincare'),
   });
   const [previewUrls, setPreviewUrls] = useState([]); // Array of preview URLs
   const [loading, setLoading] = useState(false);
@@ -44,6 +57,18 @@ function ProductForm({ onSuccess, onCancel }) {
       setForm((prev) => ({ ...prev, images: Array.from(files || []) }));
       return;
     }
+    if (name === 'product_type') {
+      setForm((prev) => ({
+        ...prev,
+        product_type: value,
+        product_attributes: {
+          ...getEmptyProductAttributes(value),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(value),
+      }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -70,9 +95,12 @@ function ProductForm({ onSuccess, onCancel }) {
     try {
       const formData = new FormData();
       const normalizedCategory = form.category_type === 'toner' ? 'other' : form.category_type;
+      const productAttributes = sanitizeProductAttributes(form.product_type, form.product_attributes);
+      const variantsPayload = sanitizeVariantRows(form.variants);
 
       formData.append('title', form.title);
       formData.append('name', form.title);
+      formData.append('product_type', form.product_type);
       formData.append('category_type', normalizedCategory);
       formData.append('description', form.description);
       formData.append('short_description', form.description.slice(0, 140));
@@ -81,8 +109,9 @@ function ProductForm({ onSuccess, onCancel }) {
       formData.append('available_quantity', String(form.available_quantity));
       formData.append('is_natural_certified', String(form.is_natural_certified));
       formData.append('tags', '');
-      formData.append('product_type', 'skincare');
       formData.append('unit', 'pcs');
+      formData.append('product_attributes', JSON.stringify(productAttributes));
+      formData.append('variants_payload', JSON.stringify(variantsPayload));
 
       // Append all image files
       form.images.forEach((image, index) => {
@@ -115,6 +144,7 @@ function ProductForm({ onSuccess, onCancel }) {
       setSuccess('Product created successfully and is now live in your store.');
       setForm({
         title: '',
+        product_type: 'skincare',
         category_type: 'face_wash',
         description: '',
         ingredients: '',
@@ -122,6 +152,8 @@ function ProductForm({ onSuccess, onCancel }) {
         available_quantity: 0,
         is_natural_certified: false,
         images: [],
+        product_attributes: getEmptyProductAttributes('skincare'),
+        variants: getDefaultVariantRows('skincare'),
       });
 
       // Call onSuccess callback after a short delay to show the success message
@@ -163,12 +195,23 @@ function ProductForm({ onSuccess, onCancel }) {
               onChange={onInputChange}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             >
-              <option value="face_wash">face_wash</option>
-              <option value="soap">soap</option>
-              <option value="serum">serum</option>
-              <option value="toner">toner</option>
-              <option value="moisturizer">moisturizer</option>
-              <option value="other">other</option>
+              {CATEGORY_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Type</label>
+            <select
+              name="product_type"
+              value={form.product_type}
+              onChange={onInputChange}
+              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            >
+              {PRODUCT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
 
@@ -221,6 +264,26 @@ function ProductForm({ onSuccess, onCancel }) {
               />
             </div>
           </div>
+
+          <ProductAttributeFields
+            productType={form.product_type}
+            attributes={form.product_attributes}
+            onChange={(field, nextValue) =>
+              setForm((prev) => ({
+                ...prev,
+                product_attributes: {
+                  ...prev.product_attributes,
+                  [field]: nextValue,
+                },
+              }))
+            }
+          />
+
+          <ProductVariantsEditor
+            productType={form.product_type}
+            variants={form.variants}
+            onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Images (upload 1 or more)</label>

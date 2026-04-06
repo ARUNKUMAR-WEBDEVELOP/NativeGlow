@@ -1,5 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
+import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import {
+  CATEGORY_TYPE_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+  getDefaultVariantRows,
+  getEmptyProductAttributes,
+  sanitizeVariantRows,
+  sanitizeProductAttributes,
+} from '../../components/vendor/productTemplates';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -10,17 +20,32 @@ function VendorAddProduct() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    product_type: 'skincare',
     category_type: 'other',
     ingredients: '',
     price: '',
     available_quantity: 0,
     is_natural_certified: false,
+    product_attributes: getEmptyProductAttributes('skincare'),
+    variants: getDefaultVariantRows('skincare'),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'product_type') {
+      setForm((prev) => ({
+        ...prev,
+        product_type: value,
+        product_attributes: {
+          ...getEmptyProductAttributes(value),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(value),
+      }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
@@ -42,6 +67,8 @@ function VendorAddProduct() {
     }
 
     try {
+      const productAttributes = sanitizeProductAttributes(form.product_type, form.product_attributes);
+      const variantsPayload = sanitizeVariantRows(form.variants);
       const res = await fetch(`${API_BASE}/vendor/products/add/`, {
         method: 'POST',
         headers: {
@@ -53,8 +80,10 @@ function VendorAddProduct() {
           name: form.title,
           short_description: form.description.slice(0, 140),
           tags: '',
-          product_type: 'skincare',
+          product_type: form.product_type,
           unit: 'pcs',
+          product_attributes: productAttributes,
+          variants_payload: variantsPayload,
         }),
       });
 
@@ -88,12 +117,14 @@ function VendorAddProduct() {
           <textarea name="description" value={form.description} onChange={onChange} placeholder="Description" className="h-24 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
           <div className="grid gap-3 md:grid-cols-2">
             <select name="category_type" value={form.category_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm">
-              <option value="face_wash">Face Wash</option>
-              <option value="soap">Soap</option>
-              <option value="serum">Serum</option>
-              <option value="moisturizer">Moisturizer</option>
-              <option value="hair_oil">Hair Oil</option>
-              <option value="other">Other</option>
+              {CATEGORY_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <select name="product_type" value={form.product_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm">
+              {PRODUCT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
             <input name="ingredients" value={form.ingredients} onChange={onChange} placeholder="Ingredients" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
           </div>
@@ -101,6 +132,25 @@ function VendorAddProduct() {
             <input type="number" min="0" step="0.01" name="price" value={form.price} onChange={onChange} placeholder="Price" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
             <input type="number" min="0" name="available_quantity" value={form.available_quantity} onChange={onChange} placeholder="Quantity" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
           </div>
+          <ProductAttributeFields
+            productType={form.product_type}
+            attributes={form.product_attributes}
+            onChange={(field, nextValue) =>
+              setForm((prev) => ({
+                ...prev,
+                product_attributes: {
+                  ...prev.product_attributes,
+                  [field]: nextValue,
+                },
+              }))
+            }
+          />
+
+          <ProductVariantsEditor
+            productType={form.product_type}
+            variants={form.variants}
+            onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input type="checkbox" name="is_natural_certified" checked={form.is_natural_certified} onChange={onChange} className="h-4 w-4 rounded border-zinc-300 text-sage" />
             Natural certified

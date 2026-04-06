@@ -3,6 +3,25 @@ import { useParams } from 'react-router-dom';
 import OrderFormModal from '../../components/vendor/OrderFormModal';
 import { resolveImageUrl } from '../../utils/imageUrl';
 
+function formatAttributeLabel(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatAttributeValue(value) {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return String(value);
+}
+
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
@@ -107,6 +126,22 @@ function VendorStore() {
 
                 <p className="text-sm font-bold text-zinc-800">INR {product.price}</p>
                 <p className="text-xs text-zinc-600">Ingredients: {product.ingredients || 'Not provided'}</p>
+
+                {Object.entries(product.product_attributes || {})
+                  .filter(([, value]) => formatAttributeValue(value))
+                  .slice(0, 2)
+                  .length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(product.product_attributes || {})
+                      .filter(([, value]) => formatAttributeValue(value))
+                      .slice(0, 2)
+                      .map(([key, value]) => (
+                        <span key={key} className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-medium text-zinc-700">
+                          {formatAttributeLabel(key)}: {formatAttributeValue(value)}
+                        </span>
+                      ))}
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-2 pt-2">
                   <a

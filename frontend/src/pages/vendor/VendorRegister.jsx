@@ -8,6 +8,7 @@ import { api } from '../../api';
 import { registerVendor } from '../../services/vendorService';
 import NeoButton from '../../components/ui/NeoButton';
 import NeoInput from '../../components/ui/NeoInput';
+import { describeGoogleAuthError, isGoogleAuthOriginConfigured } from '../../utils/googleAuth';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -144,7 +145,8 @@ export default function VendorRegister() {
     try {
       const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
       const tokens = JSON.parse(localStorage.getItem('nativeglow_tokens') || 'null');
-      if (!profile?.email || !tokens?.access) {
+      const credential = localStorage.getItem('nativeglow_google_credential') || '';
+      if (!profile?.email || !tokens?.access || !credential) {
         setGoogleRequired(true);
         setAuthChecked(true);
         return;
@@ -152,7 +154,7 @@ export default function VendorRegister() {
       // Auto-populate from Google profile
       setGoogleRequired(false);
       setGoogleProfile(profile);
-      setGoogleToken(tokens.access);
+      setGoogleToken(credential);
       if (profile?.name) {
         setValue('full_name', profile.name, { shouldDirty: false, shouldValidate: false });
       }
@@ -171,6 +173,13 @@ export default function VendorRegister() {
       return;
     }
 
+    if (!isGoogleAuthOriginConfigured()) {
+      setGoogleAuthError(
+        `Google sign-in is not authorized for ${window.location.origin}. Add this origin to Google Cloud Console Authorized JavaScript origins.`
+      );
+      return;
+    }
+
     let mounted = true;
 
     const initializeGoogle = () => {
@@ -183,8 +192,9 @@ export default function VendorRegister() {
         callback: async (response) => {
           setGoogleAuthError('');
           try {
-            const tokens = await api.googleLogin(response.credential);
-            const decodedProfile = decodeGoogleCredential(response.credential);
+            const googleCredential = response.credential;
+            const tokens = await api.googleLogin(googleCredential);
+            const decodedProfile = decodeGoogleCredential(googleCredential);
             const profile = {
               name: tokens?.user_name || decodedProfile?.name || '',
               email: tokens?.user_email || decodedProfile?.email || '',
@@ -193,8 +203,9 @@ export default function VendorRegister() {
 
             localStorage.setItem('nativeglow_tokens', JSON.stringify(tokens));
             localStorage.setItem('nativeglow_google_profile', JSON.stringify(profile));
+            localStorage.setItem('nativeglow_google_credential', googleCredential);
 
-            setGoogleToken(tokens?.access || '');
+            setGoogleToken(googleCredential || '');
             setGoogleProfile(profile);
             setGoogleRequired(false);
             setAuthChecked(true);
@@ -259,8 +270,9 @@ export default function VendorRegister() {
     // Get Google credential from stored tokens
     const tokens = JSON.parse(localStorage.getItem('nativeglow_tokens') || 'null');
     const profile = JSON.parse(localStorage.getItem('nativeglow_google_profile') || 'null');
+    const credential = localStorage.getItem('nativeglow_google_credential') || '';
     
-    if (!tokens?.access || !profile?.email) {
+    if (!tokens?.access || !profile?.email || !credential) {
       setApiError('Google login session lost. Please sign in again.');
       setSubmitting(false);
       navigate('/vendor/login?redirect=register');
@@ -284,7 +296,7 @@ export default function VendorRegister() {
         bank_account_number: values.bank_account_number,
         bank_ifsc: values.bank_ifsc.toUpperCase(),
         account_holder_name: values.account_holder_name,
-        google_token: tokens.access, // Include Google token for authentication
+        google_token: credential,
       };
 
       const { data } = await registerVendor(payload);
@@ -403,7 +415,7 @@ export default function VendorRegister() {
                 <p className="mt-2 text-xs text-zinc-500">Preparing Google sign in...</p>
               ) : null}
               {googleAuthError ? (
-                <p className="mt-2 text-xs text-rose-600">{googleAuthError}</p>
+                <p className="mt-2 text-xs text-rose-600">{describeGoogleAuthError(googleAuthError)}</p>
               ) : null}
             </div>
 

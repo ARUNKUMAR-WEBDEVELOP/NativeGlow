@@ -3,6 +3,83 @@ from .models import Category, Product, ProductImage, ProductVariant
 from vendors.models import Vendor
 
 
+PRODUCT_ATTRIBUTE_REQUIREMENTS = {
+    'skincare': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'skin_type', 'concern', 'net_volume', 'usage_instructions'],
+    'bodycare': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'body_area', 'fragrance_profile', 'net_volume', 'usage_instructions'],
+    'cosmetics': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'shade', 'finish', 'skin_type', 'expiry_months'],
+    'clothing': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'gender', 'size_chart', 'material', 'fit', 'color', 'care_instructions'],
+    'food': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'flavor', 'net_weight', 'shelf_life_months', 'allergen_info', 'storage_instructions'],
+    'accessories': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'material', 'color', 'dimensions'],
+    'home': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'material', 'dimensions', 'care_instructions'],
+}
+
+
+def _is_missing_value(value):
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return False
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, list):
+        return len(value) == 0
+    if isinstance(value, dict):
+        return len(value) == 0
+    return False
+
+
+def _normalize_json_payload(value, *, field_name):
+    if isinstance(value, str):
+        import json
+        raw = value.strip()
+        if not raw:
+            return [] if field_name == 'variants_payload' else {}
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise serializers.ValidationError(f'{field_name} must be valid JSON.') from exc
+        value = parsed
+    if field_name == 'variants_payload':
+        if value in (None, ''):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('variants_payload must be a list of variant objects.')
+        return value
+    if value in (None, ''):
+        return {}
+    if not isinstance(value, dict):
+        raise serializers.ValidationError('product_attributes must be an object.')
+    return value
+
+
+def _validate_product_attributes(product_type, attributes):
+    required_fields = PRODUCT_ATTRIBUTE_REQUIREMENTS.get(product_type or 'skincare', [])
+    missing_fields = [field for field in required_fields if _is_missing_value(attributes.get(field))]
+    if missing_fields:
+        readable = ', '.join(field.replace('_', ' ') for field in missing_fields)
+        raise serializers.ValidationError(
+            {'product_attributes': f'Missing required fields for {product_type or "product"}: {readable}.'}
+        )
+
+
+def _normalize_variant_item(item):
+    if not isinstance(item, dict):
+        raise serializers.ValidationError('Each variant must be an object.')
+    option_name = str(item.get('option_name', '')).strip()
+    option_value = str(item.get('option_value', '')).strip()
+    if not option_name or not option_value:
+        raise serializers.ValidationError('Each variant requires option_name and option_value.')
+    return {
+        'option_name': option_name,
+        'option_value': option_value,
+        'sku_suffix': str(item.get('sku_suffix', '')).strip(),
+        'additional_price': item.get('additional_price', 0) or 0,
+        'stock': item.get('stock', 0) or 0,
+    }
+
+
 def _absolute_url(request, url):
     if not url:
         return None
@@ -76,6 +153,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     )
     images = ProductImageSerializer(many=True, read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
+    product_attributes = serializers.JSONField(required=False)
     vendor_name = serializers.CharField(
         source='vendor.brand_name', read_only=True, default='NativeGlow'
     )
@@ -92,6 +170,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'inventory_qty', 'status', 'is_active', 'is_bestseller',
             'is_new_arrival', 'is_featured', 'tags', 'shipping_info',
             'seo_title', 'seo_description',
+            'product_attributes',
             'category', 'category_id', 'vendor_name',
             'ingredient_points', 'how_it_works', 'benefits', 'usage_steps',
             'images', 'variants', 'created_at', 'updated_at',
@@ -104,6 +183,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             return [item.strip() for item in raw.split(',') if item.strip()]
         if obj.product_type == 'clothing':
             return ['Breathable cotton base', 'Soft-touch finish', 'Skin-comfort focused weave']
+        if obj.product_type == 'food':
+            return ['Fresh batch ingredients', 'Packaged for shelf stability', 'Traceable sourcing']
         return ['Herbal complex', 'Botanical active blend', 'Gentle skin-support base']
 
     def get_how_it_works(self, obj):
@@ -111,6 +192,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             return (
                 'The fabric structure improves airflow and moisture comfort, '
                 'while low-irritation fibers reduce friction during daily wear.'
+            )
+        if obj.product_type == 'food':
+            return (
+                'The product is prepared with controlled ingredients, packed for freshness, '
+                'and stored to preserve flavor and shelf life.'
             )
         return (
             'Plant-derived actives support the skin barrier, calm visible stress, '
@@ -124,6 +210,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                 'Breathable construction for warm climates',
                 'Minimal irritation for sensitive skin',
             ]
+        if obj.product_type == 'food':
+            return [
+                'Convenient everyday consumption',
+                'Shelf-stable packaging for storage',
+                'Clear ingredient and nutrition visibility',
+            ]
         return [
             'Helps maintain healthy-looking skin',
             'Supports hydration and comfort',
@@ -136,6 +228,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
                 'Wear as a breathable daily layer.',
                 'Pair with lightweight natural fibers for full comfort.',
                 'Machine wash gentle and air dry for longevity.',
+            ]
+        if obj.product_type == 'food':
+            return [
+                'Check seal and expiry before opening.',
+                'Store in a cool, dry place after use.',
+                'Follow serving guidance or nutrition label directions.',
             ]
         return [
             'Apply on clean skin as directed.',
@@ -154,6 +252,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     POST /api/vendor/products/add/
     """
     sku = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    variants_payload = serializers.JSONField(required=False, write_only=True)
 
     class Meta:
         model = Product
@@ -161,8 +260,22 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
             'title', 'name', 'description', 'short_description',
             'category_type', 'ingredients', 'price', 'available_quantity',
             'image', 'is_natural_certified', 'sku', 'tags',
-            'product_type', 'unit'
+            'product_type', 'unit', 'product_attributes', 'variants_payload'
         )
+
+    def validate_product_attributes(self, value):
+        return _normalize_json_payload(value, field_name='product_attributes')
+
+    def validate_variants_payload(self, value):
+        normalized = _normalize_json_payload(value, field_name='variants_payload')
+        return [_normalize_variant_item(item) for item in normalized]
+
+    def validate(self, attrs):
+        product_type = attrs.get('product_type') or 'skincare'
+        product_attributes = attrs.get('product_attributes') or {}
+        if self.instance is None or attrs.get('product_attributes') is not None:
+            _validate_product_attributes(product_type, product_attributes)
+        return attrs
 
     def create(self, validated_data):
         """Create product with vendor from request and auto-approve for active vendors."""
@@ -192,12 +305,17 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         validated_data['vendor'] = vendor
         validated_data['status'] = 'approved'
         validated_data['admin_rejection_reason'] = ''
+        variants_payload = validated_data.pop('variants_payload', [])
         
         # Auto-set inventory_qty from available_quantity
         if not validated_data.get('inventory_qty'):
             validated_data['inventory_qty'] = validated_data.get('available_quantity', 0)
-        
-        return super().create(validated_data)
+
+        product = super().create(validated_data)
+        if variants_payload:
+            for variant_data in variants_payload:
+                ProductVariant.objects.create(product=product, **variant_data)
+        return product
 
 
 class VendorProductListSerializer(serializers.ModelSerializer):
@@ -210,6 +328,7 @@ class VendorProductListSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
     rejection_reason = serializers.CharField(source='admin_rejection_reason', read_only=True)
     available = serializers.BooleanField(source='is_active', read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     def get_image(self, obj):
         request = self.context.get('request')
@@ -230,7 +349,8 @@ class VendorProductListSerializer(serializers.ModelSerializer):
             'id', 'title', 'name', 'description', 'category_type', 'ingredients',
             'price', 'discount_percent', 'discounted_price', 'available_quantity', 'image',
             'status', 'status_display', 'available', 'is_active',
-            'is_natural_certified', 'rejection_reason',
+            'is_natural_certified', 'rejection_reason', 'product_type', 'product_attributes', 'unit',
+            'variants',
             'created_at', 'updated_at'
         )
         read_only_fields = fields
@@ -246,19 +366,38 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         fields = (
             'title', 'name', 'description', 'short_description',
             'category_type', 'ingredients', 'price', 'available_quantity',
-            'image', 'is_natural_certified', 'tags', 'unit'
+            'image', 'is_natural_certified', 'tags', 'unit', 'product_type', 'product_attributes'
         )
+
+    def validate_product_attributes(self, value):
+        return _normalize_json_payload(value, field_name='product_attributes')
+
+    def validate_variants_payload(self, value):
+        normalized = _normalize_json_payload(value, field_name='variants_payload')
+        return [_normalize_variant_item(item) for item in normalized]
+
+    def validate(self, attrs):
+        product_type = attrs.get('product_type') or getattr(self.instance, 'product_type', 'skincare')
+        product_attributes = attrs.get('product_attributes') or getattr(self.instance, 'product_attributes', {}) or {}
+        if attrs.get('product_attributes') is not None or self.instance is None:
+            _validate_product_attributes(product_type, product_attributes)
+        return attrs
 
     def update(self, instance, validated_data):
         """Keep vendor-owned product approved after edits for storefront continuity."""
         instance.status = 'approved'
         instance.admin_rejection_reason = ''
+        variants_payload = validated_data.pop('variants_payload', None)
         
         # Update all provided fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
         instance.save()
+        if variants_payload is not None:
+            instance.variants.all().delete()
+            for variant_data in variants_payload:
+                ProductVariant.objects.create(product=instance, **variant_data)
         return instance
 
 
@@ -336,7 +475,7 @@ class PublicProductSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'description', 'price',
             'available_quantity', 'is_natural_certified',
             'category_name', 'vendor_slug',
-            'primary_image',
+            'primary_image', 'product_attributes', 'product_type',
         )
 
     def get_primary_image(self, obj):
@@ -398,6 +537,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
     images = ProductImageSerializer(many=True, read_only=True)
     ingredients_list = serializers.SerializerMethodField()
+    product_attributes = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Product
@@ -406,6 +546,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
             'available_quantity', 'is_natural_certified',
             'discount_percent', 'discounted_price',
             'ingredients', 'ingredients_list',
+            'product_attributes',
             'category', 'category_name', 'vendor_business_name',
             'vendor_whatsapp', 'vendor_upi',
             'images', 'created_at',
@@ -437,6 +578,7 @@ class SiteProductSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source='category_type', read_only=True)
     discounted_price = serializers.SerializerMethodField()
     primary_image = serializers.SerializerMethodField()
+    product_attributes = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Product
@@ -455,6 +597,7 @@ class SiteProductSerializer(serializers.ModelSerializer):
             'product_tag',
             'is_featured',
             'primary_image',
+            'product_attributes',
         )
 
     def get_discounted_price(self, obj):

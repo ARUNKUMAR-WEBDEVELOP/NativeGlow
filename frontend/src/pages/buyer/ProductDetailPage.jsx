@@ -19,6 +19,36 @@ function getNextPath(vendorSlug, productId) {
   return `/store/${vendorSlug}/product/${productId}`;
 }
 
+function formatAttributeLabel(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatAttributeValue(value) {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function formatVariantPrice(value) {
+  const amount = Number(value || 0);
+  if (!amount) {
+    return 'No extra charge';
+  }
+  return `+₹${amount.toFixed(0)}`;
+}
+
 function ProductDetailPage() {
   const {
     slug,
@@ -228,6 +258,11 @@ function ProductDetailPage() {
       ? resolveImageUrl(product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
       : null;
   const ingredientsList = product.ingredients_list || [];
+  const variantsList = Array.isArray(product.variants) ? product.variants : [];
+  const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
+    const formatted = formatAttributeValue(value);
+    return formatted !== '';
+  });
   const basePrice = Number(product.price || 0);
   const discountedPrice = Number(product.discounted_price || 0);
   const hasDiscount = discountedPrice > 0 && discountedPrice < basePrice;
@@ -374,6 +409,43 @@ function ProductDetailPage() {
               </div>
             )}
 
+            {attributeEntries.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Specifications</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {attributeEntries.map(([key, value]) => (
+                    <div key={key} className="rounded-xl bg-gray-50 px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {formatAttributeLabel(key)}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-800">{formatAttributeValue(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {variantsList.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Variants</h3>
+                <div className="space-y-2">
+                  {variantsList.map((variant, index) => (
+                    <div key={variant.id || `${variant.option_name}-${variant.option_value}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {variant.option_name}: {variant.option_value}
+                        </p>
+                        <p className="text-xs text-gray-500">Stock: {variant.stock ?? 0}</p>
+                      </div>
+                      <div className="text-sm font-semibold text-emerald-700">
+                        {formatVariantPrice(variant.additional_price)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Quantity Selector */}
             {product.available_quantity > 0 && (
               <div>
@@ -481,7 +553,7 @@ function ProductDetailPage() {
         </div>
 
         {/* Product Details Section */}
-        {(product.description || ingredientsList.length > 0) && (
+        {(product.description || ingredientsList.length > 0 || attributeEntries.length > 0) && (
           <div className="bg-white rounded-lg shadow-sm p-8 mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -502,6 +574,21 @@ function ProductDetailPage() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {attributeEntries.length > 0 && (
+                <div className={product.description ? '' : 'md:col-span-2'}>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Specifications</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {attributeEntries.map(([key, value]) => (
+                      <div key={key} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {formatAttributeLabel(key)}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-800">{formatAttributeValue(value)}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

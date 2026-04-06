@@ -44,12 +44,17 @@ class Product(models.Model):
     product_type = models.CharField(
         max_length=20,
         choices=[
-            ('skincare', 'Herbal Skincare'),
-            ('clothing', 'Everyday Clothing'),
-            ('bodycare', 'Body Care'),
+            ('skincare', 'Beauty & Skincare'),
+            ('bodycare', 'Body & Wellness'),
+            ('cosmetics', 'Cosmetics & Makeup'),
+            ('clothing', 'Clothing & Apparel'),
+            ('food', 'Food & Snacks'),
+            ('accessories', 'Accessories'),
+            ('home', 'Home & Lifestyle'),
         ],
         default='skincare',
     )
+    product_attributes = models.JSONField(default=dict, blank=True)
     tags = models.CharField(max_length=300, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     original_price = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
@@ -72,7 +77,13 @@ class Product(models.Model):
         choices=[
             ('ml', 'ML'),
             ('gm', 'GM'),
+            ('g', 'G'),
+            ('kg', 'KG'),
             ('pcs', 'PCS'),
+            ('pack', 'PACK'),
+            ('pair', 'PAIR'),
+            ('box', 'BOX'),
+            ('set', 'SET'),
         ],
         default='pcs',
     )
@@ -86,6 +97,11 @@ class Product(models.Model):
             ('serum', 'Serum'),
             ('moisturizer', 'Moisturizer'),
             ('hair_oil', 'Hair Oil'),
+            ('body_lotion', 'Body Lotion'),
+            ('clothing', 'Clothing'),
+            ('snacks', 'Snacks'),
+            ('cosmetics', 'Cosmetics'),
+            ('accessories', 'Accessories'),
             ('other', 'Other'),
         ],
         default='other',
@@ -124,7 +140,13 @@ class Product(models.Model):
         ordering = ['product_order', '-created_at']
 
     def clean(self):
-        if self.status == 'approved' and not self.is_natural_certified:
+        natural_product_types = {'skincare', 'bodycare', 'cosmetics'}
+        natural_category_types = {'face_wash', 'soap', 'serum', 'moisturizer', 'hair_oil', 'body_lotion'}
+        if (
+            self.status == 'approved'
+            and not self.is_natural_certified
+            and (self.product_type in natural_product_types or self.category_type in natural_category_types)
+        ):
             raise ValidationError(
                 {'is_natural_certified': 'Only natural certified products can be approved/listed.'}
             )

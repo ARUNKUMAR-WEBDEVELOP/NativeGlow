@@ -57,6 +57,9 @@ Required environment variables in Vercel:
 
 - `VITE_GOOGLE_CLIENT_ID`
 - `VITE_API_BASE`
+- `VITE_GOOGLE_AUTH_ORIGIN` if you want the app to warn on a non-authorized hostname before Google sign-in starts
+
+Google Cloud Console must include the exact deployed frontend origin in Authorized JavaScript origins. For the current deployment that means the same host you open in the browser, such as https://native-glow.vercel.app.
 
 ## API endpoints used by frontend
 

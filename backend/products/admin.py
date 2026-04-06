@@ -33,10 +33,10 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('title', 'slug', 'category', 'vendor', 'sku'),
         }),
         ('Description', {
-            'fields': ('description', 'short_description', 'ingredients'),
+            'fields': ('description', 'short_description', 'ingredients', 'product_attributes'),
         }),
         ('Pricing & Stock', {
-            'fields': ('price', 'compare_price', 'inventory_qty'),
+            'fields': ('price', 'compare_price', 'inventory_qty', 'available_quantity', 'unit'),
         }),
         ('Status & Tags', {
             'fields': (

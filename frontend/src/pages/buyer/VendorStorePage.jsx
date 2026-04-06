@@ -4,6 +4,25 @@ import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
 import { resolveImageUrl } from '../../utils/imageUrl';
 
+function formatAttributeLabel(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatAttributeValue(value) {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+  return String(value);
+}
+
 function VendorStorePage() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
@@ -326,6 +345,25 @@ function VendorStorePage() {
                     <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2">
                       {product.category}
                     </span>
+                  )}
+
+                  {Object.entries(product.product_attributes || {})
+                    .filter(([, value]) => formatAttributeValue(value))
+                    .slice(0, 2)
+                    .length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {Object.entries(product.product_attributes || {})
+                        .filter(([, value]) => formatAttributeValue(value))
+                        .slice(0, 2)
+                        .map(([key, value]) => (
+                          <span
+                            key={key}
+                            className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700"
+                          >
+                            {formatAttributeLabel(key)}: {formatAttributeValue(value)}
+                          </span>
+                        ))}
+                    </div>
                   )}
 
                   {/* Price */}

@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
+import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import {
+  CATEGORY_TYPE_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+  getDefaultVariantRows,
+  getEmptyProductAttributes,
+  sanitizeVariantRows,
+  sanitizeProductAttributes,
+} from '../../components/vendor/productTemplates';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -26,15 +36,6 @@ const THEME_OPTIONS = [
     label: 'Elegant ✨',
     preview: 'bg-gradient-to-br from-amber-100 to-yellow-200',
   },
-];
-
-const CATEGORY_OPTIONS = [
-  'face_wash',
-  'soap',
-  'serum',
-  'moisturizer',
-  'hair_oil',
-  'other',
 ];
 
 function getBaseCandidates() {
@@ -119,11 +120,14 @@ export default function VendorSetupWizard() {
 
   const [productForm, setProductForm] = useState({
     title: '',
+    product_type: 'skincare',
     category_type: 'face_wash',
     price: '',
     ingredients: '',
     available_quantity: 0,
     image: null,
+    product_attributes: getEmptyProductAttributes('skincare'),
+    variants: getDefaultVariantRows('skincare'),
   });
 
   const vendorSession = useMemo(() => getVendorSession(), []);
@@ -266,9 +270,12 @@ export default function VendorSetupWizard() {
   async function submitFirstProduct() {
     const formData = new FormData();
     const normalizedCategory = productForm.category_type === 'toner' ? 'other' : productForm.category_type;
+    const productAttributes = sanitizeProductAttributes(productForm.product_type, productForm.product_attributes);
+    const variantsPayload = sanitizeVariantRows(productForm.variants);
 
     formData.append('title', productForm.title);
     formData.append('name', productForm.title);
+    formData.append('product_type', productForm.product_type);
     formData.append('category_type', normalizedCategory);
     formData.append('description', productForm.ingredients || productForm.title);
     formData.append('short_description', (productForm.ingredients || productForm.title).slice(0, 140));
@@ -277,8 +284,9 @@ export default function VendorSetupWizard() {
     formData.append('available_quantity', String(productForm.available_quantity));
     formData.append('is_natural_certified', 'true');
     formData.append('tags', '');
-    formData.append('product_type', 'skincare');
     formData.append('unit', 'pcs');
+    formData.append('product_attributes', JSON.stringify(productAttributes));
+    formData.append('variants_payload', JSON.stringify(variantsPayload));
 
     if (productForm.image) {
       formData.append('image', productForm.image);
@@ -510,9 +518,30 @@ why you started..."
                 onChange={(e) => setProductForm((prev) => ({ ...prev, category_type: e.target.value }))}
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
               >
-                {CATEGORY_OPTIONS.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {CATEGORY_TYPE_OPTIONS.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={productForm.product_type}
+                onChange={(e) =>
+                  setProductForm((prev) => ({
+                    ...prev,
+                    product_type: e.target.value,
+                    product_attributes: {
+                      ...getEmptyProductAttributes(e.target.value),
+                      ...prev.product_attributes,
+                    },
+                    variants: getDefaultVariantRows(e.target.value),
+                  }))
+                }
+                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+              >
+                {PRODUCT_TYPE_OPTIONS.map((productType) => (
+                  <option key={productType.value} value={productType.value}>
+                    {productType.label}
                   </option>
                 ))}
               </select>
@@ -540,6 +569,26 @@ why you started..."
               onChange={(e) => setProductForm((prev) => ({ ...prev, ingredients: e.target.value }))}
               placeholder="Ingredients"
               className="h-24 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+            />
+
+            <ProductAttributeFields
+              productType={productForm.product_type}
+              attributes={productForm.product_attributes}
+              onChange={(field, nextValue) =>
+                setProductForm((prev) => ({
+                  ...prev,
+                  product_attributes: {
+                    ...prev.product_attributes,
+                    [field]: nextValue,
+                  },
+                }))
+              }
+            />
+
+            <ProductVariantsEditor
+              productType={productForm.product_type}
+              variants={productForm.variants}
+              onChange={(nextVariants) => setProductForm((prev) => ({ ...prev, variants: nextVariants }))}
             />
 
             <input

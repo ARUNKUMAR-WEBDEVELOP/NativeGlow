@@ -5,6 +5,7 @@ import { api } from '../../api';
 import NeoCard from '../../components/ui/NeoCard';
 import NeoButton from '../../components/ui/NeoButton';
 import SkeletonBlock from '../../components/ui/SkeletonBlock';
+import { describeGoogleAuthError, isGoogleAuthOriginConfigured } from '../../utils/googleAuth';
 
 function decodeGoogleCredential(credential) {
   if (!credential || typeof credential !== 'string') {
@@ -42,6 +43,13 @@ function LoginPage({ onLogin }) {
       return;
     }
 
+    if (!isGoogleAuthOriginConfigured()) {
+      setError(
+        `Google sign-in is not authorized for ${window.location.origin}. Add this origin to Authorized JavaScript origins in Google Cloud Console.`
+      );
+      return;
+    }
+
     let mounted = true;
 
     const initializeGoogle = () => {
@@ -68,7 +76,7 @@ function LoginPage({ onLogin }) {
             const destination = location.state?.from || savedDestination || '/';
             navigate(destination, { replace: true });
           } catch (err) {
-            setError(err.message || 'Google login failed.');
+            setError(describeGoogleAuthError(err) || 'Google login failed.');
           }
         },
       });
