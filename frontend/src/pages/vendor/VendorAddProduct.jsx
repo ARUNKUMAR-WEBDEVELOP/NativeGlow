@@ -69,7 +69,7 @@ function VendorAddProduct() {
         throw new Error(detail);
       }
 
-      navigate('/vendor/dashboard/products');
+      navigate('/dashboard?tab=products');
     } catch (err) {
       setError(err.message || 'Unable to add product.');
     } finally {
@@ -106,7 +106,7 @@ function VendorAddProduct() {
             Natural certified
           </label>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => navigate('/vendor/dashboard/products')} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700">Cancel</button>
+            <button type="button" onClick={() => navigate('/dashboard?tab=products')} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700">Cancel</button>
             <button type="submit" disabled={loading} className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{loading ? 'Saving...' : 'Add Product'}</button>
           </div>
         </form>

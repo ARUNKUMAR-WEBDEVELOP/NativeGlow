@@ -13,7 +13,6 @@ import VendorSetupWizard from './pages/vendor/VendorSetupWizard';
 import VendorApprovalPending from './pages/vendor/VendorApprovalPending';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import VendorMaintenance from './pages/vendor/VendorMaintenance';
-import VendorStorePage from './pages/buyer/VendorStorePage';
 import LoginPage from './pages/auth/LoginPage';
 import AboutUsPage from './pages/AboutUsPage';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -69,24 +68,6 @@ function LegacySiteRedirect() {
   const { vendor_slug: vendorSlug, '*': rest = '' } = useParams();
   const suffix = rest ? `/${rest}` : '';
   return <Navigate to={`/store/${vendorSlug}${suffix}`} replace />;
-}
-
-function LegacyProductRedirect() {
-  const {
-    slug,
-    vendor_slug: vendorSlug,
-    productId,
-    product_id: productIdLegacy,
-  } = useParams();
-
-  const resolvedSlug = slug || vendorSlug;
-  const resolvedProductId = productId || productIdLegacy;
-
-  if (!resolvedSlug || !resolvedProductId) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <Navigate to={`/store/${resolvedSlug}/product/${resolvedProductId}`} replace />;
 }
 
 function App() {
@@ -221,6 +202,8 @@ function App() {
         <Routes>
         <Route path="/store/:slug/*" element={<VendorSiteLayout />}>
           <Route index element={<VendorSiteHome />} />
+          <Route path="product/:productId" element={<ProductDetailPage />} />
+          <Route path="products/:productId" element={<ProductDetailPage />} />
           <Route path="products" element={<VendorSiteProducts />} />
           <Route path="about" element={<VendorSiteAbout />} />
           <Route path="track" element={<VendorSiteTrack />} />
@@ -295,22 +278,6 @@ function App() {
             path="/products/:slug"
             element={<ProductDetailPage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />}
           />
-          <Route
-            path="/store/:slug/products/:productId"
-            element={<LegacyProductRedirect />}
-          />
-          <Route
-            path="/store/:slug/product/:productId"
-            element={<ProductDetailPage />}
-          />
-          <Route
-            path="/store/:vendor_slug/products/:product_id"
-            element={<LegacyProductRedirect />}
-          />
-          <Route
-            path="/store/:vendor_slug/product/:product_id"
-            element={<ProductDetailPage />}
-          />
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route
@@ -365,7 +332,6 @@ function App() {
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/activate" element={<VendorActivate />} />
           <Route path="/vendor/pending-approval" element={<VendorApprovalPending />} />
-          <Route path="/store/:slug" element={<VendorStorePage />} />
           <Route path="/track" element={<OrderTrackPage />} />
           <Route path="/track/:order_code" element={<OrderTrackPage />} />
           <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
