@@ -1,4 +1,8 @@
 from rest_framework import serializers
+from django.core.files.storage import default_storage
+from django.utils.text import slugify
+from uuid import uuid4
+import os
 from .models import Category, Product, ProductImage, ProductVariant
 from vendors.models import Vendor
 
@@ -9,9 +13,12 @@ PRODUCT_ATTRIBUTE_REQUIREMENTS = {
     'cosmetics': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'shade', 'finish', 'skin_type', 'expiry_months'],
     'clothing': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'gender', 'size_chart', 'material', 'fit', 'color', 'care_instructions'],
     'food': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'flavor', 'net_weight', 'shelf_life_months', 'allergen_info', 'storage_instructions'],
+    'grocery': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'net_weight', 'shelf_life_months', 'allergen_info', 'storage_instructions'],
     'accessories': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'material', 'color', 'dimensions'],
     'home': ['brand_name', 'manufacturer', 'country_of_origin', 'package_contains', 'material', 'dimensions', 'care_instructions'],
 }
+
+MAX_PRODUCT_IMAGES = 4
 
 
 def _is_missing_value(value):
@@ -89,6 +96,63 @@ def _absolute_url(request, url):
         return request.build_absolute_uri(url)
     except Exception:
         return url
+
+
+def _extract_additional_images(request):
+    """Read extra image files uploaded as image_1 ... image_3."""
+    if not request:
+        return []
+    extra_files = []
+    for key in sorted(request.FILES.keys()):
+        if key.startswith('image_'):
+            file_obj = request.FILES.get(key)
+            if file_obj:
+                extra_files.append(file_obj)
+    return extra_files[: max(0, MAX_PRODUCT_IMAGES - 1)]
+
+
+def _count_uploaded_images(request):
+    if not request:
+        return 0
+    count = 1 if request.FILES.get('image') else 0
+    count += len([key for key in request.FILES.keys() if key.startswith('image_')])
+    return count
+
+
+def _store_uploaded_image(uploaded_file):
+    """Persist an uploaded image and return a URL for ProductImage.image_url."""
+    base_name, extension = os.path.splitext(uploaded_file.name or 'image')
+    safe_base_name = slugify(base_name) or 'image'
+    safe_extension = (extension or '.jpg').lower()
+    target_path = f"products/gallery/{uuid4().hex}-{safe_base_name}{safe_extension}"
+    stored_path = default_storage.save(target_path, uploaded_file)
+    return default_storage.url(stored_path)
+
+
+def _sync_product_gallery(product, request):
+    """Keep ProductImage rows in sync with primary + up to 3 extra images."""
+    extra_images = _extract_additional_images(request)
+    product.images.all().delete()
+
+    position = 1
+    if product.image:
+        ProductImage.objects.create(
+            product=product,
+            image_url=product.image.url,
+            alt_text=product.title,
+            position=position,
+        )
+        position += 1
+
+    for uploaded_file in extra_images:
+        image_url = _store_uploaded_image(uploaded_file)
+        ProductImage.objects.create(
+            product=product,
+            image_url=image_url,
+            alt_text=product.title,
+            position=position,
+        )
+        position += 1
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -283,6 +347,13 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         from uuid import uuid4
         
         vendor = self.context['request'].vendor  # Vendor extracted from JWT
+        request = self.context.get('request')
+
+        uploaded_count = _count_uploaded_images(request)
+        if uploaded_count < 1:
+            raise serializers.ValidationError({'image': 'Please upload at least 1 product image.'})
+        if uploaded_count > MAX_PRODUCT_IMAGES:
+            raise serializers.ValidationError({'image': f'Maximum {MAX_PRODUCT_IMAGES} images are allowed.'})
         
         # Auto-generate slug from title
         title = validated_data.get('title', '')
@@ -312,6 +383,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
             validated_data['inventory_qty'] = validated_data.get('available_quantity', 0)
 
         product = super().create(validated_data)
+        _sync_product_gallery(product, request)
         if variants_payload:
             for variant_data in variants_payload:
                 ProductVariant.objects.create(product=product, **variant_data)
@@ -332,11 +404,12 @@ class VendorProductListSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get('request')
-        if not obj.image:
-            return None
-        if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+        img = obj.images.first()
+        if img:
+            return _absolute_url(request, img.image_url)
+        if obj.image:
+            return _absolute_url(request, obj.image.url)
+        return None
 
     def get_discounted_price(self, obj):
         if (obj.discount_percent or 0) > 0:
@@ -349,7 +422,8 @@ class VendorProductListSerializer(serializers.ModelSerializer):
             'id', 'title', 'name', 'description', 'category_type', 'ingredients',
             'price', 'discount_percent', 'discounted_price', 'available_quantity', 'image',
             'status', 'status_display', 'available', 'is_active',
-            'is_natural_certified', 'rejection_reason', 'product_type', 'product_attributes', 'unit',
+            'is_natural_certified', 'rejection_reason', 'is_visible', 'is_featured',
+            'product_type', 'product_attributes', 'unit',
             'variants',
             'created_at', 'updated_at'
         )
@@ -361,12 +435,15 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
     Serializer for vendor updating their products.
     PUT /api/vendor/products/<id>/edit/
     """
+    variants_payload = serializers.JSONField(required=False, write_only=True)
+
     class Meta:
         model = Product
         fields = (
             'title', 'name', 'description', 'short_description',
             'category_type', 'ingredients', 'price', 'available_quantity',
-            'image', 'is_natural_certified', 'tags', 'unit', 'product_type', 'product_attributes'
+            'image', 'is_natural_certified', 'tags', 'unit', 'product_type', 'product_attributes',
+            'variants_payload'
         )
 
     def validate_product_attributes(self, value):
@@ -388,12 +465,19 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         instance.status = 'approved'
         instance.admin_rejection_reason = ''
         variants_payload = validated_data.pop('variants_payload', None)
+        request = self.context.get('request')
+        if request and request.FILES:
+            uploaded_count = _count_uploaded_images(request)
+            if uploaded_count > MAX_PRODUCT_IMAGES:
+                raise serializers.ValidationError({'image': f'Maximum {MAX_PRODUCT_IMAGES} images are allowed.'})
         
         # Update all provided fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
         instance.save()
+        if request and request.FILES:
+            _sync_product_gallery(instance, request)
         if variants_payload is not None:
             instance.variants.all().delete()
             for variant_data in variants_payload:
@@ -466,16 +550,20 @@ class PublicProductSerializer(serializers.ModelSerializer):
     Includes vendor slug for navigation.
     """
     category_name = serializers.CharField(source='category.name', read_only=True)
+    category = serializers.CharField(source='category_type', read_only=True)
     vendor_slug = serializers.CharField(source='vendor.vendor_slug', read_only=True)
     primary_image = serializers.SerializerMethodField()
+    discounted_price = serializers.SerializerMethodField()
+    images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
         fields = (
             'id', 'name', 'slug', 'description', 'price',
             'available_quantity', 'is_natural_certified',
-            'category_name', 'vendor_slug',
-            'primary_image', 'product_attributes', 'product_type',
+            'category_name', 'category', 'vendor_slug',
+            'discount_percent', 'discounted_price',
+            'primary_image', 'images', 'product_attributes', 'product_type',
         )
 
     def get_primary_image(self, obj):
@@ -486,6 +574,11 @@ class PublicProductSerializer(serializers.ModelSerializer):
             return _absolute_url(request, img.image_url)
         if obj.image:
             return _absolute_url(request, obj.image.url)
+        return None
+
+    def get_discounted_price(self, obj):
+        if (obj.discount_percent or 0) > 0:
+            return obj.discounted_price
         return None
 
 

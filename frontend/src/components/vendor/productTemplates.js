@@ -4,6 +4,7 @@ export const PRODUCT_TYPE_OPTIONS = [
   { value: 'cosmetics', label: 'Cosmetics & Makeup' },
   { value: 'clothing', label: 'Clothing & Apparel' },
   { value: 'food', label: 'Food & Snacks' },
+  { value: 'grocery', label: 'Groceries & Essentials' },
   { value: 'accessories', label: 'Accessories' },
   { value: 'home', label: 'Home & Lifestyle' },
 ];
@@ -17,10 +18,26 @@ export const CATEGORY_TYPE_OPTIONS = [
   { value: 'body_lotion', label: 'Body Lotion' },
   { value: 'clothing', label: 'Clothing' },
   { value: 'snacks', label: 'Snacks' },
+  { value: 'groceries', label: 'Groceries' },
   { value: 'cosmetics', label: 'Cosmetics' },
   { value: 'accessories', label: 'Accessories' },
   { value: 'other', label: 'Other' },
 ];
+
+export const CATEGORY_PRODUCT_TYPE_MAP = {
+  face_wash: 'skincare',
+  soap: 'skincare',
+  serum: 'skincare',
+  moisturizer: 'skincare',
+  hair_oil: 'bodycare',
+  body_lotion: 'bodycare',
+  cosmetics: 'cosmetics',
+  clothing: 'clothing',
+  snacks: 'food',
+  groceries: 'grocery',
+  accessories: 'accessories',
+  other: 'home',
+};
 
 const COMMON_FIELDS = [
   {
@@ -220,6 +237,38 @@ const TEMPLATE_FIELDS = {
       placeholder: 'Store in a cool, dry place...',
     },
   ],
+  grocery: [
+    {
+      name: 'product_subtype',
+      label: 'Product Subtype',
+      type: 'select',
+      options: ['Staples', 'Pulses', 'Spices', 'Flour', 'Dry Fruits', 'Beverages', 'Other'],
+    },
+    {
+      name: 'net_weight',
+      label: 'Net Weight',
+      type: 'text',
+      placeholder: '1 kg',
+    },
+    {
+      name: 'shelf_life_months',
+      label: 'Shelf Life (Months)',
+      type: 'number',
+      placeholder: '9',
+    },
+    {
+      name: 'allergen_info',
+      label: 'Allergen Information',
+      type: 'textarea',
+      placeholder: 'Packed in facility that handles nuts and gluten... ',
+    },
+    {
+      name: 'storage_instructions',
+      label: 'Storage Instructions',
+      type: 'textarea',
+      placeholder: 'Store in airtight container away from moisture... ',
+    },
+  ],
   accessories: [
     {
       name: 'material',
@@ -303,6 +352,10 @@ const VARIANT_PRESETS = {
     { option_name: 'Pack Size', option_value: '1 Pack' },
     { option_name: 'Flavor', option_value: 'Classic' },
   ],
+  grocery: [
+    { option_name: 'Pack Size', option_value: '1 kg' },
+    { option_name: 'Type', option_value: 'Regular' },
+  ],
   cosmetics: [
     { option_name: 'Shade', option_value: 'Natural' },
     { option_name: 'Finish', option_value: 'Matte' },
@@ -347,4 +400,8 @@ export function formatProductAttributeLabel(key) {
   return String(key || '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function getProductTypeForCategory(categoryType) {
+  return CATEGORY_PRODUCT_TYPE_MAP[categoryType] || 'skincare';
 }

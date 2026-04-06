@@ -4,6 +4,7 @@ import ProductVariantsEditor from './ProductVariantsEditor';
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
+  getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
   sanitizeVariantRows,
@@ -15,6 +16,7 @@ const API_BASE =
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
 function ProductForm({ onSuccess, onCancel }) {
+  const maxImages = 4;
   const [form, setForm] = useState({
     title: '',
     product_type: 'skincare',
@@ -54,7 +56,26 @@ function ProductForm({ onSuccess, onCancel }) {
   const onInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     if (type === 'file') {
-      setForm((prev) => ({ ...prev, images: Array.from(files || []) }));
+      const allSelected = Array.from(files || []);
+      const selected = allSelected.slice(0, maxImages);
+      if (allSelected.length > maxImages) {
+        setError(`You can upload up to ${maxImages} images only.`);
+      }
+      setForm((prev) => ({ ...prev, images: selected }));
+      return;
+    }
+    if (name === 'category_type') {
+      const mappedType = getProductTypeForCategory(value);
+      setForm((prev) => ({
+        ...prev,
+        category_type: value,
+        product_type: mappedType,
+        product_attributes: {
+          ...getEmptyProductAttributes(mappedType),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(mappedType),
+      }));
       return;
     }
     if (name === 'product_type') {
@@ -90,6 +111,11 @@ function ProductForm({ onSuccess, onCancel }) {
       return;
     }
 
+    if (form.images.length > maxImages) {
+      setError(`Only ${maxImages} images are allowed per product.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -114,8 +140,8 @@ function ProductForm({ onSuccess, onCancel }) {
       formData.append('variants_payload', JSON.stringify(variantsPayload));
 
       // Append all image files
-      form.images.forEach((image, index) => {
-        formData.append(`image_${index}`, image);
+      form.images.slice(1, maxImages).forEach((image, index) => {
+        formData.append(`image_${index + 1}`, image);
       });
       // Also append the first image as 'image' for backward compatibility
       if (form.images.length > 0) {
@@ -286,7 +312,7 @@ function ProductForm({ onSuccess, onCancel }) {
           />
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Images (upload 1 or more)</label>
+            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Images (minimum 1, maximum 4)</label>
             <input
               type="file"
               name="images"
@@ -297,7 +323,7 @@ function ProductForm({ onSuccess, onCancel }) {
             />
             {previewUrls.length > 0 && (
               <div className="mt-3">
-                <p className="text-xs text-zinc-600 mb-2">{previewUrls.length} image(s) selected</p>
+                <p className="text-xs text-zinc-600 mb-2">{previewUrls.length}/{maxImages} image(s) selected</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {previewUrls.map((url, idx) => (
                     <div key={idx} className="relative">

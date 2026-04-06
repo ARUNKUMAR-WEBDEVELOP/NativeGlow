@@ -22,6 +22,14 @@ function formatAttributeValue(value) {
   return String(value);
 }
 
+function getDisplayPrice(product) {
+  const discounted = Number(product?.discounted_price || 0);
+  if (discounted > 0) {
+    return { value: discounted, original: Number(product?.price || 0), hasDiscount: true };
+  }
+  return { value: Number(product?.price || 0), original: null, hasDiscount: false };
+}
+
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
@@ -111,8 +119,8 @@ function VendorStore() {
           {(store?.products || []).map((product) => (
             <article key={product.id || `${product.name}-${product.price}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
               <div className="h-48 bg-zinc-100">
-                {product.image ? (
-                  <img src={resolveImageUrl(product.image)} alt={product.name} className="h-full w-full object-cover" />
+                {resolveImageUrl(product.primary_image || product.image) ? (
+                  <img src={resolveImageUrl(product.primary_image || product.image)} alt={product.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-zinc-500">No image</div>
                 )}
@@ -124,7 +132,21 @@ function VendorStore() {
                   <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">100% Natural</span>
                 </div>
 
-                <p className="text-sm font-bold text-zinc-800">INR {product.price}</p>
+                {(() => {
+                  const price = getDisplayPrice(product);
+                  if (!price.hasDiscount) {
+                    return <p className="text-sm font-bold text-zinc-800">INR {price.value}</p>;
+                  }
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-emerald-700">INR {price.value}</p>
+                      <p className="text-xs text-zinc-400 line-through">INR {price.original}</p>
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
+                        {Number(product.discount_percent || 0)}% OFF
+                      </span>
+                    </div>
+                  );
+                })()}
                 <p className="text-xs text-zinc-600">Ingredients: {product.ingredients || 'Not provided'}</p>
 
                 {Object.entries(product.product_attributes || {})

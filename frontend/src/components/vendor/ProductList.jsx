@@ -52,6 +52,124 @@ function getDiscountPercent(product) {
   return Number(product?.discount_percent ?? product?.discount_percentage ?? 0);
 }
 
+function getDiscountedPrice(product) {
+  const directValue = Number(product?.discounted_price ?? 0);
+  if (directValue > 0) {
+    return directValue;
+  }
+  const price = Number(product?.price ?? 0);
+  const percent = getDiscountPercent(product);
+  if (!price || percent <= 0) {
+    return null;
+  }
+  return Number((price * (1 - percent / 100)).toFixed(2));
+}
+
+function MobileProductCard({
+  product,
+  operationLoading,
+  quantityDraft,
+  setQuantityDraft,
+  onToggleVisibility,
+  onToggleFeatured,
+  setDiscountModalProduct,
+  setEditingProduct,
+  onDelete,
+  onUpdateQuantity,
+}) {
+  const percent = getDiscountPercent(product);
+  const discounted = getDiscountedPrice(product);
+
+  return (
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        {product.image ? (
+          <img src={product.image} alt={product.title} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-zinc-900">{product.title}</p>
+          <p className="mt-1 text-xs text-zinc-500 capitalize">{String(product.category_type || 'other').replace('_', ' ')}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {discounted ? (
+              <>
+                <span className="text-sm font-bold text-emerald-700">INR {discounted}</span>
+                <span className="text-xs text-zinc-400 line-through">INR {product.price}</span>
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">{percent}% OFF</span>
+              </>
+            ) : (
+              <span className="text-sm font-bold text-zinc-800">INR {product.price}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="number"
+          min="0"
+          value={quantityDraft[product.id] ?? product.available_quantity}
+          onChange={(e) =>
+            setQuantityDraft((prev) => ({
+              ...prev,
+              [product.id]: e.target.value,
+            }))
+          }
+          className="w-24 rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+        />
+        <button
+          type="button"
+          onClick={() => onUpdateQuantity(product.id)}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700"
+        >
+          Update Qty
+        </button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onToggleVisibility(product)}
+          disabled={operationLoading[product.id]}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 disabled:opacity-50"
+        >
+          {product.is_visible ? 'Hide' : 'Show'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onToggleFeatured(product)}
+          disabled={operationLoading[product.id]}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 disabled:opacity-50"
+        >
+          {product.is_featured ? 'Unfeature' : 'Feature'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDiscountModalProduct(product)}
+          className="rounded-lg border border-orange-300 px-3 py-1.5 text-xs font-semibold text-orange-700"
+        >
+          {percent > 0 ? 'Edit Discount' : 'Set Discount'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditingProduct(product)}
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(product.id)}
+          className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700"
+        >
+          Delete
+        </button>
+      </div>
+    </article>
+  );
+}
+
 // Sortable row component
 function SortableProductRow({
   product,
@@ -459,9 +577,19 @@ function ProductList() {
       }
 
       setProducts((prev) =>
-        prev.map((item) =>
-          item.id === productId ? { ...item, discount_percent: discountPercentage } : item
-        )
+        prev.map((item) => {
+          if (item.id !== productId) {
+            return item;
+          }
+          const nextDiscounted = discountPercentage > 0
+            ? Number((Number(item.price || 0) * (1 - discountPercentage / 100)).toFixed(2))
+            : null;
+          return {
+            ...item,
+            discount_percent: discountPercentage,
+            discounted_price: nextDiscounted,
+          };
+        })
       );
 
       setDiscountModalProduct(null);
@@ -524,7 +652,27 @@ function ProductList() {
       {success ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
       {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {loading ? <p className="rounded-xl border border-zinc-200 bg-white px-3 py-6 text-center text-sm text-zinc-500">Loading products...</p> : null}
+        {!loading && products.length === 0 ? <p className="rounded-xl border border-zinc-200 bg-white px-3 py-6 text-center text-sm text-zinc-500">No products found.</p> : null}
+        {!loading && products.map((product) => (
+          <MobileProductCard
+            key={product.id}
+            product={product}
+            operationLoading={operationLoading}
+            quantityDraft={quantityDraft}
+            setQuantityDraft={setQuantityDraft}
+            onToggleVisibility={onToggleVisibility}
+            onToggleFeatured={onToggleFeatured}
+            setDiscountModalProduct={setDiscountModalProduct}
+            setEditingProduct={setEditingProduct}
+            onDelete={onDelete}
+            onUpdateQuantity={onUpdateQuantity}
+          />
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm md:block">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

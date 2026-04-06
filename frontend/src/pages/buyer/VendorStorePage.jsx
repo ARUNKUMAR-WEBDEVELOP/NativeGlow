@@ -23,6 +23,14 @@ function formatAttributeValue(value) {
   return String(value);
 }
 
+function getEffectivePrice(product) {
+  const discounted = Number(product?.discounted_price || 0);
+  if (discounted > 0) {
+    return discounted;
+  }
+  return Number(product?.price || 0);
+}
+
 function VendorStorePage() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
@@ -51,11 +59,14 @@ function VendorStorePage() {
       try {
         const data = await api.getVendorStore(vendorSlug);
         if (active) {
-          setVendor(data.vendor);
+          setVendor({
+            ...data,
+            whatsapp: data.whatsapp || data.whatsapp_number || '',
+          });
           setProducts(Array.isArray(data.products) ? data.products : []);
           
           // Extract unique categories
-          const cats = [...new Set(data.products.map(p => p.category).filter(Boolean))];
+          const cats = [...new Set((data.products || []).map((p) => p.category || p.category_name || p.category_type).filter(Boolean))];
           setCategories(cats);
         }
       } catch (err) {
@@ -83,16 +94,16 @@ function VendorStorePage() {
     let filtered = products;
     
     if (selectedCategory) {
-      filtered = filtered.filter(p => p.category === selectedCategory);
+      filtered = filtered.filter((p) => (p.category || p.category_name || p.category_type) === selectedCategory);
     }
     
     // Sort
     switch (sortBy) {
       case 'price-low':
-        filtered = [...filtered].sort((a, b) => a.price - b.price);
+        filtered = [...filtered].sort((a, b) => getEffectivePrice(a) - getEffectivePrice(b));
         break;
       case 'price-high':
-        filtered = [...filtered].sort((a, b) => b.price - a.price);
+        filtered = [...filtered].sort((a, b) => getEffectivePrice(b) - getEffectivePrice(a));
         break;
       case 'newest':
       default:
@@ -227,7 +238,7 @@ function VendorStorePage() {
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-gray-600 text-sm">Contact</p>
               <a
-                href={`https://wa.me/${vendor?.whatsapp.replace(/\D/g, '')}`}
+                href={`https://wa.me/${(vendor?.whatsapp || '').replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-semibold text-blue-700 hover:underline"
@@ -298,10 +309,10 @@ function VendorStorePage() {
               >
                 {/* Product Image */}
                 <div className="relative h-48 bg-gray-100 overflow-hidden group">
-                  {product.images && product.images.length > 0 ? (
+                  {resolveImageUrl(product.primary_image || product.images?.[0]?.image_url || product.images?.[0]?.image) ? (
                     <img
-                      src={resolveImageUrl(product.images[0].image_url || product.images[0].image || product.primary_image)}
-                      alt={product.name}
+                      src={resolveImageUrl(product.primary_image || product.images?.[0]?.image_url || product.images?.[0]?.image)}
+                      alt={product.name || product.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition cursor-pointer"
                       onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
                     />
@@ -313,6 +324,11 @@ function VendorStorePage() {
                   
                   {/* Badges */}
                   <div className="absolute top-3 right-3 flex flex-col gap-2">
+                    {Number(product.discount_percent || 0) > 0 && (
+                      <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                        {Number(product.discount_percent || 0)}% OFF
+                      </span>
+                    )}
                     {product.is_natural_certified && (
                       <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
                         100% Natural 🌿
@@ -337,13 +353,13 @@ function VendorStorePage() {
                     className="font-semibold text-gray-800 mb-2 line-clamp-2 cursor-pointer hover:text-emerald-600"
                     onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
                   >
-                    {product.name}
+                    {product.name || product.title}
                   </h3>
                   
                   {/* Category badge */}
-                  {product.category && (
+                  {(product.category || product.category_name || product.category_type) && (
                     <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2">
-                      {product.category}
+                      {product.category || product.category_name || product.category_type}
                     </span>
                   )}
 
@@ -367,7 +383,14 @@ function VendorStorePage() {
                   )}
 
                   {/* Price */}
-                  <p className="text-2xl font-bold text-emerald-600 mb-4">₹{product.price.toFixed(0)}</p>
+                  {Number(product.discount_percent || 0) > 0 && Number(product.discounted_price || 0) > 0 ? (
+                    <div className="mb-4 flex items-center gap-2">
+                      <p className="text-2xl font-bold text-emerald-600">₹{Number(product.discounted_price).toFixed(0)}</p>
+                      <p className="text-sm text-zinc-400 line-through">₹{Number(product.price || 0).toFixed(0)}</p>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold text-emerald-600 mb-4">₹{Number(product.price || 0).toFixed(0)}</p>
+                  )}
 
                   {/* Quantity info */}
                   {product.available_quantity > 0 && (
@@ -386,7 +409,7 @@ function VendorStorePage() {
                       Buy Now
                     </button>
                     <a
-                      href={`https://wa.me/${vendor?.whatsapp.replace(/\D/g, '')}?text=Hi%20I%27m%20interested%20in%20${encodeURIComponent(product.name)}`}
+                      href={`https://wa.me/${(vendor?.whatsapp || '').replace(/\D/g, '')}?text=Hi%20I%27m%20interested%20in%20${encodeURIComponent(product.name || product.title || 'this product')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600 transition text-center"

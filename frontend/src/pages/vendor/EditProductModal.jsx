@@ -4,6 +4,7 @@ import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
+  getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
   sanitizeVariantRows,
@@ -57,6 +58,20 @@ function EditProductModal({ product, onClose, onSave }) {
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'category_type') {
+      const mappedType = getProductTypeForCategory(value);
+      setForm((prev) => ({
+        ...prev,
+        category_type: value,
+        product_type: mappedType,
+        product_attributes: {
+          ...getEmptyProductAttributes(mappedType),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(mappedType),
+      }));
+      return;
+    }
     if (name === 'product_type') {
       setForm((prev) => ({
         ...prev,

@@ -5,6 +5,7 @@ import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
+  getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
   sanitizeVariantRows,
@@ -97,6 +98,7 @@ async function uploadToSupabaseStorage(file, folder) {
 }
 
 export default function VendorSetupWizard() {
+  const maxImages = 4;
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -125,7 +127,7 @@ export default function VendorSetupWizard() {
     price: '',
     ingredients: '',
     available_quantity: 0,
-    image: null,
+    images: [],
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
   });
@@ -288,9 +290,14 @@ export default function VendorSetupWizard() {
     formData.append('product_attributes', JSON.stringify(productAttributes));
     formData.append('variants_payload', JSON.stringify(variantsPayload));
 
-    if (productForm.image) {
-      formData.append('image', productForm.image);
+    if (!productForm.images || productForm.images.length === 0) {
+      throw new Error('Please upload at least 1 product image.');
     }
+
+    formData.append('image', productForm.images[0]);
+    productForm.images.slice(1, maxImages).forEach((image, index) => {
+      formData.append(`image_${index + 1}`, image);
+    });
 
     await authRequest(
       ['/vendor/products/add/'],
@@ -515,7 +522,19 @@ why you started..."
               />
               <select
                 value={productForm.category_type}
-                onChange={(e) => setProductForm((prev) => ({ ...prev, category_type: e.target.value }))}
+                onChange={(e) => {
+                  const mappedType = getProductTypeForCategory(e.target.value);
+                  setProductForm((prev) => ({
+                    ...prev,
+                    category_type: e.target.value,
+                    product_type: mappedType,
+                    product_attributes: {
+                      ...getEmptyProductAttributes(mappedType),
+                      ...prev.product_attributes,
+                    },
+                    variants: getDefaultVariantRows(mappedType),
+                  }));
+                }}
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
               >
                 {CATEGORY_TYPE_OPTIONS.map((category) => (
@@ -594,9 +613,19 @@ why you started..."
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setProductForm((prev) => ({ ...prev, image: e.target.files?.[0] || null }))}
+              multiple
+              onChange={(e) => {
+                const selected = Array.from(e.target.files || []).slice(0, maxImages);
+                if (Array.from(e.target.files || []).length > maxImages) {
+                  setError(`Only ${maxImages} images are allowed per product.`);
+                }
+                setProductForm((prev) => ({ ...prev, images: selected }));
+              }}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             />
+            {Array.isArray(productForm.images) && productForm.images.length > 0 ? (
+              <p className="text-xs text-zinc-500">{productForm.images.length}/{maxImages} image(s) selected</p>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
               <button

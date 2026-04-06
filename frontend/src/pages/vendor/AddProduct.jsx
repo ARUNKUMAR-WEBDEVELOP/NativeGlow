@@ -5,6 +5,7 @@ import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
+  getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
   sanitizeVariantRows,
@@ -16,6 +17,7 @@ const API_BASE =
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
 function AddProduct() {
+  const maxImages = 4;
   const navigate = useNavigate();
   const vendorSlug = useMemo(() => {
     try {
@@ -38,11 +40,11 @@ function AddProduct() {
     price: '',
     available_quantity: 0,
     is_natural_certified: false,
-    image: null,
+    images: [],
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
   });
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewUrls, setPreviewUrls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -56,14 +58,14 @@ function AddProduct() {
   }, []);
 
   useEffect(() => {
-    if (!form.image) {
-      setPreviewUrl('');
+    if (!form.images || form.images.length === 0) {
+      setPreviewUrls([]);
       return undefined;
     }
-    const objectUrl = URL.createObjectURL(form.image);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [form.image]);
+    const urls = form.images.map((img) => URL.createObjectURL(img));
+    setPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [form.images]);
 
   useEffect(() => {
     if (!vendorSession?.access) {
@@ -74,7 +76,25 @@ function AddProduct() {
   const onInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     if (type === 'file') {
-      setForm((prev) => ({ ...prev, image: files?.[0] || null }));
+      const selected = Array.from(files || []).slice(0, maxImages);
+      if (Array.from(files || []).length > maxImages) {
+        setError(`Only ${maxImages} images are allowed per product.`);
+      }
+      setForm((prev) => ({ ...prev, images: selected }));
+      return;
+    }
+    if (name === 'category_type') {
+      const mappedType = getProductTypeForCategory(value);
+      setForm((prev) => ({
+        ...prev,
+        category_type: value,
+        product_type: mappedType,
+        product_attributes: {
+          ...getEmptyProductAttributes(mappedType),
+          ...prev.product_attributes,
+        },
+        variants: getDefaultVariantRows(mappedType),
+      }));
       return;
     }
     if (name === 'product_type') {
@@ -107,6 +127,12 @@ function AddProduct() {
 
     setLoading(true);
 
+    if (!form.images || form.images.length < 1) {
+      setError('Please upload at least 1 image.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       const normalizedCategory = form.category_type === 'toner' ? 'other' : form.category_type;
@@ -128,9 +154,10 @@ function AddProduct() {
       formData.append('product_attributes', JSON.stringify(productAttributes));
       formData.append('variants_payload', JSON.stringify(variantsPayload));
 
-      if (form.image) {
-        formData.append('image', form.image);
-      }
+      formData.append('image', form.images[0]);
+      form.images.slice(1, maxImages).forEach((image, index) => {
+        formData.append(`image_${index + 1}`, image);
+      });
 
       const res = await fetch(`${API_BASE}/vendor/products/add/`, {
         method: 'POST',
@@ -161,7 +188,7 @@ function AddProduct() {
         price: '',
         available_quantity: 0,
         is_natural_certified: false,
-        image: null,
+        images: [],
         product_attributes: getEmptyProductAttributes('skincare'),
         variants: getDefaultVariantRows('skincare'),
       });
@@ -293,17 +320,23 @@ function AddProduct() {
           />
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Image</label>
+            <label className="mb-1 block text-sm font-semibold text-zinc-800">Product Images (minimum 1, maximum 4)</label>
             <input
               type="file"
-              name="image"
+              name="images"
               accept="image/*"
+              multiple
               onChange={onInputChange}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             />
-            {previewUrl ? (
+            {previewUrls.length > 0 ? (
               <div className="mt-3">
-                <img src={previewUrl} alt="Preview" className="h-36 w-36 rounded-lg border border-zinc-200 object-cover" />
+                <p className="mb-2 text-xs text-zinc-600">{previewUrls.length}/{maxImages} image(s) selected</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {previewUrls.map((url, idx) => (
+                    <img key={`${url}-${idx}`} src={url} alt={`Preview ${idx + 1}`} className="h-24 w-24 rounded-lg border border-zinc-200 object-cover" />
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
