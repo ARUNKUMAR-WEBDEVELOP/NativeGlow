@@ -3,17 +3,7 @@ import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
 import { resolveImageUrl } from '../../utils/imageUrl';
-
-function getBuyerTokenKey(vendorSlug) {
-  return `buyer_token_${vendorSlug}`;
-}
-
-function isBuyerLoggedIn(vendorSlug) {
-  if (!vendorSlug) {
-    return false;
-  }
-  return Boolean(localStorage.getItem(getBuyerTokenKey(vendorSlug)));
-}
+import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 function getNextPath(vendorSlug, productId) {
   return `/store/${vendorSlug}/product/${productId}`;
@@ -60,6 +50,7 @@ function ProductDetailPage() {
   const resolvedProductId = productId || legacyProductId;
   const location = useLocation();
   const navigate = useNavigate();
+  const { isLoggedIn: loggedIn, ready: buyerAuthReady } = useBuyerAuth();
 
   // State management
   const [product, setProduct] = useState(null);
@@ -72,8 +63,6 @@ function ProductDetailPage() {
   const [lightboxImageIndex, setLightboxImageIndex] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
-
-  const loggedIn = isBuyerLoggedIn(vendorSlug);
 
   // Fetch product detail
   useEffect(() => {
@@ -126,6 +115,10 @@ function ProductDetailPage() {
   };
 
   const handleRequireLoginAction = (callback) => {
+    if (!buyerAuthReady) {
+      setActionMessage('Checking your login session...');
+      return;
+    }
     if (!loggedIn) {
       redirectToLogin();
       return;
@@ -168,6 +161,10 @@ function ProductDetailPage() {
   };
 
   useEffect(() => {
+    if (!buyerAuthReady) {
+      return;
+    }
+
     if (location.state?.openOrder) {
       if (loggedIn) {
         setShowOrderModal(true);
@@ -176,7 +173,7 @@ function ProductDetailPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, loggedIn]);
+  }, [location.state, loggedIn, buyerAuthReady]);
 
   // Loading state
   if (loading) {
@@ -501,12 +498,14 @@ function ProductDetailPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => handleRequireLoginAction(() => setShowOrderModal(true))}
+                  disabled={!buyerAuthReady}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition"
                 >
                   Order Now
                 </button>
                 <button
                   onClick={handleAddToCart}
+                  disabled={!buyerAuthReady}
                   className="flex-1 border-2 border-emerald-600 text-emerald-600 py-3 rounded-lg font-semibold hover:bg-emerald-50 transition text-center"
                 >
                   Add to Cart
@@ -516,7 +515,18 @@ function ProductDetailPage() {
 
             {actionMessage ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {actionMessage}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{actionMessage}</span>
+                  {actionMessage.toLowerCase().includes('added to cart') ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/store/${vendorSlug}/cart`)}
+                      className="rounded-md border border-emerald-300 bg-white px-2 py-1 text-xs font-semibold text-emerald-700"
+                    >
+                      View Store Cart
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 

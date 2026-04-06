@@ -693,7 +693,7 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
 
 function OrderModal(props) {
   const { vendor, product } = props;
-  const vendorSlug = vendor?.vendor_slug || vendor?.slug || product?.vendor_slug || '';
+  const vendorSlug = props.vendorSlug || vendor?.vendor_slug || vendor?.slug || product?.vendor_slug || '';
 
   return (
     <BuyerAuthProvider vendorSlug={vendorSlug}>

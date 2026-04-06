@@ -11,7 +11,7 @@ import {
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
 
-function EditProductModal({ product, onClose, onSave }) {
+function EditProductModal({ product, onClose, onSave, loading }) {
   const [form, setForm] = useState({
     title: '',
     name: '',
@@ -117,30 +117,30 @@ function EditProductModal({ product, onClose, onSave }) {
 
         <form onSubmit={onSubmit} className="mt-4 space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
-            <input name="title" value={form.title} onChange={onChange} placeholder="Title" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
-            <input name="name" value={form.name} onChange={onChange} placeholder="Name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            <input name="title" value={form.title} onChange={onChange} placeholder="Title" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required disabled={loading} />
+            <input name="name" value={form.name} onChange={onChange} placeholder="Name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" disabled={loading} />
           </div>
 
-          <textarea name="description" value={form.description} onChange={onChange} placeholder="Description" className="h-24 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+          <textarea name="description" value={form.description} onChange={onChange} placeholder="Description" className="h-24 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required disabled={loading} />
 
           <div className="grid gap-3 md:grid-cols-2">
-            <select name="category_type" value={form.category_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm">
+            <select name="category_type" value={form.category_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" disabled={loading}>
               {CATEGORY_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-            <select name="product_type" value={form.product_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm">
+            <select name="product_type" value={form.product_type} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" disabled={loading}>
               {PRODUCT_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           </div>
 
-          <input name="ingredients" value={form.ingredients} onChange={onChange} placeholder="Ingredients" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+          <input name="ingredients" value={form.ingredients} onChange={onChange} placeholder="Ingredients" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" disabled={loading} />
 
           <div className="grid gap-3 md:grid-cols-2">
-            <input type="number" min="0" step="0.01" name="price" value={form.price} onChange={onChange} placeholder="Price" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
-            <input type="number" min="0" name="available_quantity" value={form.available_quantity} onChange={onChange} placeholder="Quantity" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+            <input type="number" min="0" step="0.01" name="price" value={form.price} onChange={onChange} placeholder="Price" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required disabled={loading} />
+            <input type="number" min="0" name="available_quantity" value={form.available_quantity} onChange={onChange} placeholder="Quantity" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required disabled={loading} />
           </div>
 
           <ProductAttributeFields
@@ -169,8 +169,8 @@ function EditProductModal({ product, onClose, onSave }) {
           </label>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700">Cancel</button>
-            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white">Save Changes</button>
+            <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700" disabled={loading}>Cancel</button>
+            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading}>{loading ? 'Saving...' : 'Save Changes'}</button>
           </div>
         </form>
       </div>

@@ -79,17 +79,18 @@ function MobileProductCard({
 }) {
   const percent = getDiscountPercent(product);
   const discounted = getDiscountedPrice(product);
+  const productLabel = product.title || product.name || 'Product';
 
   return (
     <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         {product.image ? (
-          <img src={product.image} alt={product.title} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
+          <img src={product.image} alt={productLabel} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-zinc-900">{product.title}</p>
+          <p className="truncate text-sm font-semibold text-zinc-900">{productLabel}</p>
           <p className="mt-1 text-xs text-zinc-500 capitalize">{String(product.category_type || 'other').replace('_', ' ')}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {discounted ? (
@@ -183,6 +184,7 @@ function SortableProductRow({
   onDelete,
   onUpdateQuantity,
 }) {
+  const productLabel = product.title || product.name || 'Product';
   const {
     attributes,
     listeners,
@@ -208,13 +210,13 @@ function SortableProductRow({
     >
       <td className="px-3 py-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
         {product.image ? (
-          <img src={product.image} alt={product.title} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
+          <img src={product.image} alt={productLabel} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
       </td>
       <td className="px-3 py-3 font-semibold text-zinc-800">
-        <div>{product.title}</div>
+        <div>{productLabel}</div>
         {product.status === 'rejected' && product.rejection_reason ? (
           <p className="mt-1 text-xs font-normal text-rose-700">Reason: {product.rejection_reason}</p>
         ) : null}
@@ -336,6 +338,7 @@ function ProductList() {
   const [quantityDraft, setQuantityDraft] = useState({});
   const [discountModalProduct, setDiscountModalProduct] = useState(null);
   const [discountLoading, setDiscountLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [operationLoading, setOperationLoading] = useState({});
 
   const authHeaders = useMemo(
@@ -451,6 +454,7 @@ function ProductList() {
     }
     setError('');
     setSuccess('');
+    setEditLoading(true);
 
     try {
       const res = await fetch(`${API_BASE}/vendor/products/${editingProduct.id}/edit/`, {
@@ -475,6 +479,8 @@ function ProductList() {
       await fetchProducts();
     } catch (err) {
       setError(err.message || 'Could not update product.');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -735,6 +741,7 @@ function ProductList() {
         <EditProductModal
           product={editingProduct}
           onSave={onSaveEdit}
+          loading={editLoading}
           onClose={() => setEditingProduct(null)}
         />
       ) : null}

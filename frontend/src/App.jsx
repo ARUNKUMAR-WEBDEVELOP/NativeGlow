@@ -36,6 +36,7 @@ import VendorSiteAbout from './pages/vendorsite/VendorSiteAbout';
 import VendorSiteTrack from './pages/vendorsite/VendorSiteTrack';
 import VendorSiteLogin from './pages/vendorsite/VendorSiteLogin';
 import BuyerOrders from './pages/vendorsite/BuyerOrders';
+import VendorSiteCart from './pages/vendorsite/VendorSiteCart';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -209,6 +210,7 @@ function App() {
           <Route path="track" element={<VendorSiteTrack />} />
           <Route path="login" element={<VendorSiteLogin />} />
           <Route path="my-orders" element={<BuyerOrders />} />
+          <Route path="cart" element={<VendorSiteCart />} />
         </Route>
         <Route path="/site/:vendor_slug/vendor/dashboard/setup" element={<Navigate to="/dashboard/setup" replace />} />
         <Route path="/site/:vendor_slug/vendor/dashboard" element={<Navigate to="/dashboard" replace />} />

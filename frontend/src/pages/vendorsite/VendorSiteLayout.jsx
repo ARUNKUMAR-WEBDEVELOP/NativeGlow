@@ -304,7 +304,7 @@ export default function VendorSiteLayout() {
                 </NavLink>
               ))}
               <Link
-                to="/cart"
+                to={`/store/${vendorSlug}/cart`}
                 className="rounded-full px-3 py-1.5 text-sm transition opacity-80 hover:opacity-100"
                 style={{ border: '1px solid transparent', color: 'var(--site-text)' }}
               >

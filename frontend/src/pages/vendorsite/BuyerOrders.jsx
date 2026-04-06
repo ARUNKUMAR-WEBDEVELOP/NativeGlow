@@ -43,7 +43,7 @@ function formatShippingAddress(order) {
 export default function BuyerOrders() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
-  const { buyer, isLoggedIn } = useBuyerAuth();
+  const { buyer, isLoggedIn, ready } = useBuyerAuth();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,6 +138,10 @@ export default function BuyerOrders() {
     } finally {
       setSubmittingConfirm(false);
     }
+  }
+
+  if (!ready) {
+    return <p className="text-sm font-semibold text-zinc-600">Checking your buyer session...</p>;
   }
 
   if (!isLoggedIn) {
