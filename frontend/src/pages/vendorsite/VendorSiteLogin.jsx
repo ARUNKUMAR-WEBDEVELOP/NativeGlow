@@ -3,12 +3,13 @@ import BuyerGoogleLogin from '../../components/vendorsite/BuyerGoogleLogin';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 export default function VendorSiteLogin() {
-  const { vendor_slug: vendorSlug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const location = useLocation();
   const { isLoggedIn } = useBuyerAuth();
 
   const params = new URLSearchParams(location.search || '');
-  const nextPath = params.get('next') || `/site/${vendorSlug}/products`;
+  const nextPath = params.get('next') || `/store/${vendorSlug}/products`;
 
   if (isLoggedIn) {
     return <Navigate to={nextPath} replace />;

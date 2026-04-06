@@ -61,13 +61,8 @@ function VendorProtectedRoute({ children }) {
 
   const loggedInVendorSlug = getVendorSlugFromSession();
 
-  if (routeVendorSlug && loggedInVendorSlug && routeVendorSlug !== loggedInVendorSlug) {
-    const correctedPath = location.pathname.replace(`/site/${routeVendorSlug}`, `/site/${loggedInVendorSlug}`);
-    return <Navigate to={`${correctedPath}${location.search || ''}`} replace />;
-  }
-
   if (!routeVendorSlug && loggedInVendorSlug && location.pathname.startsWith('/vendor/dashboard')) {
-    return <Navigate to={`/site/${loggedInVendorSlug}${location.pathname}${location.search || ''}`} replace />;
+    return <Navigate to={`/dashboard${location.search || ''}`} replace />;
   }
 
   return children;

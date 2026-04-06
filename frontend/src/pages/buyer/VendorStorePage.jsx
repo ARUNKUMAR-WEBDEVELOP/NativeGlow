@@ -4,7 +4,8 @@ import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
 
 function VendorStorePage() {
-  const { vendor_slug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const navigate = useNavigate();
   
   // State management
@@ -28,7 +29,7 @@ function VendorStorePage() {
     
     async function loadVendorStore() {
       try {
-        const data = await api.getVendorStore(vendor_slug);
+        const data = await api.getVendorStore(vendorSlug);
         if (active) {
           setVendor(data.vendor);
           setProducts(Array.isArray(data.products) ? data.products : []);
@@ -55,7 +56,7 @@ function VendorStorePage() {
     
     loadVendorStore();
     return () => { active = false; };
-  }, [vendor_slug]);
+  }, [vendorSlug]);
 
   // Filter and sort products
   useEffect(() => {
@@ -282,7 +283,7 @@ function VendorStorePage() {
                       src={product.images[0].image}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition cursor-pointer"
-                      onClick={() => navigate(`/store/${vendor_slug}/products/${product.id}`)}
+                      onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -314,7 +315,7 @@ function VendorStorePage() {
                 <div className="p-4">
                   <h3
                     className="font-semibold text-gray-800 mb-2 line-clamp-2 cursor-pointer hover:text-emerald-600"
-                    onClick={() => navigate(`/store/${vendor_slug}/products/${product.id}`)}
+                    onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
                   >
                     {product.name}
                   </h3>

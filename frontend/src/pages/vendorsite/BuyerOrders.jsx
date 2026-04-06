@@ -28,7 +28,8 @@ function formatMoney(value) {
 }
 
 export default function BuyerOrders() {
-  const { vendor_slug: vendorSlug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const { buyer, isLoggedIn } = useBuyerAuth();
 
   const [orders, setOrders] = useState([]);
@@ -127,7 +128,7 @@ export default function BuyerOrders() {
   }
 
   if (!isLoggedIn) {
-    return <Navigate to={`/site/${vendorSlug}/login`} replace />;
+    return <Navigate to={`/store/${vendorSlug}/login`} replace />;
   }
 
   return (
@@ -146,7 +147,7 @@ export default function BuyerOrders() {
         <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-6 text-center">
           <p className="text-sm text-zinc-700">No orders yet. Start shopping!</p>
           <Link
-            to={`/site/${vendorSlug}/products`}
+            to={`/store/${vendorSlug}/products`}
             className="mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold"
             style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
           >

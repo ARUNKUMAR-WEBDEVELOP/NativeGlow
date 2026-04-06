@@ -15,11 +15,18 @@ function isBuyerLoggedIn(vendorSlug) {
 }
 
 function getNextPath(vendorSlug, productId) {
-  return `/store/${vendorSlug}/products/${productId}`;
+  return `/store/${vendorSlug}/product/${productId}`;
 }
 
 function ProductDetailPage() {
-  const { vendor_slug, product_id } = useParams();
+  const {
+    slug,
+    vendor_slug: legacyVendorSlug,
+    productId,
+    product_id: legacyProductId,
+  } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
+  const resolvedProductId = productId || legacyProductId;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -34,7 +41,7 @@ function ProductDetailPage() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
 
-  const loggedIn = isBuyerLoggedIn(vendor_slug);
+  const loggedIn = isBuyerLoggedIn(vendorSlug);
 
   // Fetch product detail
   useEffect(() => {
@@ -42,7 +49,7 @@ function ProductDetailPage() {
 
     async function loadProductDetail() {
       try {
-        const data = await api.getProductDetail(vendor_slug, product_id);
+        const data = await api.getProductDetail(vendorSlug, resolvedProductId);
         if (active) {
           setProduct(data);
           setVendor({
@@ -72,7 +79,7 @@ function ProductDetailPage() {
 
     loadProductDetail();
     return () => { active = false; };
-  }, [vendor_slug, product_id]);
+  }, [vendorSlug, resolvedProductId]);
 
   // Handle quantity change
   const handleQuantityChange = (value) => {
@@ -82,8 +89,8 @@ function ProductDetailPage() {
   };
 
   const redirectToLogin = () => {
-    const nextPath = getNextPath(vendor_slug, product_id);
-    navigate(`/site/${vendor_slug}/login?next=${encodeURIComponent(nextPath)}`);
+    const nextPath = getNextPath(vendorSlug, resolvedProductId);
+    navigate(`/store/${vendorSlug}/login?next=${encodeURIComponent(nextPath)}`);
   };
 
   const handleRequireLoginAction = (callback) => {
@@ -96,7 +103,7 @@ function ProductDetailPage() {
 
   const handleAddToCart = () => {
     handleRequireLoginAction(() => {
-      const storageKey = `vendor_store_cart_${vendor_slug}`;
+      const storageKey = `vendor_store_cart_${vendorSlug}`;
       let current = [];
       try {
         current = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -233,7 +240,7 @@ function ProductDetailPage() {
           <button onClick={() => navigate('/')} className="hover:text-emerald-600">Home</button>
           <span>/</span>
           <button 
-            onClick={() => navigate(`/store/${vendor_slug}`)}
+            onClick={() => navigate(`/store/${vendorSlug}`)}
             className="hover:text-emerald-600"
           >
             {vendor.business_name}
@@ -463,7 +470,7 @@ function ProductDetailPage() {
                 </div>
               </div>
               <button
-                onClick={() => navigate(`/store/${vendor_slug}`)}
+                onClick={() => navigate(`/store/${vendorSlug}`)}
                 className="w-full py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50 transition font-medium"
               >
                 View Full Store →
@@ -518,7 +525,7 @@ function ProductDetailPage() {
           quantity={quantity}
           onClose={() => setShowOrderModal(false)}
           onSuccess={() => setShowOrderModal(false)}
-          vendorSlug={vendor_slug}
+          vendorSlug={vendorSlug}
         />
       )}
     </div>

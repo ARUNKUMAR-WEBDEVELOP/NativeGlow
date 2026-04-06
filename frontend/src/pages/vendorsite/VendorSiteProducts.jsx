@@ -17,7 +17,8 @@ function getProductCategory(product) {
 }
 
 export default function VendorSiteProducts() {
-  const { vendor_slug: vendorSlug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedIn } = useBuyerAuth();
@@ -30,12 +31,12 @@ export default function VendorSiteProducts() {
       return true;
     }
     const fallbackNext = nextPath || location.pathname;
-    navigate(`/site/${vendorSlug}/login?next=${encodeURIComponent(fallbackNext)}`);
+    navigate(`/store/${vendorSlug}/login?next=${encodeURIComponent(fallbackNext)}`);
     return false;
   };
 
   const addToCart = (product) => {
-    const detailPath = `/store/${vendorSlug}/products/${product.id}`;
+    const detailPath = `/store/${vendorSlug}/product/${product.id}`;
     if (!requireBuyerLogin(detailPath)) {
       return;
     }
@@ -67,7 +68,7 @@ export default function VendorSiteProducts() {
   };
 
   const orderNow = (productId) => {
-    const detailPath = `/store/${vendorSlug}/products/${productId}`;
+    const detailPath = `/store/${vendorSlug}/product/${productId}`;
     if (!requireBuyerLogin(detailPath)) {
       return;
     }

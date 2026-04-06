@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import SiteLayout from './layout/SiteLayout';
 import AdminLayout from './layout/AdminLayout';
@@ -61,11 +61,32 @@ function getCartStorageKey(tokens) {
 }
 
 function VendorDashboardTabRedirect({ tab }) {
-  const { vendor_slug: vendorSlug } = useParams();
-  const target = vendorSlug
-    ? `/site/${vendorSlug}/vendor/dashboard?tab=${tab}`
-    : `/vendor/dashboard?tab=${tab}`;
+  const target = `/dashboard?tab=${tab}`;
   return <Navigate to={target} replace />;
+}
+
+function LegacySiteRedirect() {
+  const { vendor_slug: vendorSlug, '*': rest = '' } = useParams();
+  const suffix = rest ? `/${rest}` : '';
+  return <Navigate to={`/store/${vendorSlug}${suffix}`} replace />;
+}
+
+function LegacyProductRedirect() {
+  const {
+    slug,
+    vendor_slug: vendorSlug,
+    productId,
+    product_id: productIdLegacy,
+  } = useParams();
+
+  const resolvedSlug = slug || vendorSlug;
+  const resolvedProductId = productId || productIdLegacy;
+
+  if (!resolvedSlug || !resolvedProductId) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Navigate to={`/store/${resolvedSlug}/product/${resolvedProductId}`} replace />;
 }
 
 function App() {
@@ -196,9 +217,9 @@ function App() {
 
   return (
     <HelmetProvider>
-      <HashRouter>
+      <BrowserRouter>
         <Routes>
-        <Route path="/site/:vendor_slug/*" element={<VendorSiteLayout />}>
+        <Route path="/store/:slug/*" element={<VendorSiteLayout />}>
           <Route index element={<VendorSiteHome />} />
           <Route path="products" element={<VendorSiteProducts />} />
           <Route path="about" element={<VendorSiteAbout />} />
@@ -206,6 +227,13 @@ function App() {
           <Route path="login" element={<VendorSiteLogin />} />
           <Route path="my-orders" element={<BuyerOrders />} />
         </Route>
+        <Route path="/site/:vendor_slug/vendor/dashboard/setup" element={<Navigate to="/dashboard/setup" replace />} />
+        <Route path="/site/:vendor_slug/vendor/dashboard" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/site/:vendor_slug/vendor/dashboard/products" element={<Navigate to="/dashboard?tab=products" replace />} />
+        <Route path="/site/:vendor_slug/vendor/dashboard/orders" element={<Navigate to="/dashboard?tab=orders" replace />} />
+        <Route path="/site/:vendor_slug/vendor/dashboard/maintenance" element={<Navigate to="/dashboard/maintenance" replace />} />
+        <Route path="/site/:vendor_slug/vendor/dashboard/products/new" element={<Navigate to="/dashboard?tab=add" replace />} />
+        <Route path="/site/:vendor_slug/*" element={<LegacySiteRedirect />} />
         <Route element={<SiteLayout isAuthenticated={Boolean(tokens?.access)} onLogout={onLogout} />}>
           <Route path="/" element={<HomePage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />} />
           <Route
@@ -213,8 +241,16 @@ function App() {
             element={<ProductDetailPage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />}
           />
           <Route
-            path="/store/:vendor_slug/products/:product_id"
+            path="/store/:slug/products/:productId"
+            element={<LegacyProductRedirect />}
+          />
+          <Route
+            path="/store/:slug/product/:productId"
             element={<ProductDetailPage />}
+          />
+          <Route
+            path="/store/:vendor_slug/products/:product_id"
+            element={<LegacyProductRedirect />}
           />
           <Route
             path="/store/:vendor_slug/product/:product_id"
@@ -275,102 +311,64 @@ function App() {
           <Route path="/vendor/activate" element={<VendorActivate />} />
           <Route path="/vendor/pending-approval" element={<VendorApprovalPending />} />
           <Route
+            path="/dashboard/setup"
+            element={
+              <VendorProtectedRoute>
+                <VendorSetupWizard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboard />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/products"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboardTabRedirect tab="products" />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/orders"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboardTabRedirect tab="orders" />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/maintenance"
+            element={
+              <VendorProtectedRoute>
+                <VendorMaintenance />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/products/new"
+            element={
+              <VendorProtectedRoute>
+                <VendorDashboardTabRedirect tab="add" />
+              </VendorProtectedRoute>
+            }
+          />
+          <Route
             path="/vendor/dashboard/setup"
-            element={
-              <VendorProtectedRoute>
-                <VendorSetupWizard />
-              </VendorProtectedRoute>
-            }
+            element={<Navigate to="/dashboard/setup" replace />}
           />
-          <Route
-            path="/vendor/dashboard"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboard />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/vendor/dashboard/products"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="products" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/vendor/dashboard/orders"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="orders" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/vendor/dashboard/maintenance"
-            element={
-              <VendorProtectedRoute>
-                <VendorMaintenance />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/vendor/dashboard/products/new"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="add" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard/setup"
-            element={
-              <VendorProtectedRoute>
-                <VendorSetupWizard />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboard />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard/products"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="products" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard/orders"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="orders" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard/maintenance"
-            element={
-              <VendorProtectedRoute>
-                <VendorMaintenance />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/site/:vendor_slug/vendor/dashboard/products/new"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="add" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route path="/store/:vendor_slug" element={<VendorStorePage />} />
+          <Route path="/vendor/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/vendor/dashboard/products" element={<Navigate to="/dashboard?tab=products" replace />} />
+          <Route path="/vendor/dashboard/orders" element={<Navigate to="/dashboard?tab=orders" replace />} />
+          <Route path="/vendor/dashboard/maintenance" element={<Navigate to="/dashboard/maintenance" replace />} />
+          <Route path="/vendor/dashboard/products/new" element={<Navigate to="/dashboard?tab=add" replace />} />
+          <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/store/:slug" element={<VendorStorePage />} />
           <Route path="/track" element={<OrderTrackPage />} />
           <Route path="/track/:order_code" element={<OrderTrackPage />} />
           <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
@@ -430,7 +428,7 @@ function App() {
         ) : null}
 
         <StickyCartBar totalItems={totalItems} latestCartItem={latestCartItem} />
-      </HashRouter>
+      </BrowserRouter>
     </HelmetProvider>
   );
 }

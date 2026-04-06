@@ -33,7 +33,8 @@ export default function BuyerGoogleLogin({
   className = '',
   showLogout = true,
 }) {
-  const { vendor_slug: routeVendorSlug } = useParams();
+  const { slug, vendor_slug: routeVendorSlugLegacy } = useParams();
+  const routeVendorSlug = slug || routeVendorSlugLegacy;
   const vendorSlug = vendorSlugProp || routeVendorSlug;
   const { buyer, isLoggedIn, login, logout } = useBuyerAuth();
   const [error, setError] = useState('');

@@ -206,7 +206,12 @@ function VendorProducts() {
   }, []);
 
   const vendorSlug = useMemo(() => {
-    const slugFromState = location.state?.storeUrl?.replace('/site/', '').trim();
+    const rawStoreUrl = location.state?.storeUrl || '';
+    const slugFromState = rawStoreUrl
+      .replace('/#/', '/')
+      .replace('/site/', '/store/')
+      .replace('/store/', '')
+      .trim();
     const tokenPayload = parseJwtPayload(vendorSession?.access);
     const slugFromSession =
       tokenPayload?.vendor_slug ||

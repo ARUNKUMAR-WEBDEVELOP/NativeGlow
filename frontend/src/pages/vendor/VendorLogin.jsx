@@ -114,16 +114,16 @@ function VendorLogin() {
       }
 
       if (vendorSlug) {
-        navigate(`/site/${vendorSlug}/vendor/dashboard`, {
+        navigate('/dashboard', {
           replace: true,
           state: {
             loginSuccess: true,
-            storeUrl: `/#/site/${vendorSlug}`,
+            storeUrl: `/store/${vendorSlug}`,
             isApproved,
           },
         });
       } else {
-        navigate('/vendor/dashboard', { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       const message = getErrorMessage(err);

@@ -78,7 +78,8 @@ export function useVendorSite() {
 }
 
 export default function VendorSiteLayout() {
-  const { vendor_slug: vendorSlug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const [vendor, setVendor] = useState(null);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -249,10 +250,10 @@ export default function VendorSiteLayout() {
   const logoUrl = vendor?.logo_url || vendor?.site_logo_url || vendor?.logo;
 
   const navLinks = [
-    { label: 'Home', to: `/site/${vendorSlug}` },
-    { label: 'Products', to: `/site/${vendorSlug}/products` },
-    { label: 'About', to: `/site/${vendorSlug}/about` },
-    { label: 'Track Order', to: `/site/${vendorSlug}/track` },
+    { label: 'Home', to: `/store/${vendorSlug}` },
+    { label: 'Products', to: `/store/${vendorSlug}/products` },
+    { label: 'About', to: `/store/${vendorSlug}/about` },
+    { label: 'Track Order', to: `/store/${vendorSlug}/track` },
   ];
 
   return (
@@ -261,7 +262,7 @@ export default function VendorSiteLayout() {
       <div className="min-h-screen" style={{ backgroundColor: 'var(--secondary)', color: 'var(--site-text)' }}>
         <header className="border-b" style={{ borderColor: 'var(--primary)' }}>
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
-            <Link to={`/site/${vendorSlug}`} className="flex items-center gap-3">
+            <Link to={`/store/${vendorSlug}`} className="flex items-center gap-3">
               {logoUrl ? (
                 <img
                   src={logoUrl}

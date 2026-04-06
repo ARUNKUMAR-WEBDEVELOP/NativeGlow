@@ -23,7 +23,8 @@ function StatCard({ label, value }) {
 }
 
 export default function VendorSiteAbout() {
-  const { vendor_slug: vendorSlug } = useParams();
+  const { slug, vendor_slug: legacyVendorSlug } = useParams();
+  const vendorSlug = slug || legacyVendorSlug;
   const { vendor: vendorFromContext } = useVendorSite();
   const [aboutData, setAboutData] = useState(null);
   const [loading, setLoading] = useState(true);
