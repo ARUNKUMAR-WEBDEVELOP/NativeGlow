@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function SectionCard({ title, children }) {
   return (
@@ -123,7 +124,7 @@ export default function VendorSiteHome() {
                 <div className="aspect-[4/3] overflow-hidden rounded-xl bg-zinc-100">
                   {product.image || product.image_url ? (
                     <img
-                      src={product.image || product.image_url}
+                      src={resolveImageUrl(product.image || product.image_url || product.primary_image)}
                       alt={product.title || product.name || 'Product'}
                       className="h-full w-full object-cover"
                     />

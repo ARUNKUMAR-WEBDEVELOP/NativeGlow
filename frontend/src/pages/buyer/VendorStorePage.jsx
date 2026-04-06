@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function VendorStorePage() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
@@ -280,7 +281,7 @@ function VendorStorePage() {
                 <div className="relative h-48 bg-gray-100 overflow-hidden group">
                   {product.images && product.images.length > 0 ? (
                     <img
-                      src={product.images[0].image}
+                      src={resolveImageUrl(product.images[0].image_url || product.images[0].image || product.primary_image)}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition cursor-pointer"
                       onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}

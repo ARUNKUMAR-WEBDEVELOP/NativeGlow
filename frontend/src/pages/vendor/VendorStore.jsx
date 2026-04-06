@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import OrderFormModal from '../../components/vendor/OrderFormModal';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -92,7 +93,7 @@ function VendorStore() {
             <article key={product.id || `${product.name}-${product.price}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
               <div className="h-48 bg-zinc-100">
                 {product.image ? (
-                  <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                  <img src={resolveImageUrl(product.image)} alt={product.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-zinc-500">No image</div>
                 )}

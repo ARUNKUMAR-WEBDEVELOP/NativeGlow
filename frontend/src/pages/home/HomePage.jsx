@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function HomePage() {
   const navigate = useNavigate();
@@ -179,7 +180,7 @@ function HomePage() {
                 <div className="relative mb-3 overflow-hidden rounded-lg bg-zinc-100 h-48">
                   {product.primary_image ? (
                     <img
-                      src={product.primary_image}
+                      src={resolveImageUrl(product.primary_image)}
                       alt={product.name}
                       className="w-full h-full object-cover hover:scale-105 transition-transform"
                     />

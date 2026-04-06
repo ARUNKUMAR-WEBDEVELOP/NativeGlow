@@ -3,6 +3,17 @@ from .models import Category, Product, ProductImage, ProductVariant
 from vendors.models import Vendor
 
 
+def _absolute_url(request, url):
+    if not url:
+        return None
+    if not request:
+        return url
+    try:
+        return request.build_absolute_uri(url)
+    except Exception:
+        return url
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -10,9 +21,15 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
         fields = ('id', 'image_url', 'alt_text', 'position')
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        return _absolute_url(request, obj.image_url)
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -42,11 +59,12 @@ class ProductListSerializer(serializers.ModelSerializer):
         )
 
     def get_primary_image(self, obj):
+        request = self.context.get('request')
         img = obj.images.first()
         if img:
-            return img.image_url
+            return _absolute_url(request, img.image_url)
         if obj.image:
-            return obj.image.url
+            return _absolute_url(request, obj.image.url)
         return None
 
 
@@ -322,12 +340,13 @@ class PublicProductSerializer(serializers.ModelSerializer):
         )
 
     def get_primary_image(self, obj):
+        request = self.context.get('request')
         """Get first image from related ProductImage or fallback to image field."""
         img = obj.images.first()
         if img:
-            return img.image_url
+            return _absolute_url(request, img.image_url)
         if obj.image:
-            return obj.image.url
+            return _absolute_url(request, obj.image.url)
         return None
 
 
@@ -444,11 +463,12 @@ class SiteProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_primary_image(self, obj):
+        request = self.context.get('request')
         img = obj.images.first()
         if img:
-            return img.image_url
+            return _absolute_url(request, img.image_url)
         if obj.image:
-            return obj.image.url
+            return _absolute_url(request, obj.image.url)
         return None
 
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function getBuyerTokenKey(vendorSlug) {
   return `buyer_token_${vendorSlug}`;
@@ -224,7 +225,7 @@ function ProductDetailPage() {
 
   const mainImage =
     product.images?.length > 0
-      ? (product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
+      ? resolveImageUrl(product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
       : null;
   const ingredientsList = product.ingredients_list || [];
   const basePrice = Number(product.price || 0);
@@ -283,7 +284,7 @@ function ProductDetailPage() {
                     }`}
                   >
                     <img
-                      src={img.image_url || img.image}
+                      src={resolveImageUrl(img.image_url || img.image)}
                       alt={`${product.name} ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />

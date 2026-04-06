@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function toNumber(value) {
   const n = Number(value);
@@ -131,7 +132,7 @@ export default function VendorSiteProducts() {
             <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
               <Link to={detailPath} className="block aspect-[4/3] overflow-hidden bg-slate-100">
                 {product?.primary_image ? (
-                  <img src={product.primary_image} alt={name} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
+                  <img src={resolveImageUrl(product.primary_image)} alt={name} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm opacity-60">No image</div>
                 )}

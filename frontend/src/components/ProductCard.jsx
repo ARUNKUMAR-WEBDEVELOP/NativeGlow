@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 function ProductCard({ product, onAddToCart, isAuthenticated }) {
   const price = Number(product.price || 0);
@@ -12,7 +13,7 @@ function ProductCard({ product, onAddToCart, isAuthenticated }) {
     <article className="rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
       {product.primary_image ? (
         <img
-          src={product.primary_image}
+          src={resolveImageUrl(product.primary_image)}
           alt={product.title}
           className="mb-3 h-44 w-full rounded-xl border border-zinc-200 object-cover"
           loading="lazy"
