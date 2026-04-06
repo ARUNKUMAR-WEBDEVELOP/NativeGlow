@@ -19,13 +19,18 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
     buyerName: '',
     buyerPhone: '',
     buyerAddress: '',
+    buyerAddressLine2: '',
+    buyerCity: '',
+    buyerState: '',
     buyerPincode: '',
+    buyerCountry: 'India',
     quantity: quantity || 1,
     paymentMethod: 'upi',
     paymentReference: ''
   });
 
-  const totalAmount = product.price * formData.quantity;
+  const unitPrice = Number(product.discounted_price ?? product.price ?? 0);
+  const totalAmount = unitPrice * formData.quantity;
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -54,6 +59,8 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
           buyerName: prev.buyerName || profile?.full_name || buyer?.buyerName || '',
           buyerPhone: prev.buyerPhone || String(profile?.phone || '').replace(/\D/g, '').slice(0, 10),
           buyerAddress: prev.buyerAddress || profile?.default_address || '',
+          buyerCity: prev.buyerCity || profile?.default_city || '',
+          buyerState: prev.buyerState || profile?.default_state || '',
           buyerPincode: prev.buyerPincode || String(profile?.default_pincode || '').replace(/\D/g, '').slice(0, 6),
         }));
       } catch {
@@ -87,6 +94,8 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
       newErrors.buyerPhone = 'Enter a valid 10-digit phone number';
     }
     if (!formData.buyerAddress.trim()) newErrors.buyerAddress = 'Address is required';
+    if (!formData.buyerCity.trim()) newErrors.buyerCity = 'City is required';
+    if (!formData.buyerState.trim()) newErrors.buyerState = 'State is required';
     if (!formData.buyerPincode || formData.buyerPincode.length !== 6) {
       newErrors.buyerPincode = 'Enter a valid 6-digit pincode';
     }
@@ -134,6 +143,10 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         buyer_name: formData.buyerName,
         buyer_phone: formData.buyerPhone,
         buyer_address: formData.buyerAddress,
+        buyer_address_line2: formData.buyerAddressLine2,
+        buyer_city: formData.buyerCity,
+        buyer_state: formData.buyerState,
+        buyer_country: formData.buyerCountry,
         buyer_pincode: formData.buyerPincode,
         quantity: parseInt(formData.quantity),
         payment_method: formData.paymentMethod,
@@ -214,8 +227,9 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         {/* STEP 0: Google Login / Guest Choice */}
         {step === 0 && (
           <div className="space-y-4 text-center">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-left">
               <p className="text-sm font-semibold text-emerald-900">Login is required before placing an order.</p>
+              <p className="mt-1 text-xs text-emerald-700">Google sign-in unlocks a checkout flow with shipping details, payment reference, and order tracking.</p>
             </div>
 
             <div className="flex items-center justify-center">
@@ -276,7 +290,7 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
             {/* Address */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Address *
+                Address Line 1 *
               </label>
               <textarea
                 value={formData.buyerAddress}
@@ -288,6 +302,47 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
                 placeholder="Street address, apartment, etc."
               />
               {errors.buyerAddress && <p className="text-xs text-red-600 mt-1">{errors.buyerAddress}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+              <input
+                type="text"
+                value={formData.buyerAddressLine2}
+                onChange={(e) => setFormData({ ...formData, buyerAddressLine2: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="Landmark, area, etc."
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                <input
+                  type="text"
+                  value={formData.buyerCity}
+                  onChange={(e) => setFormData({ ...formData, buyerCity: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                    errors.buyerCity ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="City"
+                />
+                {errors.buyerCity && <p className="text-xs text-red-600 mt-1">{errors.buyerCity}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                <input
+                  type="text"
+                  value={formData.buyerState}
+                  onChange={(e) => setFormData({ ...formData, buyerState: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                    errors.buyerState ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="State"
+                />
+                {errors.buyerState && <p className="text-xs text-red-600 mt-1">{errors.buyerState}</p>}
+              </div>
             </div>
 
             {/* Pincode */}
@@ -309,6 +364,17 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
                 placeholder="123456"
               />
               {errors.buyerPincode && <p className="text-xs text-red-600 mt-1">{errors.buyerPincode}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+              <input
+                type="text"
+                value={formData.buyerCountry}
+                onChange={(e) => setFormData({ ...formData, buyerCountry: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="India"
+              />
             </div>
 
             {/* Quantity */}

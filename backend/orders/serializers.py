@@ -165,7 +165,11 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
     buyer_name = serializers.CharField(max_length=255, required=True)
     buyer_phone = serializers.CharField(max_length=20, required=True)
     buyer_address = serializers.CharField(required=True)
+    buyer_address_line2 = serializers.CharField(required=False, allow_blank=True)
+    buyer_city = serializers.CharField(required=False, allow_blank=True)
+    buyer_state = serializers.CharField(required=False, allow_blank=True)
     buyer_pincode = serializers.CharField(max_length=20, required=True)
+    buyer_country = serializers.CharField(required=False, allow_blank=True)
     payment_reference = serializers.CharField(max_length=120, required=True)
     product_id = serializers.IntegerField(write_only=True)
     vendor_slug = serializers.CharField(max_length=255, write_only=True, required=False)
@@ -180,7 +184,11 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             'buyer_name',
             'buyer_phone',
             'buyer_address',
+            'buyer_address_line2',
+            'buyer_city',
+            'buyer_state',
             'buyer_pincode',
+            'buyer_country',
             'quantity',
             'payment_method',
             'payment_reference',
@@ -255,6 +263,12 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
         validated_data.pop('product_id', None)
         validated_data.pop('vendor_slug', None)
 
+        buyer_address_line2 = (validated_data.pop('buyer_address_line2', '') or '').strip()
+        buyer_city = (validated_data.pop('buyer_city', '') or '').strip() or (product.vendor.city or 'NA')
+        buyer_state = (validated_data.pop('buyer_state', '') or '').strip() or 'NA'
+        buyer_country = (validated_data.pop('buyer_country', '') or '').strip() or 'India'
+        buyer_address_line1 = (validated_data.get('buyer_address') or '').strip()
+
         if buyer and buyer.vendor_id != product.vendor_id:
             raise serializers.ValidationError(
                 {'vendor_slug': 'Buyer account does not belong to this vendor store.'}
@@ -270,11 +284,12 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             full_name=validated_data['buyer_name'],
             email='',
             phone=validated_data['buyer_phone'],
-            address_line1=validated_data['buyer_address'],
-            city=product.vendor.city or 'NA',
-            state='NA',
+            address_line1=buyer_address_line1,
+            address_line2=buyer_address_line2,
+            city=buyer_city,
+            state=buyer_state,
             pincode=validated_data.get('buyer_pincode', '000000'),
-            country='India',
+            country=buyer_country,
             total_amount=total_amount,
             total=total_amount,
             subtotal=total_amount,

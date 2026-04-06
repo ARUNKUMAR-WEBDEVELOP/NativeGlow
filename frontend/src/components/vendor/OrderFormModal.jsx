@@ -9,6 +9,10 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
     buyer_name: '',
     buyer_phone: '',
     buyer_address: '',
+    buyer_address_line2: '',
+    buyer_city: '',
+    buyer_state: '',
+    buyer_country: 'India',
     quantity: 1,
     payment_method: 'upi',
     payment_reference: '',
@@ -20,7 +24,8 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
     if (!product) {
       return 0;
     }
-    return Number(product.price || 0) * Number(form.quantity || 0);
+    const unitPrice = Number(product.discounted_price ?? product.price ?? 0);
+    return unitPrice * Number(form.quantity || 0);
   }, [form.quantity, product]);
 
   if (!isOpen || !product) {
@@ -48,6 +53,10 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
           buyer_name: form.buyer_name,
           buyer_phone: form.buyer_phone,
           buyer_address: form.buyer_address,
+            buyer_address_line2: form.buyer_address_line2,
+            buyer_city: form.buyer_city,
+            buyer_state: form.buyer_state,
+            buyer_country: form.buyer_country,
           quantity: Number(form.quantity),
           payment_method: form.payment_method,
           payment_reference: form.payment_reference,
@@ -71,6 +80,10 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
         buyer_name: '',
         buyer_phone: '',
         buyer_address: '',
+        buyer_address_line2: '',
+        buyer_city: '',
+        buyer_state: '',
+        buyer_country: 'India',
         quantity: 1,
         payment_method: 'upi',
         payment_reference: '',
@@ -84,7 +97,7 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4">
-      <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-sage">Order Now</p>
@@ -101,7 +114,13 @@ function OrderFormModal({ isOpen, product, onClose, onSuccess }) {
         <form onSubmit={onSubmit} className="mt-4 space-y-3">
           <input name="buyer_name" value={form.buyer_name} onChange={onChange} placeholder="Buyer name" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
           <input name="buyer_phone" value={form.buyer_phone} onChange={onChange} placeholder="Buyer phone" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
-          <textarea name="buyer_address" value={form.buyer_address} onChange={onChange} placeholder="Buyer address" className="h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+          <textarea name="buyer_address" value={form.buyer_address} onChange={onChange} placeholder="Address line 1" className="h-20 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+          <input name="buyer_address_line2" value={form.buyer_address_line2} onChange={onChange} placeholder="Address line 2 / Landmark" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <input name="buyer_city" value={form.buyer_city} onChange={onChange} placeholder="City" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+            <input name="buyer_state" value={form.buyer_state} onChange={onChange} placeholder="State" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />
+          </div>
+          <input name="buyer_country" value={form.buyer_country} onChange={onChange} placeholder="Country" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
 
           <div className="grid gap-3 md:grid-cols-2">
             <input type="number" min="1" max={Number(product.available_quantity || 1)} name="quantity" value={form.quantity} onChange={onChange} className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required />

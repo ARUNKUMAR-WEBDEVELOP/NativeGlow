@@ -22,8 +22,8 @@ function DiscountModal({ product, onClose, onApply, loading }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg sm:p-6">
         <h2 className="text-xl font-bold text-zinc-900">Set Discount</h2>
         <p className="mt-1 text-sm text-zinc-600">{product.title}</p>
 
@@ -34,6 +34,15 @@ function DiscountModal({ product, onClose, onApply, loading }) {
               <label className="text-sm font-semibold text-zinc-700">Discount Percentage</label>
               <span className="text-2xl font-bold text-orange-600">{discount}%</span>
             </div>
+            <input
+              type="number"
+              min="0"
+              max="90"
+              value={discount}
+              onChange={(e) => setDiscount(Math.max(0, Math.min(90, Number(e.target.value || 0))))}
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="Enter discount percent"
+            />
             <input
               type="range"
               min="0"
@@ -69,7 +78,7 @@ function DiscountModal({ product, onClose, onApply, loading }) {
         </div>
 
         {/* Actions */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
