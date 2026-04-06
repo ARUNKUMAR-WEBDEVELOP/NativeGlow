@@ -234,6 +234,61 @@ function App() {
         <Route path="/site/:vendor_slug/vendor/dashboard/maintenance" element={<Navigate to="/dashboard/maintenance" replace />} />
         <Route path="/site/:vendor_slug/vendor/dashboard/products/new" element={<Navigate to="/dashboard?tab=add" replace />} />
         <Route path="/site/:vendor_slug/*" element={<LegacySiteRedirect />} />
+        <Route
+          path="/dashboard/setup"
+          element={
+            <VendorProtectedRoute>
+              <VendorSetupWizard />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <VendorProtectedRoute>
+              <VendorDashboard />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/products"
+          element={
+            <VendorProtectedRoute>
+              <VendorDashboardTabRedirect tab="products" />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/orders"
+          element={
+            <VendorProtectedRoute>
+              <VendorDashboardTabRedirect tab="orders" />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/maintenance"
+          element={
+            <VendorProtectedRoute>
+              <VendorMaintenance />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/products/new"
+          element={
+            <VendorProtectedRoute>
+              <VendorDashboardTabRedirect tab="add" />
+            </VendorProtectedRoute>
+          }
+        />
+        <Route path="/vendor/dashboard/setup" element={<Navigate to="/dashboard/setup" replace />} />
+        <Route path="/vendor/dashboard" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/vendor/dashboard/products" element={<Navigate to="/dashboard?tab=products" replace />} />
+        <Route path="/vendor/dashboard/orders" element={<Navigate to="/dashboard?tab=orders" replace />} />
+        <Route path="/vendor/dashboard/maintenance" element={<Navigate to="/dashboard/maintenance" replace />} />
+        <Route path="/vendor/dashboard/products/new" element={<Navigate to="/dashboard?tab=add" replace />} />
+        <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
         <Route element={<SiteLayout isAuthenticated={Boolean(tokens?.access)} onLogout={onLogout} />}>
           <Route path="/" element={<HomePage onAddToCart={onAddToCart} isAuthenticated={Boolean(tokens?.access)} />} />
           <Route
@@ -310,64 +365,6 @@ function App() {
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/activate" element={<VendorActivate />} />
           <Route path="/vendor/pending-approval" element={<VendorApprovalPending />} />
-          <Route
-            path="/dashboard/setup"
-            element={
-              <VendorProtectedRoute>
-                <VendorSetupWizard />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboard />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/products"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="products" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/orders"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="orders" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/maintenance"
-            element={
-              <VendorProtectedRoute>
-                <VendorMaintenance />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/products/new"
-            element={
-              <VendorProtectedRoute>
-                <VendorDashboardTabRedirect tab="add" />
-              </VendorProtectedRoute>
-            }
-          />
-          <Route
-            path="/vendor/dashboard/setup"
-            element={<Navigate to="/dashboard/setup" replace />}
-          />
-          <Route path="/vendor/dashboard" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/vendor/dashboard/products" element={<Navigate to="/dashboard?tab=products" replace />} />
-          <Route path="/vendor/dashboard/orders" element={<Navigate to="/dashboard?tab=orders" replace />} />
-          <Route path="/vendor/dashboard/maintenance" element={<Navigate to="/dashboard/maintenance" replace />} />
-          <Route path="/vendor/dashboard/products/new" element={<Navigate to="/dashboard?tab=add" replace />} />
-          <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
           <Route path="/store/:slug" element={<VendorStorePage />} />
           <Route path="/track" element={<OrderTrackPage />} />
           <Route path="/track/:order_code" element={<OrderTrackPage />} />
