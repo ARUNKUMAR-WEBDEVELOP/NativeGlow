@@ -69,6 +69,7 @@ function ProductDetailPage() {
   const [expandedIngredients, setExpandedIngredients] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [lightboxImageIndex, setLightboxImageIndex] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
 
@@ -257,6 +258,9 @@ function ProductDetailPage() {
     product.images?.length > 0
       ? resolveImageUrl(product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
       : null;
+  const activeLightboxImage = lightboxImageIndex !== null && product.images?.[lightboxImageIndex]
+    ? resolveImageUrl(product.images[lightboxImageIndex]?.image_url || product.images[lightboxImageIndex]?.image)
+    : null;
   const ingredientsList = product.ingredients_list || [];
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
   const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
@@ -291,41 +295,55 @@ function ProductDetailPage() {
           {/* Left Column - Images */}
           <div>
             {/* Main Image */}
-            <div className="mb-4 rounded-lg overflow-hidden bg-white shadow-sm group">
+            <button
+              type="button"
+              onClick={() => setLightboxImageIndex(selectedImageIndex)}
+              className="group relative mb-4 block w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5"
+            >
               {mainImage ? (
                 <img
                   src={mainImage}
                   alt={product.name}
-                  className="w-full h-96 lg:h-[500px] object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-96 object-cover transition-transform duration-300 group-hover:scale-105 lg:h-[500px]"
                 />
               ) : (
                 <div className="w-full h-96 lg:h-[500px] flex items-center justify-center bg-gray-100 text-gray-400">
                   No image available
                 </div>
               )}
-            </div>
+              <span className="pointer-events-none absolute m-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                Click to zoom
+              </span>
+            </button>
 
             {/* Thumbnail Gallery */}
             {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                      selectedImageIndex === idx
-                        ? 'border-emerald-600'
-                        : 'border-gray-200 hover:border-emerald-400'
-                    }`}
-                  >
-                    <img
-                      src={resolveImageUrl(img.image_url || img.image)}
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="flex gap-2 overflow-x-auto">
+                  {product.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedImageIndex(idx);
+                        setLightboxImageIndex(idx);
+                      }}
+                      className={`flex-shrink-0 h-20 w-20 overflow-hidden rounded-lg border-2 transition ${
+                        selectedImageIndex === idx
+                          ? 'border-emerald-600'
+                          : 'border-gray-200 hover:border-emerald-400'
+                      }`}
+                    >
+                      <img
+                        src={resolveImageUrl(img.image_url || img.image)}
+                        alt={`${product.name} ${idx + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">Click an image to view it full size, like a standard ecommerce gallery.</p>
+              </>
             )}
           </div>
 
@@ -616,6 +634,33 @@ function ProductDetailPage() {
           vendorSlug={vendorSlug}
         />
       )}
+
+      {lightboxImageIndex !== null && activeLightboxImage ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setLightboxImageIndex(null)}
+        >
+          <div className="relative max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-zinc-950 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setLightboxImageIndex(null)}
+              className="absolute right-3 top-3 z-10 rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white backdrop-blur hover:bg-white/25"
+            >
+              Close
+            </button>
+            <img
+              src={activeLightboxImage}
+              alt={product.name}
+              className="max-h-[92vh] w-full object-contain"
+              onClick={(event) => event.stopPropagation()}
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent p-4 text-white">
+              <p className="text-sm font-semibold">{product.name}</p>
+              <p className="text-xs text-white/70">Image {lightboxImageIndex + 1} of {product.images.length}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

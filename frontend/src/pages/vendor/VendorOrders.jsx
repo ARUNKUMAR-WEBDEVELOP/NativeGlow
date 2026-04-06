@@ -295,9 +295,9 @@ function VendorOrders() {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-2xl font-semibold text-zinc-900">My Orders</h2>
-        <p className="mt-1 text-sm text-zinc-600">Manage order status and keep buyers updated.</p>
+        <p className="mt-1 text-sm text-zinc-600">Manage status, shipment details, and buyer updates from one place.</p>
       </div>
 
       {success ? (
@@ -358,12 +358,14 @@ function VendorOrders() {
             const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
 
             return (
-              <article key={order.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <article key={order.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-zinc-900">Order Code: {order.order_code || 'N/A'}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Order Code</p>
+                    <p className="text-sm font-bold text-zinc-900">{order.order_code || 'N/A'}</p>
+                    <p className="text-xs text-zinc-500">Ordered {formatOrderDate(order.created_at)}</p>
                     {isNewOrder(order.created_at) ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
                         <span className="h-2 w-2 rounded-full bg-rose-600" />
                         NEW
                       </span>
@@ -373,24 +375,36 @@ function VendorOrders() {
                     <img
                       src={order.product_image}
                       alt={order.product_name}
-                      className="h-14 w-14 rounded-lg border border-zinc-200 object-cover"
+                      className="h-16 w-16 rounded-2xl border border-zinc-200 object-cover"
                     />
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">
                       No Image
                     </div>
                   )}
                 </div>
 
-                <div className="mt-3 space-y-1.5 text-sm text-zinc-700">
-                  <p>Product: <span className="font-semibold text-zinc-900">{order.product_name}</span> x {order.quantity}</p>
-                  <p>Buyer: <span className="font-semibold text-zinc-900">{order.buyer_name}</span> | 📞 {order.buyer_phone}</p>
-                  <p>Address: {order.buyer_address}{order.buyer_pincode ? ` ${order.buyer_pincode}` : ''}</p>
-                  <p>Amount: ₹{formatAmount(order.total_amount)} | {String(order.payment_method || 'upi').toUpperCase()} | Ref: {order.payment_reference || 'N/A'}</p>
-                  <p>Ordered: {formatOrderDate(order.created_at)}</p>
+                <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+                  <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
+                    <p className="font-semibold text-zinc-900">{order.product_name}</p>
+                    <p className="mt-1">Qty {order.quantity} · {String(order.payment_method || 'upi').toUpperCase()} · Ref {order.payment_reference || 'N/A'}</p>
+                    <p className="mt-1">Buyer: <span className="font-semibold text-zinc-900">{order.buyer_name}</span> · {order.buyer_phone}</p>
+                    <p className="mt-1 leading-6">Address: {order.buyer_address}{order.buyer_pincode ? ` ${order.buyer_pincode}` : ''}</p>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Amount</p>
+                      <p className="mt-1 text-lg font-semibold text-zinc-900">₹{formatAmount(order.total_amount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Status</p>
+                      <p className="mt-1 text-lg font-semibold text-zinc-900">{order.order_status}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                   <div className="space-y-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Status</label>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

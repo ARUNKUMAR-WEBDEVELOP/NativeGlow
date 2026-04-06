@@ -16,6 +16,19 @@ function isShippedStatus(status) {
   return normalized.includes('shipped') || normalized.includes('out_for_delivery') || normalized.includes('in_transit');
 }
 
+function formatShippingAddress(order) {
+  const parts = [
+    order.buyer_address_line1 || order.shipping_address_line1 || order.buyer_address || order.shipping_address,
+    order.buyer_address_line2 || order.shipping_address_line2,
+    [order.buyer_city || order.shipping_city, order.buyer_state || order.shipping_state, order.buyer_pincode || order.shipping_pincode]
+      .filter(Boolean)
+      .join(', '),
+    order.buyer_country || order.shipping_country,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(' · ') : 'Shipping details not available';
+}
+
 function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
   const [orders, setOrders] = useState([]);
   const [buyerOrders, setBuyerOrders] = useState([]);
@@ -154,7 +167,7 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
       <div className="rounded-3xl border border-zinc-200/70 bg-white/80 p-6 shadow-sm backdrop-blur">
         <p className="text-xs font-bold uppercase tracking-wider text-sage">Account</p>
         <h1 className="mt-2 font-display text-5xl text-zinc-900 max-md:text-4xl">My Orders</h1>
-        <p className="mt-2 text-sm text-zinc-600">Track your recent purchases and payment references in one place.</p>
+        <p className="mt-2 text-sm text-zinc-600">Track your recent purchases, shipping details, and payment references in one place.</p>
       </div>
 
       {loading ? <p className="mt-4 text-sm font-semibold text-zinc-600">Loading orders...</p> : null}
@@ -166,11 +179,12 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
 
       <div className="mt-5 space-y-3">
         {orders.map((order) => (
-          <article key={order.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <article key={order.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-zinc-900">Order #{order.id}</h2>
-                <p className="text-sm text-zinc-600">{new Date(order.created_at).toLocaleString()}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Order #{order.id}</p>
+                <h2 className="mt-1 text-xl font-semibold text-zinc-900">{order.items?.length || 0} item order</h2>
+                <p className="text-sm text-zinc-600">Placed {new Date(order.created_at).toLocaleString()}</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700">{order.status}</span>
@@ -178,16 +192,38 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-4">
-              <p><span className="font-semibold text-zinc-800">Subtotal:</span> ${Number(order.subtotal).toFixed(2)}</p>
-              <p><span className="font-semibold text-zinc-800">Shipping:</span> ${Number(order.shipping_fee).toFixed(2)}</p>
-              <p><span className="font-semibold text-zinc-800">Discount:</span> -${Number(order.discount_total).toFixed(2)}</p>
-              <p className="font-semibold text-zinc-900"><span className="font-semibold text-zinc-800">Total:</span> ${Number(order.total).toFixed(2)}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Subtotal</p>
+                <p className="mt-1 text-lg font-semibold text-zinc-900">${Number(order.subtotal).toFixed(2)}</p>
+              </div>
+              <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Shipping</p>
+                <p className="mt-1 text-lg font-semibold text-zinc-900">${Number(order.shipping_fee).toFixed(2)}</p>
+              </div>
+              <div className="rounded-2xl bg-zinc-50 px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Discount</p>
+                <p className="mt-1 text-lg font-semibold text-zinc-900">-${Number(order.discount_total).toFixed(2)}</p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 px-3 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Total</p>
+                <p className="mt-1 text-lg font-semibold text-emerald-800">${Number(order.total).toFixed(2)}</p>
+              </div>
             </div>
 
-            <p className="mt-3 text-xs text-zinc-600">Payment ref: {order.payment_reference || 'pending-generation'} | Coupon: {order.coupon_code || 'none'}</p>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Shipping</p>
+                <p className="mt-1 leading-6">{formatShippingAddress(order)}</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Payment</p>
+                <p className="mt-1">Ref: {order.payment_reference || 'pending-generation'}</p>
+                <p className="mt-1">Coupon: {order.coupon_code || 'none'}</p>
+              </div>
+            </div>
 
-            <ul className="mt-3 space-y-1 border-t border-zinc-200 pt-3 text-sm text-zinc-700">
+            <ul className="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm text-zinc-700">
               {order.items.map((item) => (
                 <li key={item.id}>
                   {item.product_title} x {item.quantity} = ${Number(item.line_total).toFixed(2)}

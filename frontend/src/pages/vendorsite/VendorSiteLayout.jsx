@@ -254,6 +254,7 @@ export default function VendorSiteLayout() {
     { label: 'Products', to: `/store/${vendorSlug}/products` },
     { label: 'About', to: `/store/${vendorSlug}/about` },
     { label: 'Track Order', to: `/store/${vendorSlug}/track` },
+    { label: 'My Orders', to: `/store/${vendorSlug}/my-orders` },
   ];
 
   return (
@@ -302,6 +303,13 @@ export default function VendorSiteLayout() {
                   {link.label}
                 </NavLink>
               ))}
+              <Link
+                to="/cart"
+                className="rounded-full px-3 py-1.5 text-sm transition opacity-80 hover:opacity-100"
+                style={{ border: '1px solid transparent', color: 'var(--site-text)' }}
+              >
+                Cart
+              </Link>
               <BuyerGoogleLogin vendorSlug={vendorSlug} />
             </nav>
           </div>

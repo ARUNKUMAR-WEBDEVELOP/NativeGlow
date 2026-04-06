@@ -5,7 +5,7 @@ import { BuyerAuthProvider, useBuyerAuth } from '../vendorsite/BuyerAuthContext'
 import platformContent from '../../content/platformContent';
 
 function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug }) {
-  const { buyer, isLoggedIn } = useBuyerAuth();
+  const { buyer, isLoggedIn, ready } = useBuyerAuth();
   const { vendor_site: vendorSiteContent } = platformContent;
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,12 +33,16 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
   const totalAmount = unitPrice * formData.quantity;
 
   useEffect(() => {
+    if (!ready) {
+      return;
+    }
+
     if (isLoggedIn) {
       setStep(1);
       return;
     }
     setStep(0);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, ready]);
 
   useEffect(() => {
     if (!isLoggedIn || !buyer?.accessToken) {
@@ -225,7 +229,14 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         </div>
 
         {/* STEP 0: Google Login / Guest Choice */}
-        {step === 0 && (
+        {!ready ? (
+          <div className="space-y-4 text-center">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left">
+              <p className="text-sm font-semibold text-zinc-900">Checking your buyer session...</p>
+              <p className="mt-1 text-xs text-zinc-600">Please wait while we verify whether you are already signed in.</p>
+            </div>
+          </div>
+        ) : step === 0 ? (
           <div className="space-y-4 text-center">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-left">
               <p className="text-sm font-semibold text-emerald-900">Login is required before placing an order.</p>
@@ -236,7 +247,7 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
               <BuyerGoogleLogin vendorSlug={vendorSlug} showLogout={false} />
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* STEP 1: Delivery Details */}
         {step === 1 && (

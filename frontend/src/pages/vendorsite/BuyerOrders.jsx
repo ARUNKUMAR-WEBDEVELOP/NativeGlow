@@ -27,6 +27,19 @@ function formatMoney(value) {
   return `Rs ${n.toLocaleString('en-IN')}`;
 }
 
+function formatShippingAddress(order) {
+  const parts = [
+    order.buyer_address_line1 || order.shipping_address_line1 || order.buyer_address || order.shipping_address,
+    order.buyer_address_line2 || order.shipping_address_line2,
+    [order.buyer_city || order.shipping_city, order.buyer_state || order.shipping_state, order.buyer_pincode || order.shipping_pincode]
+      .filter(Boolean)
+      .join(', '),
+    order.buyer_country || order.shipping_country,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(' · ') : 'Shipping details not available';
+}
+
 export default function BuyerOrders() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
@@ -137,7 +150,7 @@ export default function BuyerOrders() {
         <h1 className="text-3xl font-bold text-zinc-900" style={{ fontFamily: 'var(--heading-font)' }}>
           My Orders
         </h1>
-        <p className="mt-1 text-sm opacity-80">Track your purchases from this store and confirm delivered shipments.</p>
+        <p className="mt-1 text-sm opacity-80">Track your purchases, delivery status, and shipping address from this store.</p>
       </header>
 
       {loading ? <p className="text-sm font-semibold text-zinc-600">Loading your orders...</p> : null}
@@ -163,18 +176,24 @@ export default function BuyerOrders() {
           return (
             <article
               key={order.order_code}
-              className={`rounded-2xl border bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-emerald-300' : ''}`}
+              className={`rounded-3xl border bg-white p-4 shadow-sm ${highlight ? 'ring-2 ring-emerald-300' : ''}`}
               style={{ borderColor: highlight ? '#34d399' : 'rgba(0,0,0,0.12)' }}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Order Code</p>
                   <p className="font-mono text-sm font-bold text-emerald-700">{order.order_code}</p>
+                  <p className="mt-1 text-sm text-zinc-600">Placed {formatDate(order.created_at)}</p>
                 </div>
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{order.status}</span>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700">{order.status}</span>
+                  {order.buyer_confirmed_delivery ? (
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Delivered</span>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[88px_1fr]">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[96px_1fr]">
                 <div className="h-20 w-full overflow-hidden rounded-lg bg-zinc-100 sm:w-20">
                   {order.product_image ? (
                     <img src={order.product_image} alt={order.product} className="h-full w-full object-cover" />
@@ -184,11 +203,14 @@ export default function BuyerOrders() {
                 </div>
 
                 <div className="text-sm text-zinc-700">
-                  <p className="font-semibold text-zinc-900">{order.product || 'Product'}</p>
-                  <p>Quantity: <strong>{order.quantity ?? 1}</strong></p>
-                  <p>Amount: <strong>{formatMoney(order.total_amount)}</strong></p>
-                  <p>Payment Ref: <strong>{order.payment_reference || 'N/A'}</strong></p>
-                  <p>Order Date: <strong>{formatDate(order.created_at)}</strong></p>
+                  <p className="text-base font-semibold text-zinc-900">{order.product || 'Product'}</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <p>Quantity: <strong>{order.quantity ?? 1}</strong></p>
+                    <p>Amount: <strong>{formatMoney(order.total_amount)}</strong></p>
+                    <p>Payment Ref: <strong>{order.payment_reference || 'N/A'}</strong></p>
+                    <p>Buyer: <strong>{order.buyer_name || 'N/A'}</strong></p>
+                  </div>
+                  <p className="mt-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{formatShippingAddress(order)}</p>
                 </div>
               </div>
 

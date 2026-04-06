@@ -37,7 +37,7 @@ export default function BuyerGoogleLogin({
   const { slug, vendor_slug: routeVendorSlugLegacy } = useParams();
   const routeVendorSlug = slug || routeVendorSlugLegacy;
   const vendorSlug = vendorSlugProp || routeVendorSlug;
-  const { buyer, isLoggedIn, login, logout } = useBuyerAuth();
+  const { buyer, isLoggedIn, ready, login, logout } = useBuyerAuth();
   const [error, setError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
@@ -89,6 +89,14 @@ export default function BuyerGoogleLogin({
     },
     onError: (err) => setError(describeGoogleAuthError(err) || 'Google sign-in was cancelled or failed.'),
   });
+
+  if (!ready) {
+    return (
+      <div className={`flex flex-col gap-1 ${className}`.trim()}>
+        <p className="text-xs text-zinc-500">Checking your buyer session...</p>
+      </div>
+    );
+  }
 
   if (!isGoogleAuthOriginConfigured()) {
     return (

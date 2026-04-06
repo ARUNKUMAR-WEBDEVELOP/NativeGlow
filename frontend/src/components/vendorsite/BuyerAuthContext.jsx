@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const BuyerAuthContext = createContext({
   buyer: null,
   isLoggedIn: false,
+  ready: false,
   login: () => {},
   logout: () => {},
 });
@@ -44,10 +45,14 @@ function getProfileKey(vendorSlug) {
 
 export function BuyerAuthProvider({ vendorSlug, children }) {
   const [buyer, setBuyer] = useState(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    setReady(false);
+
     if (!vendorSlug) {
       setBuyer(null);
+      setReady(true);
       return;
     }
 
@@ -56,6 +61,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
       localStorage.removeItem(getTokenKey(vendorSlug));
       localStorage.removeItem(getProfileKey(vendorSlug));
       setBuyer(null);
+      setReady(true);
       return;
     }
 
@@ -73,6 +79,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
       buyerEmail: profile?.buyerEmail || '',
       buyerPicture: profile?.buyerPicture || '',
     });
+    setReady(true);
   }, [vendorSlug]);
 
   function login(payload) {
@@ -99,6 +106,7 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
     );
 
     setBuyer(nextBuyer);
+    setReady(true);
   }
 
   function logout() {
@@ -110,16 +118,18 @@ export function BuyerAuthProvider({ vendorSlug, children }) {
     localStorage.removeItem(getTokenKey(vendorSlug));
     localStorage.removeItem(getProfileKey(vendorSlug));
     setBuyer(null);
+    setReady(true);
   }
 
   const value = useMemo(
     () => ({
       buyer,
       isLoggedIn: Boolean(buyer?.accessToken),
+      ready,
       login,
       logout,
     }),
-    [buyer]
+    [buyer, ready]
   );
 
   return <BuyerAuthContext.Provider value={value}>{children}</BuyerAuthContext.Provider>;

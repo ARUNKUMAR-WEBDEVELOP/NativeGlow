@@ -22,12 +22,15 @@ export default function VendorSiteProducts() {
   const vendorSlug = slug || legacyVendorSlug;
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLoggedIn } = useBuyerAuth();
+  const { isLoggedIn, ready } = useBuyerAuth();
   const { allProducts, categories } = useVendorSite();
   const [activeCategory, setActiveCategory] = useState('All');
   const [actionMessage, setActionMessage] = useState('');
 
   const requireBuyerLogin = (nextPath) => {
+    if (!ready) {
+      return false;
+    }
     if (isLoggedIn) {
       return true;
     }
@@ -159,6 +162,7 @@ export default function VendorSiteProducts() {
                   <button
                     type="button"
                     onClick={() => orderNow(product.id)}
+                    disabled={!ready}
                     className="inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold"
                     style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
                   >
@@ -167,6 +171,7 @@ export default function VendorSiteProducts() {
                   <button
                     type="button"
                     onClick={() => addToCart(product)}
+                    disabled={!ready}
                     className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold"
                     style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
                   >
