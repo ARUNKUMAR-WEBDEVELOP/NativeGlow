@@ -38,20 +38,25 @@ After frontend deployment, add your frontend URL to backend Render env:
 
 - `CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`
 
-## GitHub Actions Deployment (GitHub Pages)
+## Vercel Auto Deployment
 
-This repository includes workflow [ .github/workflows/frontend-deploy.yml ](.github/workflows/frontend-deploy.yml) that:
+After you connect this repository to Vercel, deployments happen automatically.
 
-1. builds frontend on every push to `main`
-2. deploys `frontend/dist` to GitHub Pages
+1. Push changes to `main`.
+2. Vercel auto-builds and deploys from `frontend`.
+3. Use Vercel Deployments tab for logs/rollback.
 
-Required GitHub setting:
+Recommended project settings in Vercel:
 
-- In repository Settings -> Pages -> Source, select `GitHub Actions`.
+- Root Directory: `frontend`
+- Install Command: `npm install`
+- Build Command: `npm run build`
+- Output Directory: `dist`
 
-Optional secret for Google login on Pages:
+Required environment variables in Vercel:
 
 - `VITE_GOOGLE_CLIENT_ID`
+- `VITE_API_BASE`
 
 ## API endpoints used by frontend
 
