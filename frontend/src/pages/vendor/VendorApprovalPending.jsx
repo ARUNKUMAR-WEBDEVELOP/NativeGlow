@@ -60,9 +60,7 @@ export default function VendorApprovalPending() {
             localStorage.setItem('vendor_slug', approvedVendorSlug);
           }
 
-          const fallbackPath = approvedVendorSlug
-            ? `/site/${approvedVendorSlug}/vendor/dashboard`
-            : '/vendor/dashboard';
+          const fallbackPath = '/dashboard';
 
           navigate(response?.management_url || fallbackPath, { replace: true });
           return;

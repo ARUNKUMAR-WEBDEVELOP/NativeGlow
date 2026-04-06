@@ -252,7 +252,7 @@ function VendorProducts() {
     if (stateStoreUrl) {
       return stateStoreUrl;
     }
-    return vendorSlug ? `/site/${vendorSlug}` : null;
+    return vendorSlug ? `/store/${vendorSlug}` : null;
   }, [location.state?.storeUrl, vendorSlug]);
 
   const showLoginSuccessBanner = Boolean(location.state?.loginSuccess);
@@ -263,11 +263,11 @@ function VendorProducts() {
     vendorSlug ||
     'Vendor Store';
   const ordersPath = vendorSlug
-    ? `/site/${vendorSlug}/vendor/dashboard/orders`
-    : '/vendor/dashboard/orders';
+    ? '/dashboard?tab=orders'
+    : '/dashboard?tab=orders';
   const addProductPath = vendorSlug
-    ? `/site/${vendorSlug}/vendor/dashboard/products/new`
-    : '/vendor/dashboard/products/new';
+    ? '/dashboard?tab=add'
+    : '/dashboard?tab=add';
   const publicStoreDisplayUrl = useMemo(() => {
     if (!publicStorePath) {
       return '';
@@ -652,7 +652,7 @@ function VendorProducts() {
           <h2 className="text-2xl font-semibold text-zinc-900">{vendorDisplayName} Products</h2>
           <p className="text-sm text-zinc-600">Manage products, pricing, stock, and storefront visibility from one place.</p>
           <p className="mt-2 text-xs text-zinc-500">
-            Brand: {brand?.name || 'NativeGlow'} | Vendor Site: {vendorSlug ? `/site/${vendorSlug}` : 'Not available yet'}
+            Brand: {brand?.name || 'NativeGlow'} | Vendor Site: {vendorSlug ? `/store/${vendorSlug}` : 'Not available yet'}
           </p>
           {publicStoreDisplayUrl ? (
             <p className="mt-1 break-all text-xs text-emerald-700">Public Store URL: {publicStoreDisplayUrl}</p>
@@ -727,7 +727,7 @@ function VendorProducts() {
                     <td colSpan={10} className="px-3 py-8 text-center text-zinc-600">
                       <p className="font-semibold text-zinc-800">No products found for {vendorDisplayName}.</p>
                       <p className="mt-1 text-xs text-zinc-500">
-                        Add your first product and it will appear on your separate client store: {vendorSlug ? `/site/${vendorSlug}` : 'vendor site pending'}
+                        Add your first product and it will appear on your separate client store: {vendorSlug ? `/store/${vendorSlug}` : 'vendor site pending'}
                       </p>
                       <button
                         type="button"

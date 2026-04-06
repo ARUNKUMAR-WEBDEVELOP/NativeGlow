@@ -129,10 +129,10 @@ export default function VendorSetupWizard() {
   const vendorSession = useMemo(() => getVendorSession(), []);
 
   const progressPercent = useMemo(() => `${(step / 4) * 100}%`, [step]);
-  const storeUrl = useMemo(
-    () => `https://nativeglow.com/site/${vendorSlug || 'your-store'}`,
-    [vendorSlug]
-  );
+  const storeUrl = useMemo(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://native-glow.vercel.app';
+    return `${origin}/store/${vendorSlug || 'your-store'}`;
+  }, [vendorSlug]);
 
   useEffect(() => {
     let mounted = true;
@@ -144,10 +144,7 @@ export default function VendorSetupWizard() {
       }
 
       if (localStorage.getItem('setup_complete') === 'true') {
-        const path = vendorSlug
-          ? `/site/${vendorSlug}/vendor/dashboard`
-          : '/vendor/dashboard';
-        navigate(path, { replace: true });
+        navigate('/dashboard', { replace: true });
         return;
       }
 
@@ -615,7 +612,7 @@ why you started..."
               </button>
               <button
                 type="button"
-                onClick={() => navigate(vendorSlug ? `/site/${vendorSlug}/vendor/dashboard` : '/vendor/dashboard', { replace: true })}
+                onClick={() => navigate('/dashboard', { replace: true })}
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
               >
                 Go to Dashboard

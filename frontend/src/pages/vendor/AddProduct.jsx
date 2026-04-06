@@ -17,8 +17,8 @@ function AddProduct() {
   }, []);
 
   const productsPath = vendorSlug
-    ? `/site/${vendorSlug}/vendor/dashboard/products`
-    : '/vendor/dashboard/products';
+    ? '/dashboard?tab=products'
+    : '/dashboard?tab=products';
   const [form, setForm] = useState({
     title: '',
     category_type: 'face_wash',

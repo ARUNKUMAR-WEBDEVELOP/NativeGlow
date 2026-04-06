@@ -125,7 +125,7 @@ export default function VendorSiteProducts() {
           const discounted = product?.discounted_price != null ? toNumber(product.discounted_price) : null;
           const hasDiscount = discounted && discounted < price;
           const discountPercent = toNumber(product?.discount_percent);
-          const detailPath = `/store/${vendorSlug}/products/${product.id}`;
+          const detailPath = `/store/${vendorSlug}/product/${product.id}`;
 
           return (
             <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>

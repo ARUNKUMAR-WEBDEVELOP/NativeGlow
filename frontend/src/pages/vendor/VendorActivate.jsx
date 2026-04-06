@@ -74,10 +74,7 @@ export default function VendorActivate() {
             JSON.stringify({ access: accessToken, vendor_slug: vendorSlug })
           );
 
-          const fallbackPath = isFirstLogin ? '/vendor/dashboard/setup' : '/vendor/dashboard';
-          const targetPath = vendorSlug
-            ? `/site/${vendorSlug}${fallbackPath}`
-            : fallbackPath;
+          const targetPath = isFirstLogin ? '/dashboard/setup' : '/dashboard';
 
           navigate(targetPath, {
             replace: true,

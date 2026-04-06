@@ -172,7 +172,7 @@ function HomePage() {
             {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                onClick={() => navigate(`/store/${product.vendor_slug}/products/${product.id}`)}
+                onClick={() => navigate(`/store/${product.vendor_slug}/product/${product.id}`)}
                 className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               >
                 {/* Product Image */}

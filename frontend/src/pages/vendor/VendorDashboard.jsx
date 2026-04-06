@@ -367,21 +367,15 @@ export default function VendorDashboard() {
     }
   }, [location.search]);
 
-  // Vendor slug validation - ensure vendor can only access their own dashboard
+  // Keep vendor data scoped to logged-in session.
   useEffect(() => {
     if (!routeVendorSlug || !resolvedVendorSlug) {
       return;
     }
-    
-    // If the URL has a vendor_slug but it doesn't match the logged-in vendor's slug, redirect
     if (routeVendorSlug !== resolvedVendorSlug) {
-      // Redirect to the correct vendor's dashboard
-      const correctPath = `/site/${resolvedVendorSlug}/vendor/dashboard`;
-      const params = new URLSearchParams(location.search || '');
-      const newUrl = `${correctPath}${params.toString() ? `?${params.toString()}` : ''}`;
-      navigate(newUrl, { replace: true });
+      navigate('/dashboard', { replace: true });
     }
-  }, [routeVendorSlug, resolvedVendorSlug, navigate, location.search]);
+  }, [routeVendorSlug, resolvedVendorSlug, navigate]);
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -520,9 +514,8 @@ export default function VendorDashboard() {
   const totalOrdersToday = Number(stats?.total_orders_today || stats?.orders_today || 0);
   const vendorSlug = resolvedVendorSlug;
   const hasStoreSlug = Boolean(vendorSlug);
-  const storePath = hasStoreSlug ? `/site/${vendorSlug}` : '';
-  const appBasePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-  const storeUrl = hasStoreSlug ? `${window.location.origin}${appBasePath}/#${storePath}` : '';
+  const storePath = hasStoreSlug ? `/store/${vendorSlug}` : '';
+  const storeUrl = hasStoreSlug ? `${window.location.origin}${storePath}` : '';
   const whatsappShareMessage = `Hi! Check out my natural products store on ${brand.name}.\nBrowse and order directly here:\n${storeUrl}`;
 
   const welcomeLine2 =
