@@ -111,6 +111,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^https://[a-z0-9-]+\.github\.io$',
+    r'^https://[a-z0-9-]+\.vercel\.app$',
 ]
 
 extra_cors = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
