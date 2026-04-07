@@ -12,6 +12,7 @@ import {
 } from '../../components/vendor/productTemplates';
 
 function EditProductModal({ product, onClose, onSave, loading }) {
+  const maxImages = 4;
   const [form, setForm] = useState({
     title: '',
     name: '',
@@ -25,6 +26,9 @@ function EditProductModal({ product, onClose, onSave, loading }) {
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
   });
+  const [newImages, setNewImages] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
+  const [imageError, setImageError] = useState('');
 
   useEffect(() => {
     if (!product) {
@@ -54,10 +58,36 @@ function EditProductModal({ product, onClose, onSave, loading }) {
           }))
         : getDefaultVariantRows(product.product_type || 'skincare'),
     });
+    setNewImages([]);
+    setImageError('');
   }, [product]);
+
+  useEffect(() => {
+    if (!newImages.length) {
+      setPreviewUrls([]);
+      return undefined;
+    }
+
+    const urls = newImages.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [newImages]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (type === 'file') {
+      const selected = Array.from(e.target.files || []).slice(0, maxImages);
+      if ((e.target.files || []).length > maxImages) {
+        setImageError(`Only ${maxImages} images are allowed.`);
+      } else {
+        setImageError('');
+      }
+      setNewImages(selected);
+      return;
+    }
     if (name === 'category_type') {
       const mappedType = getProductTypeForCategory(value);
       setForm((prev) => ({
@@ -92,6 +122,13 @@ function EditProductModal({ product, onClose, onSave, loading }) {
 
   const onSubmit = (e) => {
     e.preventDefault();
+    const hasExistingImage = Boolean(product?.image || product?.primary_image);
+    if (!hasExistingImage && newImages.length < 1) {
+      setImageError('At least 1 product image is required.');
+      return;
+    }
+
+    setImageError('');
     const productAttributes = sanitizeProductAttributes(form.product_type, form.product_attributes);
     const variantsPayload = sanitizeVariantRows(form.variants);
     onSave({
@@ -100,7 +137,7 @@ function EditProductModal({ product, onClose, onSave, loading }) {
       available_quantity: Number(form.available_quantity),
       product_attributes: productAttributes,
       variants_payload: variantsPayload,
-    });
+    }, newImages);
   };
 
   if (!product) {
@@ -143,6 +180,39 @@ function EditProductModal({ product, onClose, onSave, loading }) {
             <input type="number" min="0" name="available_quantity" value={form.available_quantity} onChange={onChange} placeholder="Quantity" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" required disabled={loading} />
           </div>
 
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-zinc-800">Product Images (minimum 1, maximum 4)</label>
+            {(product?.image || product?.primary_image) && !previewUrls.length ? (
+              <img
+                src={product.image || product.primary_image}
+                alt={form.title || 'Current product image'}
+                className="h-24 w-24 rounded-lg border border-zinc-200 object-cover"
+              />
+            ) : null}
+            <input
+              type="file"
+              name="images"
+              accept="image/*"
+              multiple
+              onChange={onChange}
+              className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
+              disabled={loading}
+            />
+            {previewUrls.length ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {previewUrls.map((url, index) => (
+                  <img
+                    key={`${url}-${index}`}
+                    src={url}
+                    alt={`New image ${index + 1}`}
+                    className="h-20 w-20 rounded-lg border border-zinc-200 object-cover"
+                  />
+                ))}
+              </div>
+            ) : null}
+            {imageError ? <p className="text-xs text-rose-600">{imageError}</p> : null}
+          </div>
+
           <ProductAttributeFields
             productType={form.product_type}
             attributes={form.product_attributes}
@@ -170,7 +240,7 @@ function EditProductModal({ product, onClose, onSave, loading }) {
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700" disabled={loading}>Cancel</button>
-            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading}>{loading ? 'Saving...' : 'Save Changes'}</button>
+            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading}>{loading ? 'Submitting...' : 'Submit Changes'}</button>
           </div>
         </form>
       </div>

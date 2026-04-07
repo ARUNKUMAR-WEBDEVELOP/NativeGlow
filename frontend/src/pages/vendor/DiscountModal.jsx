@@ -103,7 +103,7 @@ function DiscountModal({ product, onClose, onApply, loading }) {
             disabled={loading}
             className="flex-1 rounded-lg bg-sage px-3 py-2 text-sm font-semibold text-white transition hover:bg-sage/90 disabled:opacity-50"
           >
-            {loading ? 'Applying...' : 'Apply Discount'}
+            {loading ? 'Submitting...' : 'Submit Discount'}
           </button>
         </div>
       </div>

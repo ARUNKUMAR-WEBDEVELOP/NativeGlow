@@ -65,6 +65,20 @@ function getDiscountedPrice(product) {
   return Number((price * (1 - percent / 100)).toFixed(2));
 }
 
+function getPrimaryImage(product) {
+  if (product?.image) {
+    return product.image;
+  }
+  if (product?.primary_image) {
+    return product.primary_image;
+  }
+  if (Array.isArray(product?.images) && product.images.length > 0) {
+    const firstImage = product.images[0];
+    return firstImage?.image_url || firstImage?.image || null;
+  }
+  return null;
+}
+
 function MobileProductCard({
   product,
   operationLoading,
@@ -80,12 +94,13 @@ function MobileProductCard({
   const percent = getDiscountPercent(product);
   const discounted = getDiscountedPrice(product);
   const productLabel = product.title || product.name || 'Product';
+  const productImage = getPrimaryImage(product);
 
   return (
     <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        {product.image ? (
-          <img src={product.image} alt={productLabel} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
+        {productImage ? (
+          <img src={productImage} alt={productLabel} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
@@ -185,6 +200,7 @@ function SortableProductRow({
   onUpdateQuantity,
 }) {
   const productLabel = product.title || product.name || 'Product';
+  const productImage = getPrimaryImage(product);
   const {
     attributes,
     listeners,
@@ -209,8 +225,8 @@ function SortableProductRow({
       }`}
     >
       <td className="px-3 py-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
-        {product.image ? (
-          <img src={product.image} alt={productLabel} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
+        {productImage ? (
+          <img src={productImage} alt={productLabel} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
@@ -349,6 +365,13 @@ function ProductList() {
     [vendorSession?.access]
   );
 
+  const authOnlyHeaders = useMemo(
+    () => ({
+      Authorization: `Bearer ${vendorSession?.access || ''}`,
+    }),
+    [vendorSession?.access]
+  );
+
   const fetchProducts = async () => {
     setLoading(true);
     setError('');
@@ -448,19 +471,52 @@ function ProductList() {
     }
   };
 
-  const onSaveEdit = async (payload) => {
+  const onSaveEdit = async (payload, imageFiles = []) => {
     if (!editingProduct) {
       return;
     }
+
+    const hasExistingImage = Boolean(getPrimaryImage(editingProduct));
+    if (!hasExistingImage && (!Array.isArray(imageFiles) || imageFiles.length < 1)) {
+      setError('At least 1 product image is required for every product.');
+      return;
+    }
+
     setError('');
     setSuccess('');
     setEditLoading(true);
 
     try {
+      const shouldUseFormData = Array.isArray(imageFiles) && imageFiles.length > 0;
+      let requestBody = JSON.stringify(payload);
+      let requestHeaders = authHeaders;
+
+      if (shouldUseFormData) {
+        const formData = new FormData();
+        Object.entries(payload || {}).forEach(([key, value]) => {
+          if (value === undefined || value === null) {
+            return;
+          }
+          if (key === 'product_attributes' || key === 'variants_payload') {
+            formData.append(key, JSON.stringify(value));
+            return;
+          }
+          formData.append(key, String(value));
+        });
+
+        formData.append('image', imageFiles[0]);
+        imageFiles.slice(1, 4).forEach((file, index) => {
+          formData.append(`image_${index + 1}`, file);
+        });
+
+        requestBody = formData;
+        requestHeaders = authOnlyHeaders;
+      }
+
       const res = await fetch(`${API_BASE}/vendor/products/${editingProduct.id}/edit/`, {
         method: 'PUT',
-        headers: authHeaders,
-        body: JSON.stringify(payload),
+        headers: requestHeaders,
+        body: requestBody,
       });
 
       if (!res.ok) {

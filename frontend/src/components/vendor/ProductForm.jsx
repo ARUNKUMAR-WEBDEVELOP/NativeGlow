@@ -60,6 +60,8 @@ function ProductForm({ onSuccess, onCancel }) {
       const selected = allSelected.slice(0, maxImages);
       if (allSelected.length > maxImages) {
         setError(`You can upload up to ${maxImages} images only.`);
+      } else {
+        setError('');
       }
       setForm((prev) => ({ ...prev, images: selected }));
       return;
@@ -319,6 +321,7 @@ function ProductForm({ onSuccess, onCancel }) {
               accept="image/*"
               multiple
               onChange={onInputChange}
+              required={form.images.length === 0}
               className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
             />
             {previewUrls.length > 0 && (
