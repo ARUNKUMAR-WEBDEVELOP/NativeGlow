@@ -29,6 +29,8 @@ function EditProductModal({ product, onClose, onSave, loading }) {
   const [newImages, setNewImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [imageError, setImageError] = useState('');
+  const [publishConfirmed, setPublishConfirmed] = useState(false);
+  const [publishError, setPublishError] = useState('');
 
   useEffect(() => {
     if (!product) {
@@ -60,6 +62,8 @@ function EditProductModal({ product, onClose, onSave, loading }) {
     });
     setNewImages([]);
     setImageError('');
+    setPublishConfirmed(false);
+    setPublishError('');
   }, [product]);
 
   useEffect(() => {
@@ -128,7 +132,13 @@ function EditProductModal({ product, onClose, onSave, loading }) {
       return;
     }
 
+    if (!publishConfirmed) {
+      setPublishError('Please confirm publish before submitting changes.');
+      return;
+    }
+
     setImageError('');
+    setPublishError('');
     const productAttributes = sanitizeProductAttributes(form.product_type, form.product_attributes);
     const variantsPayload = sanitizeVariantRows(form.variants);
     onSave({
@@ -238,9 +248,26 @@ function EditProductModal({ product, onClose, onSave, loading }) {
             Natural certified
           </label>
 
+          <label className="flex items-center gap-2 text-sm font-semibold text-zinc-800">
+            <input
+              type="checkbox"
+              checked={publishConfirmed}
+              onChange={(e) => {
+                setPublishConfirmed(e.target.checked);
+                if (e.target.checked) {
+                  setPublishError('');
+                }
+              }}
+              className="h-4 w-4 rounded border-zinc-300 text-sage"
+              disabled={loading}
+            />
+            Confirm publish to store
+          </label>
+          {publishError ? <p className="text-xs text-rose-600">{publishError}</p> : null}
+
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700" disabled={loading}>Cancel</button>
-            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading}>{loading ? 'Submitting...' : 'Submit Changes'}</button>
+            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading || !publishConfirmed}>{loading ? 'Submitting...' : 'Submit & Publish'}</button>
           </div>
         </form>
       </div>

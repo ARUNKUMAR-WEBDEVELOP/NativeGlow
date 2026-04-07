@@ -24,7 +24,7 @@ function DiscountModal({ product, onClose, onApply, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center">
       <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg sm:p-6">
-        <h2 className="text-xl font-bold text-zinc-900">Set Discount</h2>
+        <h2 className="text-xl font-bold text-zinc-900">Submit Discount</h2>
         <p className="mt-1 text-sm text-zinc-600">{product.title || product.name || 'Product'}</p>
 
         <div className="mt-4 space-y-4">

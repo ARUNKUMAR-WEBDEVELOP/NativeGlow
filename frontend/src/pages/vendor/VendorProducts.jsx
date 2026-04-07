@@ -171,14 +171,14 @@ function SortableProductRow({
             onClick={() => setDiscountModalProduct(product)}
             className="rounded-lg border border-orange-300 px-2 py-1 text-xs font-semibold text-orange-700"
           >
-            {getDiscountPercent(product) > 0 ? 'Edit Discount' : 'Set Discount'}
+            {getDiscountPercent(product) > 0 ? 'Submit Discount' : 'Submit Discount'}
           </button>
           <button
             type="button"
             onClick={() => setEditingProduct(product)}
             className="rounded-lg border border-zinc-300 px-2 py-1 text-xs font-semibold text-zinc-700"
           >
-            Edit
+            Edit & Publish
           </button>
           <button
             type="button"
