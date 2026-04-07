@@ -267,7 +267,7 @@ function EditProductModal({ product, onClose, onSave, loading }) {
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700" disabled={loading}>Cancel</button>
-            <button type="submit" className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={loading || !publishConfirmed}>{loading ? 'Submitting...' : 'Submit & Publish'}</button>
+            <button type="submit" className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60" disabled={loading || !publishConfirmed}>{loading ? 'Submitting...' : 'Submit & Publish'}</button>
           </div>
         </form>
       </div>
