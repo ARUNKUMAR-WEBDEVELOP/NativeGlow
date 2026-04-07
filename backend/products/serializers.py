@@ -135,24 +135,35 @@ def _sync_product_gallery(product, request):
     product.images.all().delete()
 
     position = 1
+    # Create ProductImage for primary image if it exists and has a valid URL
     if product.image:
-        ProductImage.objects.create(
-            product=product,
-            image_url=product.image.url,
-            alt_text=product.title,
-            position=position,
-        )
-        position += 1
+        try:
+            image_url = product.image.url
+            if image_url:  # Only create if URL is not empty
+                ProductImage.objects.create(
+                    product=product,
+                    image_url=image_url,
+                    alt_text=product.title,
+                    position=position,
+                )
+                position += 1
+        except Exception as e:
+            print(f"Warning: Failed to save primary image for product {product.id}: {str(e)}")
 
+    # Create ProductImage entries for extra images
     for uploaded_file in extra_images:
-        image_url = _store_uploaded_image(uploaded_file)
-        ProductImage.objects.create(
-            product=product,
-            image_url=image_url,
-            alt_text=product.title,
-            position=position,
-        )
-        position += 1
+        try:
+            image_url = _store_uploaded_image(uploaded_file)
+            if image_url:  # Only create if URL is not empty
+                ProductImage.objects.create(
+                    product=product,
+                    image_url=image_url,
+                    alt_text=product.title,
+                    position=position,
+                )
+                position += 1
+        except Exception as e:
+            print(f"Warning: Failed to save extra image for product {product.id}: {str(e)}")
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -317,6 +328,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     """
     sku = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     variants_payload = serializers.JSONField(required=False, write_only=True)
+    image = serializers.ImageField(required=False, allow_null=True, use_url=False)
 
     class Meta:
         model = Product
@@ -383,6 +395,13 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
             validated_data['inventory_qty'] = validated_data.get('available_quantity', 0)
 
         product = super().create(validated_data)
+        
+        # Ensure primary image is saved from request.FILES if not already in validated_data
+        if request and request.FILES.get('image') and not product.image:
+            primary_image = request.FILES.get('image')
+            product.image = primary_image
+            product.save(update_fields=['image'])
+        
         _sync_product_gallery(product, request)
         if variants_payload:
             for variant_data in variants_payload:
@@ -436,6 +455,7 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
     PUT /api/vendor/products/<id>/edit/
     """
     variants_payload = serializers.JSONField(required=False, write_only=True)
+    image = serializers.ImageField(required=False, allow_null=True, use_url=False)
 
     class Meta:
         model = Product
@@ -476,6 +496,13 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         
         instance.save()
+        
+        # Ensure primary image is saved from request.FILES if provided
+        if request and request.FILES.get('image'):
+            primary_image = request.FILES.get('image')
+            instance.image = primary_image
+            instance.save(update_fields=['image'])
+        
         if request and request.FILES:
             _sync_product_gallery(instance, request)
         if variants_payload is not None:
