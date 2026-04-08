@@ -123,47 +123,35 @@ async function uploadToSupabaseStorage(file, folder) {
 }
 
 async function updateVendorProfileWithFallback(token, payload) {
-  const endpoints = ['/vendor/me/update/', '/vendor/me/'];
-  const methods = ['PATCH', 'PUT'];
   const bases = getApiBaseCandidates();
   let lastError = null;
 
   for (const base of bases) {
-    for (const endpoint of endpoints) {
-      for (const method of methods) {
-        try {
-          const res = await fetch(`${base}${endpoint}`, {
-            method,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
+    try {
+      const res = await fetch(`${base}/vendor/me/`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-          if (res.ok) {
-            return res.json();
-          }
-
-          let detail = `Failed to save brand profile (${res.status})`;
-          try {
-            const data = await res.json();
-            detail = data?.detail || data?.error || JSON.stringify(data);
-          } catch {
-            // keep fallback detail
-          }
-
-          // Keep trying alternate routes on 404/405.
-          if (res.status === 404 || res.status === 405) {
-            lastError = new Error(detail);
-            continue;
-          }
-
-          throw new Error(detail);
-        } catch (err) {
-          lastError = err;
-        }
+      if (res.ok) {
+        return res.json();
       }
+
+      let detail = `Failed to save brand profile (${res.status})`;
+      try {
+        const data = await res.json();
+        detail = data?.detail || data?.error || JSON.stringify(data);
+      } catch {
+        // keep fallback detail
+      }
+
+      throw new Error(detail);
+    } catch (err) {
+      lastError = err;
     }
   }
 
@@ -452,13 +440,8 @@ export default function VendorDashboard() {
       vendorSession?.vendor?.vendor_slug ||
       vendorSession?.vendor_slug ||
       '',
-    site_theme: 'default',
     site_logo: '',
-    site_banner_image: '',
     about_vendor: '',
-    youtube_url: '',
-    instagram_url: '',
-    whatsapp_display: true,
   }));
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -473,7 +456,6 @@ export default function VendorDashboard() {
     about_vendor: '',
   });
   const [logoFile, setLogoFile] = useState(null);
-  const [bannerFile, setBannerFile] = useState(null);
   const [brandSaving, setBrandSaving] = useState(false);
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
@@ -505,7 +487,6 @@ export default function VendorDashboard() {
       about_vendor: vendorData?.about_vendor || '',
     });
     setLogoFile(null);
-    setBannerFile(null);
   }, [
     vendorData?.about_vendor,
   ]);
@@ -753,7 +734,6 @@ export default function VendorDashboard() {
     setBrandSaving(true);
     try {
       let nextLogo = vendorData?.site_logo || '';
-      let nextBanner = vendorData?.site_banner_image || '';
       const uploadWarnings = [];
 
       if (logoFile) {
@@ -764,24 +744,14 @@ export default function VendorDashboard() {
         }
       }
 
-      if (bannerFile) {
-        try {
-          nextBanner = await uploadToSupabaseStorage(bannerFile, 'banners');
-        } catch (uploadErr) {
-          uploadWarnings.push('Banner upload skipped');
-        }
-      }
-
       const payload = {
         site_logo: nextLogo,
-        site_banner_image: nextBanner,
         about_vendor: brandForm.about_vendor,
       };
 
       const updated = await updateVendorProfileWithFallback(token, payload);
       setVendorData((prev) => ({ ...prev, ...updated }));
       setLogoFile(null);
-      setBannerFile(null);
       setToastMessage(
         uploadWarnings.length > 0
           ? `Story saved. ${uploadWarnings.join(' and ')} due to upload configuration.`
@@ -1357,18 +1327,7 @@ export default function VendorDashboard() {
                         onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
-                      <p className="mt-1 text-xs text-zinc-500">If not uploaded, existing logo is kept.</p>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Banner (Upload)</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => setBannerFile(event.target.files?.[0] || null)}
-                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                      />
-                      <p className="mt-1 text-xs text-zinc-500">If not uploaded, existing banner is kept.</p>
+                      <p className="mt-1 text-xs text-zinc-500">Upload one logo or brand image. If none is selected, the existing image stays in place.</p>
                     </div>
 
                     <div>
