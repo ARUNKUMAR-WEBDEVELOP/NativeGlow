@@ -7,6 +7,7 @@ import platformContent from '../../content/platformContent';
 import ProductForm from '../../components/vendor/ProductForm';
 import ProductList from '../../components/vendor/ProductList';
 import OrderList from '../../components/vendor/OrderList';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -69,15 +70,26 @@ function resolveVendorSlug({ routeVendorSlug, vendorData, tokenPayload, vendorSe
   );
 }
 
+function getBrandInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'VS';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+}
+
 // Sidebar component
-function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore }) {
+function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore, onOpenStoreAbout }) {
   const navigate = useNavigate();
+  const logoUrl = resolveImageUrl(vendorData?.site_logo);
+  const brandInitials = getBrandInitials(vendorData?.business_name);
   const navItems = [
     { label: 'Dashboard', tab: 'dashboard' },
+    { label: 'Brand Profile', tab: 'brand' },
     { label: 'My Products', tab: 'products' },
     { label: 'Add Product', tab: 'add' },
     { label: 'My Orders', tab: 'orders', badge: vendorData?.pending_orders || 0 },
     { label: 'View My Store', path: '#', external: true },
+    { label: 'Store About Page', path: '#', externalAbout: true },
   ];
 
   const handleLogout = () => {
@@ -88,6 +100,8 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
   const handleNavigation = (item) => {
     if (item.external) {
       onOpenStore();
+    } else if (item.externalAbout) {
+      onOpenStoreAbout();
     } else if (item.tab) {
       onSelectTab(item.tab);
       onClose();
@@ -127,12 +141,17 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
         {/* Logo & Business Name */}
         <div className="space-y-3 border-b" style={{ borderColor: `${theme.colors.primaryGlow}30`, padding: '24px 20px' }}>
           <div
-            className="flex h-16 w-16 items-center justify-center rounded-xl text-2xl"
+            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full text-2xl"
             style={{ backgroundColor: theme.colors.primaryGlow }}
           >
-            NG
+            {logoUrl ? (
+              <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+            ) : (
+              <span className="font-bold text-white">{brandInitials}</span>
+            )}
           </div>
           <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Brand</p>
             <h2 className="font-semibold text-white" style={{ fontFamily: theme.fonts.heading }}>
               {vendorData?.business_name || 'Your Store'}
             </h2>
@@ -195,8 +214,10 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
 }
 
 // Header component
-function Header({ pageTitle, vendorData, onMenuToggle }) {
+function Header({ pageTitle, vendorData, onMenuToggle, onOpenStoreAbout }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const logoUrl = resolveImageUrl(vendorData?.site_logo);
+  const brandInitials = getBrandInitials(vendorData?.business_name);
 
   return (
     <div
@@ -241,18 +262,24 @@ function Header({ pageTitle, vendorData, onMenuToggle }) {
             style={{ backgroundColor: `${theme.colors.primary}10` }}
             onMouseEnter={(e) => (e.target.style.backgroundColor = `${theme.colors.primary}20`)}
             onMouseLeave={(e) => (e.target.style.backgroundColor = `${theme.colors.primary}10`)}
+            onClick={onOpenStoreAbout}
+            title="Open Store About Page"
           >
             <div
-              className="h-8 w-8 rounded-full flex items-center justify-center text-white font-semibold"
+              className="h-8 w-8 overflow-hidden rounded-full flex items-center justify-center text-white font-semibold"
               style={{ backgroundColor: theme.colors.primaryGlow }}
             >
-              {vendorData?.business_name?.charAt(0).toUpperCase() || 'V'}
+              {logoUrl ? (
+                <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+              ) : (
+                brandInitials
+              )}
             </div>
             <span
               className="text-sm font-semibold hidden sm:inline"
               style={{ color: theme.colors.charcoal }}
             >
-              {vendorData?.business_name?.split(' ')[0] || 'Vendor'}
+              {vendorData?.business_name || 'Vendor'}
             </span>
             <span className="text-lg">▼</span>
           </div>
@@ -332,6 +359,13 @@ export default function VendorDashboard() {
       vendorSession?.vendor?.vendor_slug ||
       vendorSession?.vendor_slug ||
       '',
+    site_theme: 'default',
+    site_logo: '',
+    site_banner_image: '',
+    about_vendor: '',
+    youtube_url: '',
+    instagram_url: '',
+    whatsapp_display: true,
   }));
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -342,6 +376,16 @@ export default function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [brandForm, setBrandForm] = useState({
+    site_theme: 'default',
+    site_logo: '',
+    site_banner_image: '',
+    about_vendor: '',
+    youtube_url: '',
+    instagram_url: '',
+    whatsapp_display: true,
+  });
+  const [brandSaving, setBrandSaving] = useState(false);
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
   const resolvedVendorSlug = resolveVendorSlug({
@@ -362,10 +406,30 @@ export default function VendorDashboard() {
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
     const tabFromQuery = params.get('tab');
-    if (tabFromQuery && ['dashboard', 'products', 'add', 'orders'].includes(tabFromQuery)) {
+    if (tabFromQuery && ['dashboard', 'brand', 'products', 'add', 'orders'].includes(tabFromQuery)) {
       setActiveTab(tabFromQuery);
     }
   }, [location.search]);
+
+  useEffect(() => {
+    setBrandForm({
+      site_theme: vendorData?.site_theme || 'default',
+      site_logo: vendorData?.site_logo || '',
+      site_banner_image: vendorData?.site_banner_image || '',
+      about_vendor: vendorData?.about_vendor || '',
+      youtube_url: vendorData?.youtube_url || '',
+      instagram_url: vendorData?.instagram_url || '',
+      whatsapp_display: vendorData?.whatsapp_display !== false,
+    });
+  }, [
+    vendorData?.site_theme,
+    vendorData?.site_logo,
+    vendorData?.site_banner_image,
+    vendorData?.about_vendor,
+    vendorData?.youtube_url,
+    vendorData?.instagram_url,
+    vendorData?.whatsapp_display,
+  ]);
 
   // Keep vendor data scoped to logged-in session.
   useEffect(() => {
@@ -387,12 +451,13 @@ export default function VendorDashboard() {
         }
 
         const headers = { Authorization: `Bearer ${token}` };
-        const [productsRes, ordersRes] = await Promise.all([
+        const [productsRes, ordersRes, profileRes] = await Promise.all([
           fetch(`${API_BASE}/vendor/products/`, { headers }),
           fetch(`${API_BASE}/vendor/orders/`, { headers }),
+          fetch(`${API_BASE}/vendor/me/`, { headers }),
         ]);
 
-        if (productsRes.status === 401 || ordersRes.status === 401) {
+        if (productsRes.status === 401 || ordersRes.status === 401 || profileRes.status === 401) {
           localStorage.removeItem('vendor_token');
           localStorage.removeItem('nativeglow_vendor_tokens');
           navigate('/vendor/login');
@@ -401,6 +466,7 @@ export default function VendorDashboard() {
 
         const products = productsRes.ok ? await productsRes.json() : [];
         const orders = ordersRes.ok ? await ordersRes.json() : [];
+        const profile = profileRes.ok ? await profileRes.json() : null;
         const productList = Array.isArray(products) ? products : [];
         const orderList = Array.isArray(orders) ? orders : [];
 
@@ -433,17 +499,26 @@ export default function VendorDashboard() {
         setVendorData((prev) => ({
           ...prev,
           business_name:
+            profile?.business_name ||
             vendorSession?.vendor?.business_name ||
             vendorSession?.business_name ||
             prev?.business_name ||
             'Your Store',
           vendor_slug:
+            profile?.vendor_slug ||
             routeVendorSlug ||
             tokenPayload?.vendor_slug ||
             vendorSession?.vendor?.vendor_slug ||
             vendorSession?.vendor_slug ||
             prev?.vendor_slug ||
             '',
+          site_theme: profile?.site_theme || prev?.site_theme || 'default',
+          site_logo: profile?.site_logo || prev?.site_logo || '',
+          site_banner_image: profile?.site_banner_image || prev?.site_banner_image || '',
+          about_vendor: profile?.about_vendor || prev?.about_vendor || '',
+          youtube_url: profile?.youtube_url || prev?.youtube_url || '',
+          instagram_url: profile?.instagram_url || prev?.instagram_url || '',
+          whatsapp_display: profile?.whatsapp_display !== false,
         }));
 
         setStats({
@@ -574,6 +649,72 @@ export default function VendorDashboard() {
     navigate(storePath, { replace: false });
   };
 
+  const handleOpenStoreAbout = () => {
+    if (!hasStoreSlug) {
+      setToastMessage('Store link not ready yet. Please login again.');
+      window.setTimeout(() => setToastMessage(''), 2400);
+      return;
+    }
+    navigate(`/store/${vendorSlug}/about`, { replace: false });
+  };
+
+  const handleSaveBrandProfile = async () => {
+    const token = vendorSession?.access || localStorage.getItem('vendor_token');
+    if (!token) {
+      navigate('/vendor/login');
+      return;
+    }
+
+    if (String(brandForm.about_vendor || '').length > 500) {
+      setToastMessage('Our Story must be 500 characters or less.');
+      window.setTimeout(() => setToastMessage(''), 2600);
+      return;
+    }
+
+    setBrandSaving(true);
+    try {
+      const payload = {
+        site_theme: brandForm.site_theme,
+        site_logo: brandForm.site_logo,
+        site_banner_image: brandForm.site_banner_image,
+        about_vendor: brandForm.about_vendor,
+        youtube_url: brandForm.youtube_url,
+        instagram_url: brandForm.instagram_url,
+        whatsapp_display: Boolean(brandForm.whatsapp_display),
+      };
+
+      const res = await fetch(`${API_BASE}/vendor/me/update/`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        let detail = `Failed to save brand profile (${res.status})`;
+        try {
+          const data = await res.json();
+          detail = data?.detail || data?.error || JSON.stringify(data);
+        } catch {
+          // keep fallback
+        }
+        throw new Error(detail);
+      }
+
+      const updated = await res.json();
+      setVendorData((prev) => ({ ...prev, ...updated }));
+      setToastMessage('Brand profile saved. Store About page updated.');
+      window.setTimeout(() => setToastMessage(''), 2600);
+    } catch (err) {
+      setToastMessage(err?.message || 'Could not save brand profile.');
+      window.setTimeout(() => setToastMessage(''), 2800);
+    } finally {
+      setBrandSaving(false);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: `${theme.colors.muted}05` }}>
       {toastMessage ? (
@@ -590,15 +731,27 @@ export default function VendorDashboard() {
         activeTab={activeTab}
         onSelectTab={setTabAndUrl}
         onOpenStore={handleOpenStore}
+        onOpenStoreAbout={handleOpenStoreAbout}
       />
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden lg:ml-64">
         {/* Header */}
         <Header
-          pageTitle={activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'products' ? 'My Products' : activeTab === 'add' ? 'Add Product' : 'My Orders'}
+          pageTitle={
+            activeTab === 'dashboard'
+              ? 'Dashboard'
+              : activeTab === 'brand'
+              ? 'Brand Profile'
+              : activeTab === 'products'
+              ? 'My Products'
+              : activeTab === 'add'
+              ? 'Add Product'
+              : 'My Orders'
+          }
           vendorData={vendorData}
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          onOpenStoreAbout={handleOpenStoreAbout}
         />
 
         {/* Tabs Navigation */}
@@ -613,6 +766,16 @@ export default function VendorDashboard() {
               }`}
             >
               Dashboard
+            </button>
+            <button
+              onClick={() => setTabAndUrl('brand')}
+              className={`px-4 py-3 font-semibold text-sm border-b-2 transition-all ${
+                activeTab === 'brand'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-zinc-600 border-transparent hover:text-zinc-900'
+              }`}
+            >
+              Brand Profile
             </button>
             <button
               onClick={() => setTabAndUrl('products')}
@@ -673,6 +836,49 @@ export default function VendorDashboard() {
               >
                 {welcomeLine2}
               </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+              <div
+                className="rounded-2xl border p-6"
+                style={{ borderColor: `${theme.colors.primaryGlow}25`, backgroundColor: 'white' }}
+              >
+                <div className="mx-auto h-24 w-24 overflow-hidden rounded-full" style={{ backgroundColor: `${theme.colors.primaryGlow}20` }}>
+                  {resolveImageUrl(vendorData?.site_logo) ? (
+                    <img src={resolveImageUrl(vendorData?.site_logo)} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl font-bold" style={{ color: theme.colors.primary }}>
+                      {getBrandInitials(vendorData?.business_name)}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-3 text-center text-[11px] font-semibold uppercase tracking-wide" style={{ color: theme.colors.muted }}>
+                  Brand Identity
+                </p>
+                <h3 className="mt-1 text-center text-lg font-bold" style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}>
+                  {vendorData?.business_name || 'Your Brand'}
+                </h3>
+              </div>
+
+              <div
+                className="rounded-2xl border p-6"
+                style={{ borderColor: `${theme.colors.muted}20`, backgroundColor: 'white' }}
+              >
+                <h3 className="text-lg font-bold" style={{ color: theme.colors.charcoal, fontFamily: theme.fonts.heading }}>
+                  Brand Summary
+                </h3>
+                <p className="mt-2 text-sm" style={{ color: theme.colors.muted }}>
+                  {vendorData?.about_vendor || 'Add your brand story so buyers can understand your mission and trust your products.'}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button variant="secondary" size="sm" onClick={() => setTabAndUrl('brand')}>
+                    Edit Brand Profile
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleOpenStoreAbout}>
+                    Open Store About Page
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Store Link Card */}
@@ -1048,6 +1254,136 @@ export default function VendorDashboard() {
               </div>
             )}
             </div>
+            )}
+
+            {/* Brand Profile Tab */}
+            {activeTab === 'brand' && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-2xl font-semibold text-zinc-900">Brand Profile</h2>
+                  <p className="mt-1 text-sm text-zinc-600">
+                    These values power your store home and About page with predefined styles.
+                  </p>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+                  <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Theme</label>
+                      <select
+                        value={brandForm.site_theme}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_theme: event.target.value }))}
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      >
+                        <option value="default">Default</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="bold">Bold</option>
+                        <option value="elegant">Elegant</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo URL</label>
+                      <input
+                        type="url"
+                        value={brandForm.site_logo}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_logo: event.target.value }))}
+                        placeholder="https://..."
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Banner Image URL</label>
+                      <input
+                        type="url"
+                        value={brandForm.site_banner_image}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_banner_image: event.target.value }))}
+                        placeholder="https://..."
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Our Story</label>
+                      <textarea
+                        rows={6}
+                        value={brandForm.about_vendor}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, about_vendor: event.target.value }))}
+                        placeholder="Tell buyers about your brand values, sourcing, and mission..."
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      />
+                      <p className="mt-1 text-right text-xs text-zinc-500">{String(brandForm.about_vendor || '').length}/500</p>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-zinc-800">YouTube URL</label>
+                        <input
+                          type="url"
+                          value={brandForm.youtube_url}
+                          onChange={(event) => setBrandForm((prev) => ({ ...prev, youtube_url: event.target.value }))}
+                          placeholder="https://youtube.com/..."
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-zinc-800">Instagram URL</label>
+                        <input
+                          type="url"
+                          value={brandForm.instagram_url}
+                          onChange={(event) => setBrandForm((prev) => ({ ...prev, instagram_url: event.target.value }))}
+                          placeholder="https://instagram.com/..."
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(brandForm.whatsapp_display)}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, whatsapp_display: event.target.checked }))}
+                      />
+                      Show WhatsApp button on store pages
+                    </label>
+
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <Button variant="primary" size="md" onClick={handleSaveBrandProfile} disabled={brandSaving}>
+                        {brandSaving ? 'Saving...' : 'Save Brand Profile'}
+                      </Button>
+                      <Button variant="ghost" size="md" onClick={handleOpenStoreAbout}>
+                        Preview About Page
+                      </Button>
+                      <Button variant="secondary" size="md" onClick={handleOpenStore}>
+                        Preview Store Home
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Live Preview</p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="h-14 w-14 overflow-hidden rounded-full bg-zinc-100">
+                        {resolveImageUrl(brandForm.site_logo) ? (
+                          <img src={resolveImageUrl(brandForm.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-600">
+                            {getBrandInitials(vendorData?.business_name)}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-900">{vendorData?.business_name || 'Your Brand'}</p>
+                        <p className="text-xs text-zinc-500">Theme: {brandForm.site_theme}</p>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm text-zinc-600 line-clamp-6">
+                      {brandForm.about_vendor || 'Your story preview will appear here.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Products Tab */}

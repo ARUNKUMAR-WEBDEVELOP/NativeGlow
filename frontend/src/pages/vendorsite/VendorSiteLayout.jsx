@@ -247,7 +247,7 @@ export default function VendorSiteLayout() {
     vendor?.name ||
     vendorSlug;
 
-  const logoUrl = vendor?.logo_url || vendor?.site_logo_url || vendor?.logo;
+  const logoUrl = vendor?.logo_url || vendor?.site_logo_url || vendor?.site_logo || vendor?.logo;
 
   const navLinks = [
     { label: 'Home', to: `/store/${vendorSlug}` },

@@ -36,6 +36,7 @@ urlpatterns = [
     path('login/', VendorLoginView.as_view(), name='vendor-login'),
     path('approval-status/', VendorApprovalStatusView.as_view(), name='vendor-approval-status'),
     path('me/', VendorProfileView.as_view(), name='vendor-me'),
+    path('me/update/', VendorProfileView.as_view(), name='vendor-me-update'),
 
     # Vendor Maintenance Fees
     path('maintenance/', VendorMaintenanceListView.as_view(), name='vendor-maintenance-list'),

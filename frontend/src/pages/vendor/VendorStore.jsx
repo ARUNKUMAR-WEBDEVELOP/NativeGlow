@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import OrderFormModal from '../../components/vendor/OrderFormModal';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 function formatAttributeLabel(key) {
   return String(key || '')
@@ -116,17 +116,19 @@ function VendorStore() {
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">Loading store...</div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(store?.products || []).map((product) => (
-            <article key={product.id || `${product.name}-${product.price}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-              <div className="h-48 bg-zinc-100">
-                {resolveImageUrl(product.primary_image || product.image) ? (
-                  <img src={resolveImageUrl(product.primary_image || product.image)} alt={product.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-zinc-500">No image</div>
-                )}
-              </div>
+          {(store?.products || []).map((product) => {
+            const primaryImage = getPrimaryProductImage(product);
+            return (
+              <article key={product.id || `${product.name}-${product.price}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+                <div className="h-48 bg-zinc-100">
+                  {primaryImage ? (
+                    <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-zinc-500">No image</div>
+                  )}
+                </div>
 
-              <div className="space-y-2 p-4">
+                <div className="space-y-2 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="text-lg font-semibold text-zinc-900">{product.name}</h2>
                   <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">100% Natural</span>
@@ -182,9 +184,10 @@ function VendorStore() {
                     Order Now
                   </button>
                 </div>
-              </div>
-            </article>
-          ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 

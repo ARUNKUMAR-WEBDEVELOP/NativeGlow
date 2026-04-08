@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getPrimaryProductImage, getProductImageUrls } from '../../utils/imageUrl';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 function getNextPath(vendorSlug, productId) {
@@ -149,7 +149,7 @@ function ProductDetailPage() {
             {
               id: product.id,
               name: product?.name || 'Product',
-              image: (product.images && product.images[0] && (product.images[0].image_url || product.images[0].image)) || null,
+              image: getPrimaryProductImage(product),
               price: unitPrice,
               qty: quantity,
             },
@@ -251,13 +251,14 @@ function ProductDetailPage() {
     );
   }
 
-  const mainImage =
-    product.images?.length > 0
-      ? resolveImageUrl(product.images[selectedImageIndex]?.image_url || product.images[selectedImageIndex]?.image)
+  const galleryImages = getProductImageUrls(product);
+  const safeSelectedImageIndex =
+    selectedImageIndex < galleryImages.length ? selectedImageIndex : 0;
+  const mainImage = galleryImages.length > 0 ? galleryImages[safeSelectedImageIndex] : null;
+  const activeLightboxImage =
+    lightboxImageIndex !== null && galleryImages[lightboxImageIndex]
+      ? galleryImages[lightboxImageIndex]
       : null;
-  const activeLightboxImage = lightboxImageIndex !== null && product.images?.[lightboxImageIndex]
-    ? resolveImageUrl(product.images[lightboxImageIndex]?.image_url || product.images[lightboxImageIndex]?.image)
-    : null;
   const ingredientsList = product.ingredients_list || [];
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
   const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
@@ -314,10 +315,10 @@ function ProductDetailPage() {
             </button>
 
             {/* Thumbnail Gallery */}
-            {product.images && product.images.length > 1 && (
+            {galleryImages.length > 1 && (
               <>
                 <div className="flex gap-2 overflow-x-auto">
-                  {product.images.map((img, idx) => (
+                  {galleryImages.map((imgSrc, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -332,7 +333,7 @@ function ProductDetailPage() {
                       }`}
                     >
                       <img
-                        src={resolveImageUrl(img.image_url || img.image)}
+                        src={imgSrc}
                         alt={`${product.name} ${idx + 1}`}
                         className="h-full w-full object-cover"
                       />
@@ -666,7 +667,7 @@ function ProductDetailPage() {
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent p-4 text-white">
               <p className="text-sm font-semibold">{product.name}</p>
-              <p className="text-xs text-white/70">Image {lightboxImageIndex + 1} of {product.images.length}</p>
+              <p className="text-xs text-white/70">Image {lightboxImageIndex + 1} of {galleryImages.length}</p>
             </div>
           </div>
         </div>

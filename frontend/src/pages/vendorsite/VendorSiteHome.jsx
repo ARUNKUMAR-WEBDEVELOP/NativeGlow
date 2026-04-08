@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 function SectionCard({ title, children }) {
   return (
@@ -119,33 +119,36 @@ export default function VendorSiteHome() {
 
         {featuredProducts.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {featuredProducts.slice(0, 6).map((product) => (
-              <article key={product.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-zinc-100">
-                  {product.image || product.image_url ? (
-                    <img
-                      src={resolveImageUrl(product.image || product.image_url || product.primary_image)}
-                      alt={product.title || product.name || 'Product'}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <div className="mt-4 space-y-2">
-                  <h3 className="text-base font-semibold text-zinc-900">
-                    {product.title || product.name}
-                  </h3>
-                  {product.short_description ? (
-                    <p className="line-clamp-2 text-sm text-zinc-600">{product.short_description}</p>
-                  ) : null}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-sm font-semibold text-zinc-900">
-                      {product.price ? `Rs. ${product.price}` : 'Price on request'}
-                    </span>
-                    <span className="text-xs font-medium text-emerald-700">Buyable</span>
+            {featuredProducts.slice(0, 6).map((product) => {
+              const primaryImage = getPrimaryProductImage(product);
+              return (
+                <article key={product.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div className="aspect-[4/3] overflow-hidden rounded-xl bg-zinc-100">
+                    {primaryImage ? (
+                      <img
+                        src={primaryImage}
+                        alt={product.title || product.name || 'Product'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : null}
                   </div>
-                </div>
-              </article>
-            ))}
+                  <div className="mt-4 space-y-2">
+                    <h3 className="text-base font-semibold text-zinc-900">
+                      {product.title || product.name}
+                    </h3>
+                    {product.short_description ? (
+                      <p className="line-clamp-2 text-sm text-zinc-600">{product.short_description}</p>
+                    ) : null}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-sm font-semibold text-zinc-900">
+                        {product.price ? `Rs. ${product.price}` : 'Price on request'}
+                      </span>
+                      <span className="text-xs font-medium text-emerald-700">Buyable</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center text-sm text-zinc-500">

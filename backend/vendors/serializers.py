@@ -347,9 +347,22 @@ class VendorProfileSerializer(serializers.ModelSerializer):
             'id', 'full_name', 'email', 'business_name', 'vendor_slug',
             'city', 'whatsapp_number', 'upi_id', 'bank_account_number',
             'bank_ifsc', 'account_holder_name', 'is_approved', 'is_active',
-            'maintenance_due', 'maintenance_due_status', 'created_at', 'updated_at'
+            'maintenance_due', 'maintenance_due_status',
+            'site_status', 'site_theme', 'site_logo', 'site_banner_image',
+            'about_vendor', 'youtube_url', 'instagram_url', 'whatsapp_display',
+            'created_at', 'updated_at'
         )
-        read_only_fields = fields
+        read_only_fields = (
+            'id', 'email', 'vendor_slug', 'is_approved', 'is_active',
+            'maintenance_due', 'maintenance_due_status', 'site_status',
+            'created_at', 'updated_at'
+        )
+
+    def validate_about_vendor(self, value):
+        text = (value or '').strip()
+        if len(text) > 500:
+            raise serializers.ValidationError('About vendor must be 500 characters or less.')
+        return text
 
     def get_maintenance_due_status(self, obj):
         """Return human-readable maintenance status."""

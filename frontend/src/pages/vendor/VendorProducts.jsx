@@ -19,6 +19,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import EditProductModal from './EditProductModal';
 import DiscountModal from './DiscountModal';
 import platformContent from '../../content/platformContent';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -81,6 +82,7 @@ function SortableProductRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  const primaryImage = getPrimaryProductImage(product);
 
   return (
     <tr
@@ -91,14 +93,17 @@ function SortableProductRow({
       }`}
     >
       <td className="px-3 py-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
-        {product.image ? (
-          <img src={product.image} alt={product.title} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
+        {primaryImage ? (
+          <img src={primaryImage} alt={product.title} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
       </td>
       <td className="px-3 py-3 font-semibold text-zinc-800">
         <div>{product.title}</div>
+        {!primaryImage ? (
+          <p className="mt-1 text-xs font-semibold text-rose-700">Image missing: upload product image for storefront visibility.</p>
+        ) : null}
         {product.status === 'rejected' && product.rejection_reason ? (
           <p className="mt-1 text-xs font-normal text-rose-700">Reason: {product.rejection_reason}</p>
         ) : null}
