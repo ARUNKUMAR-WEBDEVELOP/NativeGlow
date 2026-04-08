@@ -14,10 +14,18 @@ const API_BASE =
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
 function getApiBaseCandidates() {
-  const candidates = [API_BASE];
-  if (API_BASE.endsWith('/api')) {
-    candidates.push(API_BASE.slice(0, -4));
+  const trimmed = String(API_BASE || '').replace(/\/+$/, '');
+  if (!trimmed) {
+    return [];
   }
+
+  const candidates = [];
+  if (trimmed.endsWith('/api')) {
+    candidates.push(trimmed, trimmed.slice(0, -4));
+  } else {
+    candidates.push(`${trimmed}/api`, trimmed);
+  }
+
   return [...new Set(candidates)].filter(Boolean);
 }
 

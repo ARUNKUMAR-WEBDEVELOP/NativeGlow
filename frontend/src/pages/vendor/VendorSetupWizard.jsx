@@ -40,10 +40,18 @@ const THEME_OPTIONS = [
 ];
 
 function getBaseCandidates() {
-  const candidates = [API_BASE];
-  if (API_BASE.endsWith('/api')) {
-    candidates.push(API_BASE.slice(0, -4));
+  const trimmed = String(API_BASE || '').replace(/\/+$/, '');
+  if (!trimmed) {
+    return [];
   }
+
+  const candidates = [];
+  if (trimmed.endsWith('/api')) {
+    candidates.push(trimmed, trimmed.slice(0, -4));
+  } else {
+    candidates.push(`${trimmed}/api`, trimmed);
+  }
+
   return [...new Set(candidates)].filter(Boolean);
 }
 

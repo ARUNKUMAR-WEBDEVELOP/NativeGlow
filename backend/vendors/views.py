@@ -47,15 +47,19 @@ class VendorBrandAssetUploadView(APIView):
             return Response({'detail': 'File is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         supabase_url = os.environ.get('SUPABASE_URL', '').strip()
-        service_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+        service_key = (
+            os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+            or os.environ.get('SUPABASE_ANON_KEY', '').strip()
+            or os.environ.get('SUPABASE_PUBLISHABLE_KEY', '').strip()
+        )
         bucket = os.environ.get('SUPABASE_VENDOR_ASSETS_BUCKET', 'vendor-assets').strip() or 'vendor-assets'
 
         if not supabase_url or not service_key:
             return Response(
                 {
                     'detail': (
-                        'Backend storage is not configured. Set SUPABASE_URL and '
-                        'SUPABASE_SERVICE_ROLE_KEY in the backend environment.'
+                        'Backend storage is not configured. Set SUPABASE_URL and one of '
+                        'SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY/SUPABASE_PUBLISHABLE_KEY.'
                     )
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -66,17 +70,23 @@ class VendorBrandAssetUploadView(APIView):
         upload_url = f'{supabase_url.rstrip("/")}/storage/v1/object/{bucket}/{path}'
         content_type = uploaded_file.content_type or 'application/octet-stream'
 
-        response = requests.post(
-            upload_url,
-            headers={
-                'apikey': service_key,
-                'Authorization': f'Bearer {service_key}',
-                'Content-Type': content_type,
-                'x-upsert': 'true',
-            },
-            data=uploaded_file.read(),
-            timeout=30,
-        )
+        try:
+            response = requests.post(
+                upload_url,
+                headers={
+                    'apikey': service_key,
+                    'Authorization': f'Bearer {service_key}',
+                    'Content-Type': content_type,
+                    'x-upsert': 'true',
+                },
+                data=uploaded_file.read(),
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            return Response(
+                {'detail': f'Could not reach storage provider. {exc}'},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         if not response.ok:
             detail = response.text

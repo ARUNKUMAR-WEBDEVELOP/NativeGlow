@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 function formatAttributeLabel(key) {
   return String(key || '')
@@ -302,16 +302,18 @@ function VendorStorePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filteredProducts.map(product => (
+            {filteredProducts.map(product => {
+              const primaryImage = getPrimaryProductImage(product);
+              return (
               <div
                 key={product.id}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden"
               >
                 {/* Product Image */}
                 <div className="relative h-48 bg-gray-100 overflow-hidden group">
-                  {resolveImageUrl(product.primary_image || product.images?.[0]?.image_url || product.images?.[0]?.image) ? (
+                  {primaryImage ? (
                     <img
-                      src={resolveImageUrl(product.primary_image || product.images?.[0]?.image_url || product.images?.[0]?.image)}
+                      src={primaryImage}
                       alt={product.name || product.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition cursor-pointer"
                       onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
@@ -419,7 +421,8 @@ function VendorStorePage() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
