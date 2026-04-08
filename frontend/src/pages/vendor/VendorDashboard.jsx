@@ -13,6 +13,14 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
 
+function getApiBaseCandidates() {
+  const candidates = [API_BASE];
+  if (API_BASE.endsWith('/api')) {
+    candidates.push(API_BASE.slice(0, -4));
+  }
+  return [...new Set(candidates)].filter(Boolean);
+}
+
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
     return null;
@@ -112,6 +120,54 @@ async function uploadToSupabaseStorage(file, folder) {
   }
 
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+async function updateVendorProfileWithFallback(token, payload) {
+  const endpoints = ['/vendor/me/update/', '/vendor/me/'];
+  const methods = ['PATCH', 'PUT'];
+  const bases = getApiBaseCandidates();
+  let lastError = null;
+
+  for (const base of bases) {
+    for (const endpoint of endpoints) {
+      for (const method of methods) {
+        try {
+          const res = await fetch(`${base}${endpoint}`, {
+            method,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            return res.json();
+          }
+
+          let detail = `Failed to save brand profile (${res.status})`;
+          try {
+            const data = await res.json();
+            detail = data?.detail || data?.error || JSON.stringify(data);
+          } catch {
+            // keep fallback detail
+          }
+
+          // Keep trying alternate routes on 404/405.
+          if (res.status === 404 || res.status === 405) {
+            lastError = new Error(detail);
+            continue;
+          }
+
+          throw new Error(detail);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+    }
+  }
+
+  throw lastError || new Error('Could not update vendor profile.');
 }
 
 // Sidebar component
@@ -705,7 +761,6 @@ export default function VendorDashboard() {
           nextLogo = await uploadToSupabaseStorage(logoFile, 'logos');
         } catch (uploadErr) {
           uploadWarnings.push('Logo upload skipped');
-          console.error(uploadErr);
         }
       }
 
@@ -714,7 +769,6 @@ export default function VendorDashboard() {
           nextBanner = await uploadToSupabaseStorage(bannerFile, 'banners');
         } catch (uploadErr) {
           uploadWarnings.push('Banner upload skipped');
-          console.error(uploadErr);
         }
       }
 
@@ -724,27 +778,7 @@ export default function VendorDashboard() {
         about_vendor: brandForm.about_vendor,
       };
 
-      const res = await fetch(`${API_BASE}/vendor/me/update/`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        let detail = `Failed to save brand profile (${res.status})`;
-        try {
-          const data = await res.json();
-          detail = data?.detail || data?.error || JSON.stringify(data);
-        } catch {
-          // keep fallback
-        }
-        throw new Error(detail);
-      }
-
-      const updated = await res.json();
+      const updated = await updateVendorProfileWithFallback(token, payload);
       setVendorData((prev) => ({ ...prev, ...updated }));
       setLogoFile(null);
       setBannerFile(null);
