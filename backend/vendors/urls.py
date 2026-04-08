@@ -12,6 +12,7 @@ from .views import (
     VendorLoginView,
     VendorApprovalStatusView,
     VendorProfileView,
+    VendorBrandAssetUploadView,
     VendorMaintenanceListView,
     VendorMaintenancePayView,
 )
@@ -37,6 +38,7 @@ urlpatterns = [
     path('approval-status/', VendorApprovalStatusView.as_view(), name='vendor-approval-status'),
     path('me/', VendorProfileView.as_view(), name='vendor-me'),
     path('me/update/', VendorProfileView.as_view(), name='vendor-me-update'),
+    path('brand-assets/upload/', VendorBrandAssetUploadView.as_view(), name='vendor-brand-asset-upload'),
 
     # Vendor Maintenance Fees
     path('maintenance/', VendorMaintenanceListView.as_view(), name='vendor-maintenance-list'),

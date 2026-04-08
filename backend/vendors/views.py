@@ -3,6 +3,8 @@ from django.utils.text import slugify
 from django.db.models import Sum
 from decimal import Decimal
 from datetime import timedelta
+import os
+from uuid import uuid4
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -10,6 +12,7 @@ from rest_framework import generics, permissions, status, exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+import requests
 
 from .models import Vendor, VendorApplication
 from .authentication import VendorJWTAuthentication
@@ -25,6 +28,77 @@ from .serializers import (
     MaintenanceFeeListSerializer,
     MaintenancePaymentSubmitSerializer,
 )
+
+
+class VendorBrandAssetUploadView(APIView):
+    """
+    POST /api/vendor/brand-assets/upload/
+    Upload a vendor brand asset through the backend so the browser does not need
+    direct write access to Supabase Storage.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (VendorJWTAuthentication,)
+
+    def post(self, request):
+        uploaded_file = request.FILES.get('file')
+        folder = (request.data.get('folder') or 'logos').strip() or 'logos'
+
+        if not uploaded_file:
+            return Response({'detail': 'File is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        supabase_url = os.environ.get('SUPABASE_URL', '').strip()
+        service_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+        bucket = os.environ.get('SUPABASE_VENDOR_ASSETS_BUCKET', 'vendor-assets').strip() or 'vendor-assets'
+
+        if not supabase_url or not service_key:
+            return Response(
+                {
+                    'detail': (
+                        'Backend storage is not configured. Set SUPABASE_URL and '
+                        'SUPABASE_SERVICE_ROLE_KEY in the backend environment.'
+                    )
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        safe_name = uploaded_file.name.replace(' ', '-')
+        path = f'{folder}/{uuid4().hex}-{safe_name}'
+        upload_url = f'{supabase_url.rstrip("/")}/storage/v1/object/{bucket}/{path}'
+        content_type = uploaded_file.content_type or 'application/octet-stream'
+
+        response = requests.post(
+            upload_url,
+            headers={
+                'apikey': service_key,
+                'Authorization': f'Bearer {service_key}',
+                'Content-Type': content_type,
+                'x-upsert': 'true',
+            },
+            data=uploaded_file.read(),
+            timeout=30,
+        )
+
+        if not response.ok:
+            detail = response.text
+            try:
+                payload = response.json()
+                detail = payload.get('message') or payload.get('error') or payload.get('detail') or detail
+            except Exception:
+                pass
+            return Response(
+                {'detail': f'Storage upload failed ({response.status_code}). {detail}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        public_url = f'{supabase_url.rstrip("/")}/storage/v1/object/public/{bucket}/{path}'
+        return Response(
+            {
+                'url': public_url,
+                'path': path,
+                'bucket': bucket,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class VendorListView(generics.ListAPIView):

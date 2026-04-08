@@ -85,41 +85,47 @@ function getBrandInitials(name) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 }
 
-async function uploadToSupabaseStorage(file, folder) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_supabase_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_supabase_ANON_KEY;
-  const bucket =
-    import.meta.env.VITE_SUPABASE_VENDOR_ASSETS_BUCKET ||
-    import.meta.env.VITE_supabase_VENDOR_ASSETS_BUCKET ||
-    'vendor-assets';
+async function uploadBrandAssetThroughBackend(token, file, folder) {
+  const bases = getApiBaseCandidates();
+  let lastError = null;
 
-  if (!supabaseUrl || !anonKey) {
-    throw new Error(
-      'Supabase upload is not configured. Missing VITE_SUPABASE_URL (or VITE_supabase_URL) and key variables.'
-    );
+  for (const base of bases) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', folder);
+
+      const res = await fetch(`${base}/vendor/brand-assets/upload/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.url) {
+          return data.url;
+        }
+        throw new Error('Upload succeeded but no URL was returned.');
+      }
+
+      let detail = `Upload failed (${res.status})`;
+      try {
+        const data = await res.json();
+        detail = data?.detail || data?.error || JSON.stringify(data);
+      } catch {
+        // keep fallback detail
+      }
+
+      throw new Error(detail);
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  const safeName = file.name.replace(/\s+/g, '-');
-  const path = `${folder}/${Date.now()}-${safeName}`;
-  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
-
-  const res = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
-      'Content-Type': file.type || 'application/octet-stream',
-      'x-upsert': 'true',
-    },
-    body: file,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Upload failed (${res.status}). ${text}`.trim());
-  }
-
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  throw lastError || new Error('Could not upload brand asset.');
 }
 
 async function updateVendorProfileWithFallback(token, payload) {
@@ -738,7 +744,7 @@ export default function VendorDashboard() {
 
       if (logoFile) {
         try {
-          nextLogo = await uploadToSupabaseStorage(logoFile, 'logos');
+          nextLogo = await uploadBrandAssetThroughBackend(token, logoFile, 'logos');
         } catch (uploadErr) {
           uploadWarnings.push('Logo upload skipped');
         }
