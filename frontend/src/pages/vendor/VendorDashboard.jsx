@@ -77,6 +77,38 @@ function getBrandInitials(name) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 }
 
+async function uploadToSupabaseStorage(file, folder) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const bucket = import.meta.env.VITE_SUPABASE_VENDOR_ASSETS_BUCKET || 'vendor-assets';
+
+  if (!supabaseUrl || !anonKey) {
+    throw new Error('Supabase upload is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.');
+  }
+
+  const safeName = file.name.replace(/\s+/g, '-');
+  const path = `${folder}/${Date.now()}-${safeName}`;
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
+
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': file.type || 'application/octet-stream',
+      'x-upsert': 'true',
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Upload failed (${res.status}). ${text}`.trim());
+  }
+
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}
+
 // Sidebar component
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore, onOpenStoreAbout }) {
   const navigate = useNavigate();
@@ -377,14 +409,10 @@ export default function VendorDashboard() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [brandForm, setBrandForm] = useState({
-    site_theme: 'default',
-    site_logo: '',
-    site_banner_image: '',
     about_vendor: '',
-    youtube_url: '',
-    instagram_url: '',
-    whatsapp_display: true,
   });
+  const [logoFile, setLogoFile] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
   const [brandSaving, setBrandSaving] = useState(false);
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
@@ -413,22 +441,12 @@ export default function VendorDashboard() {
 
   useEffect(() => {
     setBrandForm({
-      site_theme: vendorData?.site_theme || 'default',
-      site_logo: vendorData?.site_logo || '',
-      site_banner_image: vendorData?.site_banner_image || '',
       about_vendor: vendorData?.about_vendor || '',
-      youtube_url: vendorData?.youtube_url || '',
-      instagram_url: vendorData?.instagram_url || '',
-      whatsapp_display: vendorData?.whatsapp_display !== false,
     });
+    setLogoFile(null);
+    setBannerFile(null);
   }, [
-    vendorData?.site_theme,
-    vendorData?.site_logo,
-    vendorData?.site_banner_image,
     vendorData?.about_vendor,
-    vendorData?.youtube_url,
-    vendorData?.instagram_url,
-    vendorData?.whatsapp_display,
   ]);
 
   // Keep vendor data scoped to logged-in session.
@@ -673,18 +691,25 @@ export default function VendorDashboard() {
 
     setBrandSaving(true);
     try {
+      let nextLogo = vendorData?.site_logo || '';
+      let nextBanner = vendorData?.site_banner_image || '';
+
+      if (logoFile) {
+        nextLogo = await uploadToSupabaseStorage(logoFile, 'logos');
+      }
+
+      if (bannerFile) {
+        nextBanner = await uploadToSupabaseStorage(bannerFile, 'banners');
+      }
+
       const payload = {
-        site_theme: brandForm.site_theme,
-        site_logo: brandForm.site_logo,
-        site_banner_image: brandForm.site_banner_image,
+        site_logo: nextLogo,
+        site_banner_image: nextBanner,
         about_vendor: brandForm.about_vendor,
-        youtube_url: brandForm.youtube_url,
-        instagram_url: brandForm.instagram_url,
-        whatsapp_display: Boolean(brandForm.whatsapp_display),
       };
 
       const res = await fetch(`${API_BASE}/vendor/me/update/`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -705,6 +730,8 @@ export default function VendorDashboard() {
 
       const updated = await res.json();
       setVendorData((prev) => ({ ...prev, ...updated }));
+      setLogoFile(null);
+      setBannerFile(null);
       setToastMessage('Brand profile saved. Store About page updated.');
       window.setTimeout(() => setToastMessage(''), 2600);
     } catch (err) {
@@ -1269,88 +1296,42 @@ export default function VendorDashboard() {
                 <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                   <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Theme</label>
-                      <select
-                        value={brandForm.site_theme}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_theme: event.target.value }))}
-                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                      >
-                        <option value="default">Default</option>
-                        <option value="minimal">Minimal</option>
-                        <option value="bold">Bold</option>
-                        <option value="elegant">Elegant</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo URL</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo (Upload)</label>
                       <input
-                        type="url"
-                        value={brandForm.site_logo}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_logo: event.target.value }))}
-                        placeholder="https://..."
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
+                      <p className="mt-1 text-xs text-zinc-500">If not uploaded, existing logo is kept.</p>
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Banner Image URL</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Banner (Upload)</label>
                       <input
-                        type="url"
-                        value={brandForm.site_banner_image}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_banner_image: event.target.value }))}
-                        placeholder="https://..."
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => setBannerFile(event.target.files?.[0] || null)}
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
+                      <p className="mt-1 text-xs text-zinc-500">If not uploaded, existing banner is kept.</p>
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Our Story</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Story Summary</label>
                       <textarea
                         rows={6}
                         value={brandForm.about_vendor}
                         onChange={(event) => setBrandForm((prev) => ({ ...prev, about_vendor: event.target.value }))}
-                        placeholder="Tell buyers about your brand values, sourcing, and mission..."
+                        placeholder="Write your brand story summary. This appears on store Home and About pages."
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
                       <p className="mt-1 text-right text-xs text-zinc-500">{String(brandForm.about_vendor || '').length}/500</p>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-sm font-semibold text-zinc-800">YouTube URL</label>
-                        <input
-                          type="url"
-                          value={brandForm.youtube_url}
-                          onChange={(event) => setBrandForm((prev) => ({ ...prev, youtube_url: event.target.value }))}
-                          placeholder="https://youtube.com/..."
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-semibold text-zinc-800">Instagram URL</label>
-                        <input
-                          type="url"
-                          value={brandForm.instagram_url}
-                          onChange={(event) => setBrandForm((prev) => ({ ...prev, instagram_url: event.target.value }))}
-                          placeholder="https://instagram.com/..."
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(brandForm.whatsapp_display)}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, whatsapp_display: event.target.checked }))}
-                      />
-                      Show WhatsApp button on store pages
-                    </label>
-
                     <div className="flex flex-wrap gap-3 pt-2">
                       <Button variant="primary" size="md" onClick={handleSaveBrandProfile} disabled={brandSaving}>
-                        {brandSaving ? 'Saving...' : 'Save Brand Profile'}
+                        {brandSaving ? 'Uploading & Saving...' : 'Save Brand Profile'}
                       </Button>
                       <Button variant="ghost" size="md" onClick={handleOpenStoreAbout}>
                         Preview About Page
@@ -1365,8 +1346,8 @@ export default function VendorDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Live Preview</p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-full bg-zinc-100">
-                        {resolveImageUrl(brandForm.site_logo) ? (
-                          <img src={resolveImageUrl(brandForm.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
+                        {resolveImageUrl(vendorData?.site_logo) ? (
+                          <img src={resolveImageUrl(vendorData?.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-600">
                             {getBrandInitials(vendorData?.business_name)}
@@ -1375,7 +1356,7 @@ export default function VendorDashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">{vendorData?.business_name || 'Your Brand'}</p>
-                        <p className="text-xs text-zinc-500">Theme: {brandForm.site_theme}</p>
+                        <p className="text-xs text-zinc-500">Story appears on Home and About pages</p>
                       </div>
                     </div>
                     <p className="mt-4 text-sm text-zinc-600 line-clamp-6">
