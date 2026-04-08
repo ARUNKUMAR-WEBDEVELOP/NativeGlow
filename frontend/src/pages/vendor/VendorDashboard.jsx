@@ -78,12 +78,17 @@ function getBrandInitials(name) {
 }
 
 async function uploadToSupabaseStorage(file, folder) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const bucket = import.meta.env.VITE_SUPABASE_VENDOR_ASSETS_BUCKET || 'vendor-assets';
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_supabase_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_supabase_ANON_KEY;
+  const bucket =
+    import.meta.env.VITE_SUPABASE_VENDOR_ASSETS_BUCKET ||
+    import.meta.env.VITE_supabase_VENDOR_ASSETS_BUCKET ||
+    'vendor-assets';
 
   if (!supabaseUrl || !anonKey) {
-    throw new Error('Supabase upload is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.');
+    throw new Error(
+      'Supabase upload is not configured. Missing VITE_SUPABASE_URL (or VITE_supabase_URL) and key variables.'
+    );
   }
 
   const safeName = file.name.replace(/\s+/g, '-');
@@ -693,13 +698,24 @@ export default function VendorDashboard() {
     try {
       let nextLogo = vendorData?.site_logo || '';
       let nextBanner = vendorData?.site_banner_image || '';
+      const uploadWarnings = [];
 
       if (logoFile) {
-        nextLogo = await uploadToSupabaseStorage(logoFile, 'logos');
+        try {
+          nextLogo = await uploadToSupabaseStorage(logoFile, 'logos');
+        } catch (uploadErr) {
+          uploadWarnings.push('Logo upload skipped');
+          console.error(uploadErr);
+        }
       }
 
       if (bannerFile) {
-        nextBanner = await uploadToSupabaseStorage(bannerFile, 'banners');
+        try {
+          nextBanner = await uploadToSupabaseStorage(bannerFile, 'banners');
+        } catch (uploadErr) {
+          uploadWarnings.push('Banner upload skipped');
+          console.error(uploadErr);
+        }
       }
 
       const payload = {
@@ -732,7 +748,11 @@ export default function VendorDashboard() {
       setVendorData((prev) => ({ ...prev, ...updated }));
       setLogoFile(null);
       setBannerFile(null);
-      setToastMessage('Brand profile saved. Store About page updated.');
+      setToastMessage(
+        uploadWarnings.length > 0
+          ? `Story saved. ${uploadWarnings.join(' and ')} due to upload configuration.`
+          : 'Brand profile saved. Store About page updated.'
+      );
       window.setTimeout(() => setToastMessage(''), 2600);
     } catch (err) {
       setToastMessage(err?.message || 'Could not save brand profile.');
