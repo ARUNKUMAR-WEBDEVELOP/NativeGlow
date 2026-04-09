@@ -191,6 +191,7 @@ def build_db_from_url(raw_url):
         'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
         'OPTIONS': {
             'sslmode': config('DB_SSLMODE', default='require'),
+            'connect_timeout': config('DB_CONNECT_TIMEOUT', default=10, cast=int),
         },
     }
 
@@ -214,6 +215,7 @@ else:
             'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
             'OPTIONS': {
                 'sslmode': config('DB_SSLMODE', default='require'),
+                'connect_timeout': config('DB_CONNECT_TIMEOUT', default=10, cast=int),
             },
         }
     }
