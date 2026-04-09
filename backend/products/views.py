@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import DatabaseError, OperationalError, close_old_connections
 from django.db.models import Q, Count, Sum, Prefetch
 from django.db.models.functions import TruncMonth
 
@@ -830,53 +831,60 @@ class PublicVendorSiteView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request, vendor_slug):
-        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
-        if not vendor:
-            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+        close_old_connections()
+        try:
+            vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+            if not vendor:
+                return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if vendor.site_status != 'active':
-            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+            if vendor.site_status != 'active':
+                return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
 
-        products_qs = Product.objects.filter(
-            vendor=vendor,
-            status='approved',
-            is_visible=True,
-            is_active=True,
-        ).select_related('category').prefetch_related(
-            Prefetch('images')
-        ).order_by('product_order', '-created_at')
+            products_qs = Product.objects.filter(
+                vendor=vendor,
+                status='approved',
+                is_visible=True,
+                is_active=True,
+            ).select_related('category').prefetch_related(
+                Prefetch('images')
+            ).order_by('product_order', '-created_at')
 
-        featured_qs = products_qs.filter(is_featured=True)
+            featured_qs = products_qs.filter(is_featured=True)
 
-        categories = sorted(
-            products_qs.exclude(category_type='')
-            .values_list('category_type', flat=True)
-            .distinct()
-        )
+            categories = sorted(
+                products_qs.exclude(category_type='')
+                .values_list('category_type', flat=True)
+                .distinct()
+            )
 
-        vendor_payload = {
-            'business_name': vendor.business_name,
-            'about_vendor': vendor.about_vendor,
-            'city': vendor.city,
-            'site_theme': vendor.site_theme,
-            'site_banner_image': vendor.site_banner_image,
-            'site_logo': vendor.site_logo,
-            'youtube_url': vendor.youtube_url,
-            'instagram_url': vendor.instagram_url,
-            'whatsapp_number': vendor.whatsapp_number if vendor.whatsapp_display else None,
-            'member_since': vendor.created_at.year,
-            'total_products': products_qs.count(),
-        }
+            vendor_payload = {
+                'business_name': vendor.business_name,
+                'about_vendor': vendor.about_vendor,
+                'city': vendor.city,
+                'site_theme': vendor.site_theme,
+                'site_banner_image': vendor.site_banner_image,
+                'site_logo': vendor.site_logo,
+                'youtube_url': vendor.youtube_url,
+                'instagram_url': vendor.instagram_url,
+                'whatsapp_number': vendor.whatsapp_number if vendor.whatsapp_display else None,
+                'member_since': vendor.created_at.year,
+                'total_products': products_qs.count(),
+            }
 
-        return Response(
-            {
-                'vendor': SiteVendorSerializer(vendor_payload).data,
-                'featured_products': SiteProductSerializer(featured_qs, many=True, context={'request': request}).data,
-                'all_products': SiteProductSerializer(products_qs, many=True, context={'request': request}).data,
-                'categories': categories,
-            },
-            status=status.HTTP_200_OK,
-        )
+            return Response(
+                {
+                    'vendor': SiteVendorSerializer(vendor_payload).data,
+                    'featured_products': SiteProductSerializer(featured_qs, many=True, context={'request': request}).data,
+                    'all_products': SiteProductSerializer(products_qs, many=True, context={'request': request}).data,
+                    'categories': categories,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'detail': 'Store data is temporarily unavailable. Please try again in a moment.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 class PublicVendorSiteProductsView(APIView):
@@ -887,55 +895,62 @@ class PublicVendorSiteProductsView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request, vendor_slug):
-        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
-        if not vendor:
-            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+        close_old_connections()
+        try:
+            vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+            if not vendor:
+                return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if vendor.site_status != 'active':
-            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+            if vendor.site_status != 'active':
+                return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
 
-        queryset = Product.objects.filter(
-            vendor=vendor,
-            status='approved',
-            is_visible=True,
-            is_active=True,
-        ).select_related('category').prefetch_related(
-            Prefetch('images')
-        )
-
-        category = request.query_params.get('category', '').strip()
-        tag = request.query_params.get('tag', '').strip()
-        sort = request.query_params.get('sort', '').strip().lower()
-
-        if category:
-            queryset = queryset.filter(
-                Q(category_type__iexact=category)
-                | Q(category__slug__iexact=category)
-                | Q(category__name__iexact=category)
+            queryset = Product.objects.filter(
+                vendor=vendor,
+                status='approved',
+                is_visible=True,
+                is_active=True,
+            ).select_related('category').prefetch_related(
+                Prefetch('images')
             )
 
-        if tag:
-            normalized = tag.lower()
-            tag_query = Q(product_tag__icontains=tag) | Q(tags__icontains=tag)
-            if normalized == 'bestseller':
-                tag_query = tag_query | Q(is_bestseller=True)
-            if normalized == 'new':
-                tag_query = tag_query | Q(is_new_arrival=True)
-            queryset = queryset.filter(tag_query)
+            category = request.query_params.get('category', '').strip()
+            tag = request.query_params.get('tag', '').strip()
+            sort = request.query_params.get('sort', '').strip().lower()
 
-        if sort == 'price_asc':
-            queryset = queryset.order_by('price', 'product_order', '-created_at')
-        elif sort == 'price_desc':
-            queryset = queryset.order_by('-price', 'product_order', '-created_at')
-        elif sort == 'newest':
-            queryset = queryset.order_by('-created_at')
-        else:
-            queryset = queryset.order_by('product_order', '-created_at')
+            if category:
+                queryset = queryset.filter(
+                    Q(category_type__iexact=category)
+                    | Q(category__slug__iexact=category)
+                    | Q(category__name__iexact=category)
+                )
 
-        return Response(
-            SiteProductSerializer(queryset, many=True, context={'request': request}).data,
-            status=status.HTTP_200_OK,
-        )
+            if tag:
+                normalized = tag.lower()
+                tag_query = Q(product_tag__icontains=tag) | Q(tags__icontains=tag)
+                if normalized == 'bestseller':
+                    tag_query = tag_query | Q(is_bestseller=True)
+                if normalized == 'new':
+                    tag_query = tag_query | Q(is_new_arrival=True)
+                queryset = queryset.filter(tag_query)
+
+            if sort == 'price_asc':
+                queryset = queryset.order_by('price', 'product_order', '-created_at')
+            elif sort == 'price_desc':
+                queryset = queryset.order_by('-price', 'product_order', '-created_at')
+            elif sort == 'newest':
+                queryset = queryset.order_by('-created_at')
+            else:
+                queryset = queryset.order_by('product_order', '-created_at')
+
+            return Response(
+                SiteProductSerializer(queryset, many=True, context={'request': request}).data,
+                status=status.HTTP_200_OK,
+            )
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'detail': 'Store data is temporarily unavailable. Please try again in a moment.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
 
 class PublicVendorSiteAboutView(APIView):
@@ -946,31 +961,38 @@ class PublicVendorSiteAboutView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request, vendor_slug):
-        vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
-        if not vendor:
-            return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
+        close_old_connections()
+        try:
+            vendor = Vendor.objects.filter(vendor_slug=vendor_slug).first()
+            if not vendor:
+                return Response({'detail': 'Store not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if vendor.site_status != 'active':
-            return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
+            if vendor.site_status != 'active':
+                return Response({'detail': 'Store not active'}, status=status.HTTP_403_FORBIDDEN)
 
-        product_count = Product.objects.filter(
-            vendor=vendor,
-            status='approved',
-            is_visible=True,
-            is_active=True,
-        ).count()
-        delivered_count = Order.objects.filter(vendor=vendor, order_status='delivered').count()
+            product_count = Product.objects.filter(
+                vendor=vendor,
+                status='approved',
+                is_visible=True,
+                is_active=True,
+            ).count()
+            delivered_count = Order.objects.filter(vendor=vendor, order_status='delivered').count()
 
-        payload = {
-            'business_name': vendor.business_name,
-            'about_vendor': vendor.about_vendor,
-            'site_logo': vendor.site_logo,
-            'site_banner_image': vendor.site_banner_image,
-            'youtube_url': vendor.youtube_url,
-            'instagram_url': vendor.instagram_url,
-            'member_since': vendor.created_at.year,
-            'product_count': product_count,
-            'total_orders_delivered': delivered_count,
-        }
+            payload = {
+                'business_name': vendor.business_name,
+                'about_vendor': vendor.about_vendor,
+                'site_logo': vendor.site_logo,
+                'site_banner_image': vendor.site_banner_image,
+                'youtube_url': vendor.youtube_url,
+                'instagram_url': vendor.instagram_url,
+                'member_since': vendor.created_at.year,
+                'product_count': product_count,
+                'total_orders_delivered': delivered_count,
+            }
 
-        return Response(SiteAboutSerializer(payload).data, status=status.HTTP_200_OK)
+            return Response(SiteAboutSerializer(payload).data, status=status.HTTP_200_OK)
+        except (DatabaseError, OperationalError):
+            return Response(
+                {'detail': 'Store data is temporarily unavailable. Please try again in a moment.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
