@@ -54,11 +54,18 @@ function ThreeBackground() {
 
     spheres.forEach((sphere) => scene.add(sphere));
 
-    const clock = new THREE.Clock();
+    const timer = typeof THREE.Timer === 'function' ? new THREE.Timer() : null;
+    if (timer && typeof timer.connect === 'function') {
+      timer.connect(document);
+    }
     let frameId;
 
     const animate = () => {
-      const t = clock.getElapsedTime();
+      let t = performance.now() * 0.001;
+      if (timer && typeof timer.update === 'function' && typeof timer.getElapsed === 'function') {
+        timer.update();
+        t = timer.getElapsed();
+      }
       spheres[0].position.y = 2.5 + Math.sin(t * 0.45) * 0.55;
       spheres[1].position.x = 5.4 + Math.cos(t * 0.38) * 0.45;
       spheres[2].position.y = 3.2 + Math.sin(t * 0.62) * 0.4;
@@ -89,6 +96,9 @@ function ThreeBackground() {
     return () => {
       window.removeEventListener('resize', onResize);
       window.cancelAnimationFrame(frameId);
+      if (timer && typeof timer.dispose === 'function') {
+        timer.dispose();
+      }
       renderer.dispose();
       spheres.forEach((sphere) => {
         sphere.geometry.dispose();
