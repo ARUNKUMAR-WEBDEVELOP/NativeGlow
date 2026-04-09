@@ -37,12 +37,6 @@ import VendorSiteTrack from './pages/vendorsite/VendorSiteTrack';
 import VendorSiteLogin from './pages/vendorsite/VendorSiteLogin';
 import BuyerOrders from './pages/vendorsite/BuyerOrders';
 import VendorSiteCart from './pages/vendorsite/VendorSiteCart';
-import GlobalLoadingOverlay from './components/ui/GlobalLoadingOverlay';
-import {
-  ensureApiFetchTracking,
-  getNetworkActivityCount,
-  subscribeNetworkActivity,
-} from './state/networkActivity';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -102,28 +96,6 @@ function getRouteTransitionProfile(pathname) {
     distancePx: 6,
     easing: 'ease',
   };
-}
-
-function GlobalAppLoader() {
-  const location = useLocation();
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [apiLoadingCount, setApiLoadingCount] = useState(getNetworkActivityCount());
-
-  useEffect(() => {
-    const unsubscribe = subscribeNetworkActivity(setApiLoadingCount);
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    setRouteLoading(true);
-    const timeout = window.setTimeout(() => setRouteLoading(false), 240);
-    return () => window.clearTimeout(timeout);
-  }, [location.pathname, location.search]);
-
-  const showLoader = routeLoading || apiLoadingCount > 0;
-  const label = apiLoadingCount > 0 ? 'Fetching latest data...' : 'Loading page...';
-
-  return <GlobalLoadingOverlay show={showLoader} label={label} />;
 }
 
 function NavigationExperience({ children }) {
@@ -283,10 +255,6 @@ function App() {
     setAuthMessage('Session expired. Login again to continue checkout and orders.');
   }
 
-  useEffect(() => {
-    ensureApiFetchTracking();
-  }, []);
-
   function onIncreaseQty(productId) {
     setCartItems((prev) =>
       prev.map((item) =>
@@ -325,7 +293,6 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <GlobalAppLoader />
         <NavigationExperience>
         <Routes>
         <Route path="/store/:slug/*" element={<VendorSiteLayout />}>

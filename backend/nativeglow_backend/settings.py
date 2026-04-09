@@ -104,6 +104,8 @@ MIDDLEWARE = [
 
 # CORS — allow frontend dev server
 CORS_ALLOWED_ORIGINS = [
+    'https://native-glow.vercel.app',
+    'https://www.native-glow.vercel.app',
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
@@ -119,6 +121,18 @@ if extra_cors:
     CORS_ALLOWED_ORIGINS.extend(extra_cors)
 
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(CORS_ALLOWED_ORIGINS))
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://native-glow.vercel.app',
+    'https://www.native-glow.vercel.app',
+    'https://nativeglow.onrender.com',
+]
+
+extra_csrf_trusted = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+if extra_csrf_trusted:
+    CSRF_TRUSTED_ORIGINS.extend(extra_csrf_trusted)
+
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
