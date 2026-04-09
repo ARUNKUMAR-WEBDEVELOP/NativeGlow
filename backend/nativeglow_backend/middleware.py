@@ -25,7 +25,7 @@ class ApiJsonExceptionMiddleware:
         except DatabaseError:
             if request.path.startswith('/api/'):
                 logger.exception('Database failure for API request %s', request.path)
-                return JsonResponse({'detail': 'Database operation failed. Please try again.'}, status=500)
+                return JsonResponse({'detail': 'Database temporarily unavailable. Please try again.'}, status=503)
             raise
         except Exception:
             if request.path.startswith('/api/'):

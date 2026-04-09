@@ -1,9 +1,10 @@
 from django.utils import timezone
 from django.utils.text import slugify
-from django.db import DatabaseError
+from django.db import DatabaseError, OperationalError, close_old_connections
 from django.db.models import Sum
 from decimal import Decimal
 from datetime import timedelta
+import logging
 import os
 from uuid import uuid4
 from django.contrib.auth.models import User
@@ -399,9 +400,26 @@ class VendorRegisterView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         """Handle registration with custom response including generated password."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        vendor = serializer.save()
+        logger = logging.getLogger(__name__)
+        vendor = None
+
+        for attempt in range(2):
+            try:
+                close_old_connections()
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                vendor = serializer.save()
+                break
+            except OperationalError:
+                if attempt == 0:
+                    continue
+                logger.exception('Vendor registration failed due to database connectivity issue')
+                return Response(
+                    {
+                        'detail': 'Database is temporarily unavailable. Please try again in a moment.'
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
         
         # Get the plain password that was generated or provided
         plain_password = getattr(vendor, '_plain_password', '[auto-generated]')
@@ -460,6 +478,11 @@ class VendorLoginView(APIView):
 
     def post(self, request):
         """Authenticate vendor and issue JWT tokens."""
+        try:
+            close_old_connections()
+        except Exception:
+            pass
+
         serializer = VendorLoginSerializer(data=request.data)
         if not serializer.is_valid():
             message = ''
@@ -504,8 +527,15 @@ class VendorLoginView(APIView):
                 )
 
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        vendor = serializer.validated_data.get('vendor')
+        
+        # Transient DB failures can still happen while loading the vendor object.
+        try:
+            vendor = serializer.validated_data.get('vendor')
+        except OperationalError:
+            return Response(
+                {'detail': 'Database is temporarily unavailable. Please try again in a moment.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         # Generate JWT tokens for custom Vendor model
         # Creating RefreshToken with custom claims for Vendor authentication
