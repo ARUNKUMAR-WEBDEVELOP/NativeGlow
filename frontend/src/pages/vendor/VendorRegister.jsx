@@ -340,6 +340,9 @@ export default function VendorRegister() {
   };
 
   if (success) {
+    const isAlreadyRegistered = Boolean(success?.already_registered);
+    const isPending = String(success?.approval_status || '').toLowerCase() === 'pending';
+
     return (
       <div className="min-h-screen bg-brand-soft">
         <header className="border-b border-white/70 bg-white/65 backdrop-blur">
@@ -351,9 +354,13 @@ export default function VendorRegister() {
 
         <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
           <section className="rounded-2xl border border-violet-200/70 bg-white/80 p-6 shadow-sm backdrop-blur sm:p-8">
-            <h1 className="text-2xl font-bold text-zinc-900">Registration Submitted</h1>
+            <h1 className="text-2xl font-bold text-zinc-900">
+              {isAlreadyRegistered ? 'Account Already Registered' : 'Registration Submitted'}
+            </h1>
             <p className="mt-2 text-sm text-zinc-600">
-              Your vendor account request has been received. Admin review is required before activation.
+              {isAlreadyRegistered
+                ? (success?.message || 'This vendor account already exists. Please login or check approval status.')
+                : 'Your vendor account request has been received. Admin review is required before activation.'}
             </p>
 
             <div className="mt-6 rounded-xl border border-violet-100 bg-white/80 p-4 text-sm">
@@ -365,7 +372,21 @@ export default function VendorRegister() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <NeoButton type="button" onClick={() => navigate('/vendor/login')}>Go to Vendor Login</NeoButton>
+              {isPending ? (
+                <NeoButton
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/vendor/pending-approval?email=${encodeURIComponent(success?.email || '')}&business=${encodeURIComponent(success?.business_name || '')}`
+                    )
+                  }
+                >
+                  Check Approval Status
+                </NeoButton>
+              ) : null}
+              <NeoButton type="button" onClick={() => navigate('/vendor/login')}>
+                {isAlreadyRegistered ? 'Go to Vendor Login' : 'Go to Vendor Login'}
+              </NeoButton>
               <NeoButton type="button" variant="secondary" onClick={() => navigate('/')}>Back to Home</NeoButton>
             </div>
           </section>

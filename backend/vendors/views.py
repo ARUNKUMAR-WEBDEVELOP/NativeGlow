@@ -402,6 +402,7 @@ class VendorRegisterView(generics.CreateAPIView):
         """Handle registration with custom response including generated password."""
         logger = logging.getLogger(__name__)
         vendor = None
+        serializer = None
 
         for attempt in range(2):
             try:
@@ -410,6 +411,55 @@ class VendorRegisterView(generics.CreateAPIView):
                 serializer.is_valid(raise_exception=True)
                 vendor = serializer.save()
                 break
+            except exceptions.ValidationError as exc:
+                # If the account was already registered, return a stable pending payload
+                # so frontend can continue gracefully during repeated submissions.
+                detail = exc.detail if isinstance(exc.detail, dict) else {}
+                email_errors = detail.get('email') if isinstance(detail, dict) else None
+                google_errors = detail.get('google_token') if isinstance(detail, dict) else None
+
+                def _first_message(value):
+                    if isinstance(value, (list, tuple)) and value:
+                        return str(value[0])
+                    if value:
+                        return str(value)
+                    return ''
+
+                email_msg = _first_message(email_errors).lower()
+                google_msg = _first_message(google_errors).lower()
+                duplicate_registration = (
+                    'already exists' in email_msg
+                    or 'already linked' in google_msg
+                )
+
+                if duplicate_registration:
+                    submitted_email = (request.data.get('email') or '').strip().lower()
+                    existing_vendor = Vendor.objects.filter(email__iexact=submitted_email).first()
+                    if existing_vendor:
+                        return Response(
+                            {
+                                'id': existing_vendor.id,
+                                'full_name': existing_vendor.full_name,
+                                'email': existing_vendor.email,
+                                'business_name': existing_vendor.business_name,
+                                'vendor_slug': existing_vendor.vendor_slug,
+                                'store_url': f'/site/{existing_vendor.vendor_slug}' if existing_vendor.vendor_slug else '',
+                                'manage_url': '/vendor/dashboard/products',
+                                'city': existing_vendor.city,
+                                'registered_via_google': existing_vendor.registered_via_google,
+                                'google_email_verified': existing_vendor.google_email_verified,
+                                'is_approved': existing_vendor.is_approved,
+                                'approval_status': 'approved' if existing_vendor.is_approved else 'pending',
+                                'already_registered': True,
+                                'message': (
+                                    'This vendor account is already registered. '
+                                    'Please login or wait for admin approval.'
+                                ),
+                            },
+                            status=status.HTTP_200_OK,
+                        )
+
+                raise
             except OperationalError:
                 if attempt == 0:
                     continue
