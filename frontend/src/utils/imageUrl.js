@@ -7,6 +7,17 @@ function getApiBaseOrigin() {
   }
 }
 
+export function applyImageFallback(event) {
+  const target = event?.currentTarget || event?.target;
+  if (!target || typeof target !== 'object') {
+    return;
+  }
+
+  // Prevent infinite loops if the fallback image also fails.
+  target.onerror = null;
+  target.src = '/placeholder-product.svg';
+}
+
 export function resolveImageUrl(url) {
   if (!url) {
     return null;
