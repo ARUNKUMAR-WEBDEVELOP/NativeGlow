@@ -537,7 +537,16 @@ class VendorLoginView(APIView):
             pass
 
         serializer = VendorLoginSerializer(data=request.data)
-        if not serializer.is_valid():
+        try:
+            is_valid = serializer.is_valid()
+        except (DatabaseError, OperationalError):
+            close_old_connections()
+            return Response(
+                {'detail': 'Database is temporarily unavailable. Please try again in a moment.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if not is_valid:
             message = ''
             if isinstance(serializer.errors, dict):
                 non_field = serializer.errors.get('non_field_errors')
@@ -550,7 +559,14 @@ class VendorLoginView(APIView):
             pending_phrase = 'pending admin approval'
             if pending_phrase in normalized:
                 email = (request.data.get('email') or '').strip().lower()
-                vendor = Vendor.objects.filter(email__iexact=email).first()
+                try:
+                    vendor = Vendor.objects.filter(email__iexact=email).first()
+                except (DatabaseError, OperationalError):
+                    close_old_connections()
+                    return Response(
+                        {'detail': 'Database is temporarily unavailable. Please try again in a moment.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
                 payload = {
                     'detail': message,
                     'approval_status': 'pending',
