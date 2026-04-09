@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, Prefetch
 from django.db.models.functions import TruncMonth
 
 from .models import Category, Product
@@ -842,16 +842,16 @@ class PublicVendorSiteView(APIView):
             status='approved',
             is_visible=True,
             is_active=True,
+        ).select_related('category').prefetch_related(
+            Prefetch('images')
         ).order_by('product_order', '-created_at')
 
         featured_qs = products_qs.filter(is_featured=True)
 
         categories = sorted(
-            {
-                p.category_type
-                for p in products_qs
-                if p.category_type
-            }
+            products_qs.exclude(category_type='')
+            .values_list('category_type', flat=True)
+            .distinct()
         )
 
         vendor_payload = {
@@ -899,6 +899,8 @@ class PublicVendorSiteProductsView(APIView):
             status='approved',
             is_visible=True,
             is_active=True,
+        ).select_related('category').prefetch_related(
+            Prefetch('images')
         )
 
         category = request.query_params.get('category', '').strip()

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import BuyerGoogleLogin from '../../components/vendorsite/BuyerGoogleLogin';
 import { BuyerAuthProvider } from '../../components/vendorsite/BuyerAuthContext';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 export const VendorSiteContext = createContext({
   vendor: null,
@@ -247,7 +248,14 @@ export default function VendorSiteLayout() {
     vendor?.name ||
     vendorSlug;
 
-  const logoUrl = vendor?.logo_url || vendor?.site_logo_url || vendor?.site_logo || vendor?.logo;
+  const logoUrl = resolveImageUrl(
+    vendor?.logo_url ||
+    vendor?.site_logo_url ||
+    vendor?.site_logo ||
+    vendor?.site_banner_image ||
+    vendor?.logo ||
+    ''
+  );
 
   const navLinks = [
     { label: 'Home', to: `/store/${vendorSlug}` },
@@ -268,7 +276,7 @@ export default function VendorSiteLayout() {
                 <img
                   src={logoUrl}
                   alt={storeName}
-                  className="h-10 w-10 rounded-full border object-cover"
+                  className="h-10 w-10 rounded-full border bg-white p-0.5 object-contain"
                   style={{ borderColor: 'var(--primary)' }}
                 />
               ) : (

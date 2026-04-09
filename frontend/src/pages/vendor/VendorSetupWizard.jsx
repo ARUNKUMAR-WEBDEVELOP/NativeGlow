@@ -11,6 +11,7 @@ import {
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
+import { uploadVendorBrandAsset } from '../../utils/vendorBrandAsset';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -73,38 +74,6 @@ function getVendorSession() {
   return null;
 }
 
-async function uploadToSupabaseStorage(file, folder) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const bucket = import.meta.env.VITE_SUPABASE_VENDOR_ASSETS_BUCKET || 'vendor-assets';
-
-  if (!supabaseUrl || !anonKey) {
-    throw new Error('Supabase upload is not configured. Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.');
-  }
-
-  const safeName = file.name.replace(/\s+/g, '-');
-  const path = `${folder}/${Date.now()}-${safeName}`;
-  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
-
-  const res = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
-      'Content-Type': file.type || 'application/octet-stream',
-      'x-upsert': 'true',
-    },
-    body: file,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Upload failed (${res.status}). ${text}`.trim());
-  }
-
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
-}
-
 export default function VendorSetupWizard() {
   const maxImages = 4;
   const navigate = useNavigate();
@@ -125,8 +94,7 @@ export default function VendorSetupWizard() {
     instagram_url: '',
   });
 
-  const [logoFile, setLogoFile] = useState(null);
-  const [bannerFile, setBannerFile] = useState(null);
+  const [brandImageFile, setBrandImageFile] = useState(null);
 
   const [productForm, setProductForm] = useState({
     title: '',
@@ -251,12 +219,10 @@ export default function VendorSetupWizard() {
     try {
       const updates = { ...setupData };
 
-      if (logoFile) {
-        updates.site_logo = await uploadToSupabaseStorage(logoFile, 'logos');
-      }
-
-      if (bannerFile) {
-        updates.site_banner_image = await uploadToSupabaseStorage(bannerFile, 'banners');
+      if (brandImageFile) {
+        const uploadedUrl = await uploadVendorBrandAsset(brandImageFile, vendorSession.access, 'brand');
+        updates.site_logo = uploadedUrl;
+        updates.site_banner_image = uploadedUrl;
       }
 
       setSetupData(updates);
@@ -405,22 +371,24 @@ export default function VendorSetupWizard() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-zinc-800">Upload Store Logo</label>
+                <label className="mb-1 block text-sm font-semibold text-zinc-800">Upload Brand Image</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setBrandImageFile(e.target.files?.[0] || null)}
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
                 />
+                <p className="mt-1 text-xs text-zinc-500">This one image will be used in your dashboard avatar and store header.</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-zinc-800">Upload Store Banner Image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
-                />
+                <label className="mb-1 block text-sm font-semibold text-zinc-800">Current Brand Image</label>
+                <div className="flex h-[92px] w-full items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+                  {setupData.site_logo ? (
+                    <img src={setupData.site_logo} alt="Brand" className="h-full w-full object-contain p-1" />
+                  ) : (
+                    <span className="text-xs text-zinc-500">No image uploaded yet</span>
+                  )}
+                </div>
               </div>
             </div>
 

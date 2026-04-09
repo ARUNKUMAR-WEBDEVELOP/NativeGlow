@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function getApiBase() {
   return (
@@ -71,7 +72,13 @@ export default function VendorSiteAbout() {
 
   const businessName = aboutData?.business_name || vendorFromContext?.business_name || vendorSlug;
   const memberSince = aboutData?.member_since || vendorFromContext?.member_since || 'N/A';
-  const logo = aboutData?.site_logo || vendorFromContext?.site_logo;
+  const logo = resolveImageUrl(
+    aboutData?.site_logo ||
+    aboutData?.site_banner_image ||
+    vendorFromContext?.site_logo ||
+    vendorFromContext?.site_banner_image ||
+    ''
+  );
   const story = aboutData?.about_vendor || vendorFromContext?.about_vendor || 'Our story is being written with every carefully made product.';
   const youtubeUrl = aboutData?.youtube_url || vendorFromContext?.youtube_url;
   const instagramUrl = aboutData?.instagram_url || vendorFromContext?.instagram_url;
@@ -99,7 +106,7 @@ export default function VendorSiteAbout() {
       <section className="rounded-3xl border bg-white/85 p-8 text-center shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
         <div className="mx-auto h-24 w-24 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: 'var(--primary)' }}>
           {logo ? (
-            <img src={logo} alt={businessName} className="h-full w-full object-cover" />
+            <img src={logo} alt={businessName} className="h-full w-full object-contain bg-white p-1" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xl font-bold" style={{ color: 'var(--primary)' }}>
               {String(businessName).slice(0, 2).toUpperCase()}

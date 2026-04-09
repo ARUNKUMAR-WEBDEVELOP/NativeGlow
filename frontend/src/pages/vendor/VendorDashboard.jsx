@@ -8,6 +8,7 @@ import ProductForm from '../../components/vendor/ProductForm';
 import ProductList from '../../components/vendor/ProductList';
 import OrderList from '../../components/vendor/OrderList';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import { uploadVendorBrandAsset } from '../../utils/vendorBrandAsset';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -77,10 +78,14 @@ function getBrandInitials(name) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 }
 
+function getVendorBrandImage(data) {
+  return resolveImageUrl(data?.site_logo || data?.site_banner_image || '');
+}
+
 // Sidebar component
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore, onOpenStoreAbout }) {
   const navigate = useNavigate();
-  const logoUrl = resolveImageUrl(vendorData?.site_logo);
+  const logoUrl = getVendorBrandImage(vendorData);
   const brandInitials = getBrandInitials(vendorData?.business_name);
   const navItems = [
     { label: 'Dashboard', tab: 'dashboard' },
@@ -145,7 +150,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
             style={{ backgroundColor: theme.colors.primaryGlow }}
           >
             {logoUrl ? (
-              <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+              <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-1" />
             ) : (
               <span className="font-bold text-white">{brandInitials}</span>
             )}
@@ -216,7 +221,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
 // Header component
 function Header({ pageTitle, vendorData, onMenuToggle, onOpenStoreAbout }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const logoUrl = resolveImageUrl(vendorData?.site_logo);
+  const logoUrl = getVendorBrandImage(vendorData);
   const brandInitials = getBrandInitials(vendorData?.business_name);
 
   return (
@@ -270,7 +275,7 @@ function Header({ pageTitle, vendorData, onMenuToggle, onOpenStoreAbout }) {
               style={{ backgroundColor: theme.colors.primaryGlow }}
             >
               {logoUrl ? (
-                <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+                <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-0.5" />
               ) : (
                 brandInitials
               )}
@@ -386,6 +391,7 @@ export default function VendorDashboard() {
     whatsapp_display: true,
   });
   const [brandSaving, setBrandSaving] = useState(false);
+  const [brandImageUploading, setBrandImageUploading] = useState(false);
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
   const resolvedVendorSlug = resolveVendorSlug({
@@ -715,6 +721,39 @@ export default function VendorDashboard() {
     }
   };
 
+  const handleBrandImageUpload = async (file) => {
+    const token = vendorSession?.access || localStorage.getItem('vendor_token');
+    if (!file) {
+      return;
+    }
+    if (!token) {
+      navigate('/vendor/login');
+      return;
+    }
+
+    setBrandImageUploading(true);
+    try {
+      const uploadedUrl = await uploadVendorBrandAsset(file, token, 'brand');
+      setBrandForm((prev) => ({
+        ...prev,
+        site_logo: uploadedUrl,
+        site_banner_image: uploadedUrl,
+      }));
+      setVendorData((prev) => ({
+        ...prev,
+        site_logo: uploadedUrl,
+        site_banner_image: uploadedUrl,
+      }));
+      setToastMessage('Brand image uploaded. Save profile to publish it on your store.');
+      window.setTimeout(() => setToastMessage(''), 2600);
+    } catch (err) {
+      setToastMessage(err?.message || 'Could not upload brand image.');
+      window.setTimeout(() => setToastMessage(''), 2800);
+    } finally {
+      setBrandImageUploading(false);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: `${theme.colors.muted}05` }}>
       {toastMessage ? (
@@ -844,8 +883,8 @@ export default function VendorDashboard() {
                 style={{ borderColor: `${theme.colors.primaryGlow}25`, backgroundColor: 'white' }}
               >
                 <div className="mx-auto h-24 w-24 overflow-hidden rounded-full" style={{ backgroundColor: `${theme.colors.primaryGlow}20` }}>
-                  {resolveImageUrl(vendorData?.site_logo) ? (
-                    <img src={resolveImageUrl(vendorData?.site_logo)} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
+                  {getVendorBrandImage(vendorData) ? (
+                    <img src={getVendorBrandImage(vendorData)} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-1" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-2xl font-bold" style={{ color: theme.colors.primary }}>
                       {getBrandInitials(vendorData?.business_name)}
@@ -1283,25 +1322,30 @@ export default function VendorDashboard() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo URL</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Image URL</label>
                       <input
                         type="url"
-                        value={brandForm.site_logo}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_logo: event.target.value }))}
+                        value={brandForm.site_logo || brandForm.site_banner_image}
+                        onChange={(event) => setBrandForm((prev) => ({
+                          ...prev,
+                          site_logo: event.target.value,
+                          site_banner_image: event.target.value,
+                        }))}
                         placeholder="https://..."
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
+                      <p className="mt-1 text-xs text-zinc-500">Use one image only. It will appear in rounded brand avatar and store header.</p>
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Banner Image URL</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Upload Brand Image</label>
                       <input
-                        type="url"
-                        value={brandForm.site_banner_image}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_banner_image: event.target.value }))}
-                        placeholder="https://..."
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => handleBrandImageUpload(event.target.files?.[0] || null)}
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
+                      <p className="mt-1 text-xs text-zinc-500">{brandImageUploading ? 'Uploading image...' : 'Upload one file and we use it across your store branding.'}</p>
                     </div>
 
                     <div>
@@ -1365,8 +1409,8 @@ export default function VendorDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Live Preview</p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-full bg-zinc-100">
-                        {resolveImageUrl(brandForm.site_logo) ? (
-                          <img src={resolveImageUrl(brandForm.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
+                        {getVendorBrandImage(brandForm) ? (
+                          <img src={getVendorBrandImage(brandForm)} alt="Brand logo" className="h-full w-full object-contain bg-white p-1" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-600">
                             {getBrandInitials(vendorData?.business_name)}
