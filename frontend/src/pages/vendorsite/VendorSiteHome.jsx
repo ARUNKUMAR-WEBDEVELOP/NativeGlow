@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
-import { applyImageFallback, getPrimaryProductImage } from '../../utils/imageUrl';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 function SectionCard({ title, children }) {
   return (
@@ -129,9 +129,6 @@ export default function VendorSiteHome() {
                         src={primaryImage}
                         alt={product.title || product.name || 'Product'}
                         className="h-full w-full object-cover"
-                        onError={applyImageFallback}
-                        loading="lazy"
-                        decoding="async"
                       />
                     ) : null}
                   </div>

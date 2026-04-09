@@ -8,27 +8,10 @@ import ProductForm from '../../components/vendor/ProductForm';
 import ProductList from '../../components/vendor/ProductList';
 import OrderList from '../../components/vendor/OrderList';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import useApiRequest from '../../hooks/useApiRequest';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : 'https://nativeglow.onrender.com/api');
-
-function getApiBaseCandidates() {
-  const trimmed = String(API_BASE || '').replace(/\/+$/, '');
-  if (!trimmed) {
-    return [];
-  }
-
-  const candidates = [];
-  if (trimmed.endsWith('/api')) {
-    candidates.push(trimmed, trimmed.slice(0, -4));
-  } else {
-    candidates.push(`${trimmed}/api`, trimmed);
-  }
-
-  return [...new Set(candidates)].filter(Boolean);
-}
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -94,167 +77,6 @@ function getBrandInitials(name) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 }
 
-async function uploadBrandAssetThroughBackend(token, file, folder) {
-  const bases = getApiBaseCandidates();
-  let lastError = null;
-
-  for (const base of bases) {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', folder);
-
-      const res = await fetch(`${base}/vendor/brand-assets/upload/`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.url) {
-          return data.url;
-        }
-        throw new Error('Upload succeeded but no URL was returned.');
-      }
-
-      let detail = `Upload failed (${res.status})`;
-      try {
-        const data = await res.json();
-        detail = data?.detail || data?.error || JSON.stringify(data);
-      } catch {
-        // keep fallback detail
-      }
-
-      throw new Error(detail);
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('Could not upload brand asset.');
-}
-
-async function updateVendorProfileWithFallback(token, payload) {
-  const bases = getApiBaseCandidates();
-  let lastError = null;
-
-  for (const base of bases) {
-    try {
-      const res = await fetch(`${base}/vendor/me/`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        return res.json();
-      }
-
-      let detail = `Failed to save brand profile (${res.status})`;
-      try {
-        const data = await res.json();
-        detail = data?.detail || data?.error || JSON.stringify(data);
-      } catch {
-        // keep fallback detail
-      }
-
-      throw new Error(detail);
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  throw lastError || new Error('Could not update vendor profile.');
-}
-
-async function fetchJsonWithFallback(path, token) {
-  const bases = getApiBaseCandidates();
-  let lastError = null;
-
-  for (const base of bases) {
-    try {
-      const res = await fetch(`${base}${path}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 401) {
-        const authError = new Error('Unauthorized');
-        authError.status = 401;
-        throw authError;
-      }
-
-      if (res.ok) {
-        return res.json();
-      }
-
-      let detail = `Request failed (${res.status})`;
-      try {
-        const data = await res.json();
-        detail = data?.detail || data?.error || JSON.stringify(data);
-      } catch {
-        // keep fallback detail
-      }
-
-      throw new Error(detail);
-    } catch (err) {
-      lastError = err;
-      if (err?.status === 401) {
-        throw err;
-      }
-    }
-  }
-
-  throw lastError || new Error(`Could not fetch ${path}.`);
-}
-
-async function fetchVendorDashboardBundle(token) {
-  const [productsRes, ordersRes, profileRes] = await Promise.allSettled([
-    fetchJsonWithFallback('/vendor/products/', token),
-    fetchJsonWithFallback('/vendor/orders/', token),
-    fetchJsonWithFallback('/vendor/me/', token),
-  ]);
-
-  if (
-    productsRes.status === 'rejected' && productsRes.reason?.status === 401 ||
-    ordersRes.status === 'rejected' && ordersRes.reason?.status === 401 ||
-    profileRes.status === 'rejected' && profileRes.reason?.status === 401
-  ) {
-    const authError = new Error('Unauthorized');
-    authError.status = 401;
-    throw authError;
-  }
-
-  const products = productsRes.status === 'fulfilled' ? productsRes.value : [];
-  const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
-  const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
-
-  const partialErrors = [];
-  if (productsRes.status === 'rejected') {
-    partialErrors.push('Products could not be loaded');
-  }
-  if (ordersRes.status === 'rejected') {
-    partialErrors.push('Orders could not be loaded');
-  }
-  if (profileRes.status === 'rejected') {
-    partialErrors.push('Profile could not be loaded');
-  }
-
-  return {
-    products: Array.isArray(products) ? products : [],
-    orders: Array.isArray(orders) ? orders : [],
-    profile,
-    partialError: partialErrors.join(' · '),
-  };
-}
-
 // Sidebar component
 function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenStore, onOpenStoreAbout }) {
   const navigate = useNavigate();
@@ -272,8 +94,6 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
 
   const handleLogout = () => {
     localStorage.removeItem('vendor_token');
-    localStorage.removeItem('nativeglow_vendor_tokens');
-    localStorage.removeItem('vendor_slug');
     navigate('/vendor/login');
   };
 
@@ -539,8 +359,13 @@ export default function VendorDashboard() {
       vendorSession?.vendor?.vendor_slug ||
       vendorSession?.vendor_slug ||
       '',
+    site_theme: 'default',
     site_logo: '',
+    site_banner_image: '',
     about_vendor: '',
+    youtube_url: '',
+    instagram_url: '',
+    whatsapp_display: true,
   }));
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -548,11 +373,18 @@ export default function VendorDashboard() {
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [maintenanceDue, setMaintenanceDue] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [brandForm, setBrandForm] = useState({
+    site_theme: 'default',
+    site_logo: '',
+    site_banner_image: '',
     about_vendor: '',
+    youtube_url: '',
+    instagram_url: '',
+    whatsapp_display: true,
   });
-  const [logoFile, setLogoFile] = useState(null);
   const [brandSaving, setBrandSaving] = useState(false);
 
   const storedVendorSlug = localStorage.getItem('vendor_slug') || '';
@@ -563,20 +395,6 @@ export default function VendorDashboard() {
     vendorSession,
     storedVendorSlug,
   });
-  const activeVendorToken = vendorSession?.access || '';
-  const vendorCacheIdentity = resolvedVendorSlug || tokenPayload?.vendor_slug || storedVendorSlug || 'current';
-  const vendorTokenFingerprint = activeVendorToken ? activeVendorToken.slice(-16) : 'anon';
-
-  const dashboardRequest = useApiRequest(
-    (token) => fetchVendorDashboardBundle(token),
-    [],
-    {
-      immediate: false,
-      initialData: null,
-      cacheKey: `vendor:dashboard:${vendorCacheIdentity}:${vendorTokenFingerprint}`,
-      cacheTtlMs: 60 * 1000,
-    }
-  );
 
   const setTabAndUrl = (tab) => {
     setActiveTab(tab);
@@ -595,11 +413,22 @@ export default function VendorDashboard() {
 
   useEffect(() => {
     setBrandForm({
+      site_theme: vendorData?.site_theme || 'default',
+      site_logo: vendorData?.site_logo || '',
+      site_banner_image: vendorData?.site_banner_image || '',
       about_vendor: vendorData?.about_vendor || '',
+      youtube_url: vendorData?.youtube_url || '',
+      instagram_url: vendorData?.instagram_url || '',
+      whatsapp_display: vendorData?.whatsapp_display !== false,
     });
-    setLogoFile(null);
   }, [
+    vendorData?.site_theme,
+    vendorData?.site_logo,
+    vendorData?.site_banner_image,
     vendorData?.about_vendor,
+    vendorData?.youtube_url,
+    vendorData?.instagram_url,
+    vendorData?.whatsapp_display,
   ]);
 
   // Keep vendor data scoped to logged-in session.
@@ -611,96 +440,108 @@ export default function VendorDashboard() {
       navigate('/dashboard', { replace: true });
     }
   }, [routeVendorSlug, resolvedVendorSlug, navigate]);
+  // Fetch dashboard data
   useEffect(() => {
-    const token = vendorSession?.access;
-    if (!token) {
-      navigate('/vendor/login');
-      return;
-    }
+    const fetchDashboardData = async () => {
+      try {
+        const token = vendorSession?.access || localStorage.getItem('vendor_token');
+        if (!token) {
+          navigate('/vendor/login');
+          return;
+        }
 
-    dashboardRequest.execute(token).catch((err) => {
-      if (err?.status === 401) {
-        localStorage.removeItem('vendor_token');
-        localStorage.removeItem('nativeglow_vendor_tokens');
-        localStorage.removeItem('vendor_slug');
-        navigate('/vendor/login');
+        const headers = { Authorization: `Bearer ${token}` };
+        const [productsRes, ordersRes, profileRes] = await Promise.all([
+          fetch(`${API_BASE}/vendor/products/`, { headers }),
+          fetch(`${API_BASE}/vendor/orders/`, { headers }),
+          fetch(`${API_BASE}/vendor/me/`, { headers }),
+        ]);
+
+        if (productsRes.status === 401 || ordersRes.status === 401 || profileRes.status === 401) {
+          localStorage.removeItem('vendor_token');
+          localStorage.removeItem('nativeglow_vendor_tokens');
+          navigate('/vendor/login');
+          return;
+        }
+
+        const products = productsRes.ok ? await productsRes.json() : [];
+        const orders = ordersRes.ok ? await ordersRes.json() : [];
+        const profile = profileRes.ok ? await profileRes.json() : null;
+        const productList = Array.isArray(products) ? products : [];
+        const orderList = Array.isArray(orders) ? orders : [];
+
+        const now = new Date();
+        const thisMonth = now.getMonth();
+        const thisYear = now.getFullYear();
+        const todayKey = now.toISOString().slice(0, 10);
+
+        const ordersThisMonth = orderList.filter((o) => {
+          const d = new Date(o?.created_at);
+          return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        });
+
+        const pendingOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'pending').length;
+        const deliveredOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'delivered').length;
+        const totalOrdersToday = orderList.filter((o) => String(o?.created_at || '').slice(0, 10) === todayKey).length;
+
+        const sortedRecentOrders = [...orderList]
+          .sort((a, b) => new Date(b?.created_at).getTime() - new Date(a?.created_at).getTime())
+          .slice(0, 8);
+
+        const lowStock = productList
+          .filter((p) => Number(p?.available_quantity || 0) < 5)
+          .slice(0, 6)
+          .map((p) => ({
+            name: p?.title || p?.name || 'Product',
+            quantity: Number(p?.available_quantity || 0),
+          }));
+
+        setVendorData((prev) => ({
+          ...prev,
+          business_name:
+            profile?.business_name ||
+            vendorSession?.vendor?.business_name ||
+            vendorSession?.business_name ||
+            prev?.business_name ||
+            'Your Store',
+          vendor_slug:
+            profile?.vendor_slug ||
+            routeVendorSlug ||
+            tokenPayload?.vendor_slug ||
+            vendorSession?.vendor?.vendor_slug ||
+            vendorSession?.vendor_slug ||
+            prev?.vendor_slug ||
+            '',
+          site_theme: profile?.site_theme || prev?.site_theme || 'default',
+          site_logo: profile?.site_logo || prev?.site_logo || '',
+          site_banner_image: profile?.site_banner_image || prev?.site_banner_image || '',
+          about_vendor: profile?.about_vendor || prev?.about_vendor || '',
+          youtube_url: profile?.youtube_url || prev?.youtube_url || '',
+          instagram_url: profile?.instagram_url || prev?.instagram_url || '',
+          whatsapp_display: profile?.whatsapp_display !== false,
+        }));
+
+        setStats({
+          total_products: productList.length,
+          orders_this_month: ordersThisMonth.length,
+          pending_orders: pendingOrders,
+          delivered_orders: deliveredOrders,
+          total_orders_today: totalOrdersToday,
+        });
+        setChartData(buildLast7DayChart(orderList));
+        setRecentOrders(sortedRecentOrders);
+        setLowStockProducts(lowStock);
+        setMaintenanceDue(false);
+        setError('');
+      } catch (err) {
+        setError(err?.message || 'Failed to load dashboard data.');
+      } finally {
+        setLoading(false);
       }
-    });
-  }, [dashboardRequest.execute, navigate, vendorSession?.access]);
+    };
 
-  useEffect(() => {
-    if (!dashboardRequest.data) {
-      return;
-    }
-
-    const { products: productList, orders: orderList, profile } = dashboardRequest.data;
-
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-    const todayKey = now.toISOString().slice(0, 10);
-
-    const ordersThisMonth = orderList.filter((o) => {
-      const d = new Date(o?.created_at);
-      return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    });
-
-    const pendingOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'pending').length;
-    const deliveredOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'delivered').length;
-    const totalOrdersToday = orderList.filter((o) => String(o?.created_at || '').slice(0, 10) === todayKey).length;
-
-    const sortedRecentOrders = [...orderList]
-      .sort((a, b) => new Date(b?.created_at).getTime() - new Date(a?.created_at).getTime())
-      .slice(0, 8);
-
-    const lowStock = productList
-      .filter((p) => Number(p?.available_quantity || 0) < 5)
-      .slice(0, 6)
-      .map((p) => ({
-        name: p?.title || p?.name || 'Product',
-        quantity: Number(p?.available_quantity || 0),
-      }));
-
-    setVendorData((prev) => ({
-      ...prev,
-      business_name:
-        profile?.business_name ||
-        vendorSession?.vendor?.business_name ||
-        vendorSession?.business_name ||
-        prev?.business_name ||
-        'Your Store',
-      vendor_slug:
-        profile?.vendor_slug ||
-        routeVendorSlug ||
-        tokenPayload?.vendor_slug ||
-        vendorSession?.vendor?.vendor_slug ||
-        vendorSession?.vendor_slug ||
-        prev?.vendor_slug ||
-        '',
-      site_theme: profile?.site_theme || prev?.site_theme || 'default',
-      site_logo: profile?.site_logo || prev?.site_logo || '',
-      site_banner_image: profile?.site_banner_image || prev?.site_banner_image || '',
-      about_vendor: profile?.about_vendor || prev?.about_vendor || '',
-      youtube_url: profile?.youtube_url || prev?.youtube_url || '',
-      instagram_url: profile?.instagram_url || prev?.instagram_url || '',
-      whatsapp_display: profile?.whatsapp_display !== false,
-    }));
-
-    setStats({
-      total_products: productList.length,
-      orders_this_month: ordersThisMonth.length,
-      pending_orders: pendingOrders,
-      delivered_orders: deliveredOrders,
-      total_orders_today: totalOrdersToday,
-    });
-    setChartData(buildLast7DayChart(orderList));
-    setRecentOrders(sortedRecentOrders);
-    setLowStockProducts(lowStock);
-    setMaintenanceDue(false);
-  }, [dashboardRequest.data, routeVendorSlug, tokenPayload?.vendor_slug, vendorSession?.business_name, vendorSession?.vendor?.business_name, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
-
-  const loading = dashboardRequest.loading && !dashboardRequest.data;
-  const error = dashboardRequest.error || dashboardRequest.data?.partialError || '';
+    fetchDashboardData();
+  }, [navigate, routeVendorSlug, tokenPayload?.vendor_slug, vendorSession?.access, vendorSession?.business_name, vendorSession?.vendor?.business_name, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
 
   if (loading) {
     return (
@@ -730,24 +571,8 @@ export default function VendorDashboard() {
             Error
           </p>
           <p style={{ color: theme.colors.charcoal }} className="mt-2">
-            Something went wrong. Please try again.
+            {error}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              const token = vendorSession?.access;
-              if (!token) {
-                navigate('/vendor/login');
-                return;
-              }
-              dashboardRequest.execute(token).catch(() => {
-                // Friendly error message is already handled by the hook/UI.
-              });
-            }}
-            className="mt-4 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700"
-          >
-            Retry
-          </button>
         </div>
       </div>
     );
@@ -848,30 +673,39 @@ export default function VendorDashboard() {
 
     setBrandSaving(true);
     try {
-      let nextLogo = vendorData?.site_logo || '';
-      const uploadWarnings = [];
-
-      if (logoFile) {
-        try {
-          nextLogo = await uploadBrandAssetThroughBackend(token, logoFile, 'logos');
-        } catch (uploadErr) {
-          uploadWarnings.push('Logo upload skipped');
-        }
-      }
-
       const payload = {
-        site_logo: nextLogo,
+        site_theme: brandForm.site_theme,
+        site_logo: brandForm.site_logo,
+        site_banner_image: brandForm.site_banner_image,
         about_vendor: brandForm.about_vendor,
+        youtube_url: brandForm.youtube_url,
+        instagram_url: brandForm.instagram_url,
+        whatsapp_display: Boolean(brandForm.whatsapp_display),
       };
 
-      const updated = await updateVendorProfileWithFallback(token, payload);
+      const res = await fetch(`${API_BASE}/vendor/me/update/`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        let detail = `Failed to save brand profile (${res.status})`;
+        try {
+          const data = await res.json();
+          detail = data?.detail || data?.error || JSON.stringify(data);
+        } catch {
+          // keep fallback
+        }
+        throw new Error(detail);
+      }
+
+      const updated = await res.json();
       setVendorData((prev) => ({ ...prev, ...updated }));
-      setLogoFile(null);
-      setToastMessage(
-        uploadWarnings.length > 0
-          ? `Story saved. ${uploadWarnings.join(' and ')} due to upload configuration.`
-          : 'Brand profile saved. Store About page updated.'
-      );
+      setToastMessage('Brand profile saved. Store About page updated.');
       window.setTimeout(() => setToastMessage(''), 2600);
     } catch (err) {
       setToastMessage(err?.message || 'Could not save brand profile.');
@@ -1435,31 +1269,88 @@ export default function VendorDashboard() {
                 <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                   <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo (Upload)</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => setLogoFile(event.target.files?.[0] || null)}
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Theme</label>
+                      <select
+                        value={brandForm.site_theme}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_theme: event.target.value }))}
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                      />
-                      <p className="mt-1 text-xs text-zinc-500">Upload one logo or brand image. If none is selected, the existing image stays in place.</p>
+                      >
+                        <option value="default">Default</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="bold">Bold</option>
+                        <option value="elegant">Elegant</option>
+                      </select>
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Story Summary</label>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Logo URL</label>
+                      <input
+                        type="url"
+                        value={brandForm.site_logo}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_logo: event.target.value }))}
+                        placeholder="https://..."
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Banner Image URL</label>
+                      <input
+                        type="url"
+                        value={brandForm.site_banner_image}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_banner_image: event.target.value }))}
+                        placeholder="https://..."
+                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Our Story</label>
                       <textarea
                         rows={6}
                         value={brandForm.about_vendor}
                         onChange={(event) => setBrandForm((prev) => ({ ...prev, about_vendor: event.target.value }))}
-                        placeholder="Write your brand story summary. This appears on store Home and About pages."
+                        placeholder="Tell buyers about your brand values, sourcing, and mission..."
                         className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                       />
                       <p className="mt-1 text-right text-xs text-zinc-500">{String(brandForm.about_vendor || '').length}/500</p>
                     </div>
 
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-zinc-800">YouTube URL</label>
+                        <input
+                          type="url"
+                          value={brandForm.youtube_url}
+                          onChange={(event) => setBrandForm((prev) => ({ ...prev, youtube_url: event.target.value }))}
+                          placeholder="https://youtube.com/..."
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-zinc-800">Instagram URL</label>
+                        <input
+                          type="url"
+                          value={brandForm.instagram_url}
+                          onChange={(event) => setBrandForm((prev) => ({ ...prev, instagram_url: event.target.value }))}
+                          placeholder="https://instagram.com/..."
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(brandForm.whatsapp_display)}
+                        onChange={(event) => setBrandForm((prev) => ({ ...prev, whatsapp_display: event.target.checked }))}
+                      />
+                      Show WhatsApp button on store pages
+                    </label>
+
                     <div className="flex flex-wrap gap-3 pt-2">
                       <Button variant="primary" size="md" onClick={handleSaveBrandProfile} disabled={brandSaving}>
-                        {brandSaving ? 'Uploading & Saving...' : 'Save Brand Profile'}
+                        {brandSaving ? 'Saving...' : 'Save Brand Profile'}
                       </Button>
                       <Button variant="ghost" size="md" onClick={handleOpenStoreAbout}>
                         Preview About Page
@@ -1474,8 +1365,8 @@ export default function VendorDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Live Preview</p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-full bg-zinc-100">
-                        {resolveImageUrl(vendorData?.site_logo) ? (
-                          <img src={resolveImageUrl(vendorData?.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
+                        {resolveImageUrl(brandForm.site_logo) ? (
+                          <img src={resolveImageUrl(brandForm.site_logo)} alt="Brand logo" className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-600">
                             {getBrandInitials(vendorData?.business_name)}
@@ -1484,7 +1375,7 @@ export default function VendorDashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">{vendorData?.business_name || 'Your Brand'}</p>
-                        <p className="text-xs text-zinc-500">Story appears on Home and About pages</p>
+                        <p className="text-xs text-zinc-500">Theme: {brandForm.site_theme}</p>
                       </div>
                     </div>
                     <p className="mt-4 text-sm text-zinc-600 line-clamp-6">

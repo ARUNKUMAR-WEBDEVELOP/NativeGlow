@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import OrderFormModal from '../../components/vendor/OrderFormModal';
-import { applyImageFallback, getPrimaryProductImage } from '../../utils/imageUrl';
+import { getPrimaryProductImage } from '../../utils/imageUrl';
 
 function formatAttributeLabel(key) {
   return String(key || '')
@@ -122,7 +122,7 @@ function VendorStore() {
               <article key={product.id || `${product.name}-${product.price}`} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
                 <div className="h-48 bg-zinc-100">
                   {primaryImage ? (
-                    <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" onError={applyImageFallback} />
+                    <img src={primaryImage} alt={product.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-sm text-zinc-500">No image</div>
                   )}
