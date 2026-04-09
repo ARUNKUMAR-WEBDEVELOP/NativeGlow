@@ -70,6 +70,12 @@ const COMMON_FIELDS = [
 const TEMPLATE_FIELDS = {
   skincare: [
     {
+      name: 'product_form',
+      label: 'Product Form',
+      type: 'select',
+      options: ['Cream', 'Gel', 'Lotion', 'Face Wash', 'Serum', 'Balm'],
+    },
+    {
       name: 'skin_type',
       label: 'Skin Type',
       type: 'select',
@@ -82,10 +88,16 @@ const TEMPLATE_FIELDS = {
       placeholder: 'Hydration, acne, glow, pigmentation',
     },
     {
+      name: 'texture_or_finish',
+      label: 'Texture / Finish',
+      type: 'text',
+      placeholder: 'Cream, light, rich, matte, glossy',
+    },
+    {
       name: 'net_volume',
       label: 'Net Volume / Weight',
       type: 'text',
-      placeholder: '30 ml',
+      placeholder: '30 ml, 50 g',
     },
     {
       name: 'usage_instructions',
@@ -170,10 +182,27 @@ const TEMPLATE_FIELDS = {
       options: ['Men', 'Women', 'Unisex', 'Kids'],
     },
     {
+      name: 'garment_type',
+      label: 'Garment Type',
+      type: 'select',
+      options: [
+        'Shirt',
+        'T-Shirt',
+        'Pants',
+        'Track Pants',
+        'Trousers',
+        'Kurti',
+        'Top',
+        'Dress',
+        'Leggings',
+        'Hoodie',
+      ],
+    },
+    {
       name: 'size_chart',
-      label: 'Size Chart',
+      label: 'Size Chart / Size Numbers',
       type: 'text',
-      placeholder: 'S, M, L, XL',
+      placeholder: 'S, M, L, XL or 28, 30, 32, 34',
     },
     {
       name: 'material',
@@ -189,9 +218,9 @@ const TEMPLATE_FIELDS = {
     },
     {
       name: 'color',
-      label: 'Color',
+      label: 'Color / Print',
       type: 'text',
-      placeholder: 'Olive green',
+      placeholder: 'Olive green, black, printed, blue',
     },
     {
       name: 'care_instructions',
@@ -345,12 +374,15 @@ export function sanitizeProductAttributes(productType, attributes) {
 
 const VARIANT_PRESETS = {
   clothing: [
+    { option_name: 'Size', option_value: 'S' },
     { option_name: 'Size', option_value: 'M' },
-    { option_name: 'Color', option_value: 'Natural' },
+    { option_name: 'Size', option_value: 'L' },
+    { option_name: 'Size', option_value: 'XL' },
   ],
   food: [
     { option_name: 'Pack Size', option_value: '1 Pack' },
     { option_name: 'Flavor', option_value: 'Classic' },
+    { option_name: 'Flavor', option_value: 'Spicy' },
   ],
   grocery: [
     { option_name: 'Pack Size', option_value: '1 kg' },
@@ -362,12 +394,16 @@ const VARIANT_PRESETS = {
   ],
   skincare: [
     { option_name: 'Size', option_value: '30 ml' },
+    { option_name: 'Size', option_value: '50 ml' },
+    { option_name: 'Texture', option_value: 'Cream' },
   ],
   bodycare: [
     { option_name: 'Size', option_value: '100 ml' },
+    { option_name: 'Size', option_value: '200 ml' },
   ],
   accessories: [
     { option_name: 'Color', option_value: 'Natural' },
+    { option_name: 'Size', option_value: 'One Size' },
   ],
   home: [
     { option_name: 'Size', option_value: 'Standard' },
@@ -404,4 +440,39 @@ export function formatProductAttributeLabel(key) {
 
 export function getProductTypeForCategory(categoryType) {
   return CATEGORY_PRODUCT_TYPE_MAP[categoryType] || 'skincare';
+}
+
+export function getProductTypeGuide(productType) {
+  switch (productType) {
+    case 'clothing':
+      return 'Use men or women, garment type, size chart, color, fit, and material. Add one variant row for each size or color option.';
+    case 'food':
+      return 'Use flavor, pack size, shelf life, allergen info, and storage instructions. Add a variant row for each flavor or pack size.';
+    case 'cosmetics':
+      return 'Use shade, finish, skin type, and expiry details. Add variants for shades and finishes.';
+    case 'accessories':
+      return 'Use material, color, and dimensions. Add variants for size or color choices.';
+    case 'bodycare':
+      return 'Use fragrance profile, body area, and volume. Add variants for size options like 100 ml and 200 ml.';
+    case 'skincare':
+    default:
+      return 'Use product form, skin type, concern, texture, and net volume. Add variants for cream size, pack size, or finish.';
+  }
+}
+
+export function getVariantPresetHelp(productType) {
+  switch (productType) {
+    case 'clothing':
+      return 'Recommended variants: Size S, M, L, XL. Add separate color rows if the same item comes in multiple colors.';
+    case 'food':
+      return 'Recommended variants: flavor and pack size.';
+    case 'cosmetics':
+      return 'Recommended variants: shade and finish.';
+    case 'accessories':
+      return 'Recommended variants: size and color.';
+    case 'bodycare':
+    case 'skincare':
+    default:
+      return 'Recommended variants: size, texture, or pack size.';
+  }
 }

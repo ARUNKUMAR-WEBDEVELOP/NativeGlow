@@ -1340,42 +1340,12 @@ export default function VendorDashboard() {
                 <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
                   <h2 className="text-2xl font-semibold text-zinc-900">Brand Profile</h2>
                   <p className="mt-1 text-sm text-zinc-600">
-                    These values power your store home and About page with predefined styles.
+                    These values power your store home and About page.
                   </p>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                   <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Store Theme</label>
-                      <select
-                        value={brandForm.site_theme}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, site_theme: event.target.value }))}
-                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                      >
-                        <option value="default">Default</option>
-                        <option value="minimal">Minimal</option>
-                        <option value="bold">Bold</option>
-                        <option value="elegant">Elegant</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold text-zinc-800">Brand Image URL</label>
-                      <input
-                        type="url"
-                        value={brandForm.site_logo || brandForm.site_banner_image}
-                        onChange={(event) => setBrandForm((prev) => ({
-                          ...prev,
-                          site_logo: event.target.value,
-                          site_banner_image: event.target.value,
-                        }))}
-                        placeholder="https://..."
-                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                      />
-                      <p className="mt-1 text-xs text-zinc-500">Use one image only. It will appear in rounded brand avatar and store header.</p>
-                    </div>
-
                     <div>
                       <label className="mb-1 block text-sm font-semibold text-zinc-800">Upload Brand Image</label>
                       <input
@@ -1398,38 +1368,6 @@ export default function VendorDashboard() {
                       />
                       <p className="mt-1 text-right text-xs text-zinc-500">{String(brandForm.about_vendor || '').length}/500</p>
                     </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-sm font-semibold text-zinc-800">YouTube URL</label>
-                        <input
-                          type="url"
-                          value={brandForm.youtube_url}
-                          onChange={(event) => setBrandForm((prev) => ({ ...prev, youtube_url: event.target.value }))}
-                          placeholder="https://youtube.com/..."
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-semibold text-zinc-800">Instagram URL</label>
-                        <input
-                          type="url"
-                          value={brandForm.instagram_url}
-                          onChange={(event) => setBrandForm((prev) => ({ ...prev, instagram_url: event.target.value }))}
-                          placeholder="https://instagram.com/..."
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(brandForm.whatsapp_display)}
-                        onChange={(event) => setBrandForm((prev) => ({ ...prev, whatsapp_display: event.target.checked }))}
-                      />
-                      Show WhatsApp button on store pages
-                    </label>
 
                     <div className="flex flex-wrap gap-3 pt-2">
                       <Button variant="primary" size="md" onClick={handleSaveBrandProfile} disabled={brandSaving}>

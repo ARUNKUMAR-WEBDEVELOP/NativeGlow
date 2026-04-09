@@ -1,4 +1,4 @@
-import { getProductAttributeFields, formatProductAttributeLabel } from './productTemplates';
+import { getProductAttributeFields, formatProductAttributeLabel, getProductTypeGuide } from './productTemplates';
 
 function FieldControl({ field, value, onChange }) {
   if (field.type === 'select') {
@@ -65,7 +65,7 @@ function ProductAttributeFields({ productType, attributes, onChange, className =
       <div className="mb-3">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700">Product Specifications</h3>
         <p className="mt-1 text-xs text-zinc-500">
-          Add the details buyers expect on a professional storefront.
+          {getProductTypeGuide(productType)}
         </p>
       </div>
 

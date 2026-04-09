@@ -1,4 +1,4 @@
-import { getDefaultVariantRows } from './productTemplates';
+import { getDefaultVariantRows, getVariantPresetHelp } from './productTemplates';
 
 function ProductVariantsEditor({ productType, variants, onChange }) {
   const rows = Array.isArray(variants) ? variants : [];
@@ -38,7 +38,7 @@ function ProductVariantsEditor({ productType, variants, onChange }) {
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700">Variants</h3>
           <p className="mt-1 text-xs text-zinc-500">
-            Add sizes, colors, flavors, or packs as separate sellable options.
+            {getVariantPresetHelp(productType)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
