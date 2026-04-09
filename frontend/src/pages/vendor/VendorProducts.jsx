@@ -19,7 +19,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import EditProductModal from './EditProductModal';
 import DiscountModal from './DiscountModal';
 import platformContent from '../../content/platformContent';
-import { getPrimaryProductImage } from '../../utils/imageUrl';
+import { applyImageFallback, getPrimaryProductImage } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -94,7 +94,7 @@ function SortableProductRow({
     >
       <td className="px-3 py-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
         {primaryImage ? (
-          <img src={primaryImage} alt={product.title} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
+          <img src={primaryImage} alt={product.title} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" onError={applyImageFallback} />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}

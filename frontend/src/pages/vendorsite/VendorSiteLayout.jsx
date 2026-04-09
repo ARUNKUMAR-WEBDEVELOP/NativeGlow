@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom';
 import BuyerGoogleLogin from '../../components/vendorsite/BuyerGoogleLogin';
 import { BuyerAuthProvider } from '../../components/vendorsite/BuyerAuthContext';
+import SkeletonBlock from '../../components/ui/SkeletonBlock';
 
 export const VendorSiteContext = createContext({
   vendor: null,
@@ -203,7 +204,43 @@ export default function VendorSiteLayout() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: 'var(--secondary)', color: 'var(--site-text)' }}>
-        <StatePage title="Loading Store" message="Fetching store details..." />
+        <div className="mx-auto w-full max-w-6xl px-4 py-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <SkeletonBlock className="h-10 w-10 rounded-full" />
+              <SkeletonBlock className="h-5 w-36" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <SkeletonBlock className="h-8 w-20 rounded-full" />
+              <SkeletonBlock className="h-8 w-20 rounded-full" />
+              <SkeletonBlock className="h-8 w-20 rounded-full" />
+              <SkeletonBlock className="h-8 w-20 rounded-full" />
+            </div>
+          </div>
+
+          <div className="mb-6 space-y-3 rounded-3xl border border-zinc-200 bg-white p-6">
+            <SkeletonBlock className="h-4 w-32" />
+            <SkeletonBlock className="h-10 w-72" />
+            <SkeletonBlock className="h-4 w-full" />
+            <SkeletonBlock className="h-4 w-5/6" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <article key={`vendor-site-skeleton-${index}`} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                <SkeletonBlock className="aspect-[4/3] w-full rounded-xl" />
+                <div className="mt-4 space-y-2">
+                  <SkeletonBlock className="h-4 w-2/3" />
+                  <SkeletonBlock className="h-3 w-full" />
+                  <SkeletonBlock className="h-3 w-5/6" />
+                  <div className="pt-2">
+                    <SkeletonBlock className="h-8 w-28 rounded-full" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

@@ -8,6 +8,7 @@ import ProductForm from '../../components/vendor/ProductForm';
 import ProductList from '../../components/vendor/ProductList';
 import OrderList from '../../components/vendor/OrderList';
 import { resolveImageUrl } from '../../utils/imageUrl';
+import useApiRequest from '../../hooks/useApiRequest';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -170,6 +171,88 @@ async function updateVendorProfileWithFallback(token, payload) {
   }
 
   throw lastError || new Error('Could not update vendor profile.');
+}
+
+async function fetchJsonWithFallback(path, token) {
+  const bases = getApiBaseCandidates();
+  let lastError = null;
+
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}${path}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401) {
+        const authError = new Error('Unauthorized');
+        authError.status = 401;
+        throw authError;
+      }
+
+      if (res.ok) {
+        return res.json();
+      }
+
+      let detail = `Request failed (${res.status})`;
+      try {
+        const data = await res.json();
+        detail = data?.detail || data?.error || JSON.stringify(data);
+      } catch {
+        // keep fallback detail
+      }
+
+      throw new Error(detail);
+    } catch (err) {
+      lastError = err;
+      if (err?.status === 401) {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error(`Could not fetch ${path}.`);
+}
+
+async function fetchVendorDashboardBundle(token) {
+  const [productsRes, ordersRes, profileRes] = await Promise.allSettled([
+    fetchJsonWithFallback('/vendor/products/', token),
+    fetchJsonWithFallback('/vendor/orders/', token),
+    fetchJsonWithFallback('/vendor/me/', token),
+  ]);
+
+  if (
+    productsRes.status === 'rejected' && productsRes.reason?.status === 401 ||
+    ordersRes.status === 'rejected' && ordersRes.reason?.status === 401 ||
+    profileRes.status === 'rejected' && profileRes.reason?.status === 401
+  ) {
+    const authError = new Error('Unauthorized');
+    authError.status = 401;
+    throw authError;
+  }
+
+  const products = productsRes.status === 'fulfilled' ? productsRes.value : [];
+  const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
+
+  const partialErrors = [];
+  if (productsRes.status === 'rejected') {
+    partialErrors.push('Products could not be loaded');
+  }
+  if (ordersRes.status === 'rejected') {
+    partialErrors.push('Orders could not be loaded');
+  }
+  if (profileRes.status === 'rejected') {
+    partialErrors.push('Profile could not be loaded');
+  }
+
+  return {
+    products: Array.isArray(products) ? products : [],
+    orders: Array.isArray(orders) ? orders : [],
+    profile,
+    partialError: partialErrors.join(' · '),
+  };
 }
 
 // Sidebar component
@@ -463,8 +546,6 @@ export default function VendorDashboard() {
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [maintenanceDue, setMaintenanceDue] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [brandForm, setBrandForm] = useState({
     about_vendor: '',
@@ -480,6 +561,20 @@ export default function VendorDashboard() {
     vendorSession,
     storedVendorSlug,
   });
+  const activeVendorToken = vendorSession?.access || localStorage.getItem('vendor_token') || '';
+  const vendorCacheIdentity = resolvedVendorSlug || tokenPayload?.vendor_slug || storedVendorSlug || 'current';
+  const vendorTokenFingerprint = activeVendorToken ? activeVendorToken.slice(-16) : 'anon';
+
+  const dashboardRequest = useApiRequest(
+    (token) => fetchVendorDashboardBundle(token),
+    [],
+    {
+      immediate: false,
+      initialData: null,
+      cacheKey: `vendor:dashboard:${vendorCacheIdentity}:${vendorTokenFingerprint}`,
+      cacheTtlMs: 60 * 1000,
+    }
+  );
 
   const setTabAndUrl = (tab) => {
     setActiveTab(tab);
@@ -514,108 +609,95 @@ export default function VendorDashboard() {
       navigate('/dashboard', { replace: true });
     }
   }, [routeVendorSlug, resolvedVendorSlug, navigate]);
-  // Fetch dashboard data
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = vendorSession?.access || localStorage.getItem('vendor_token');
-        if (!token) {
-          navigate('/vendor/login');
-          return;
-        }
+    const token = vendorSession?.access || localStorage.getItem('vendor_token');
+    if (!token) {
+      navigate('/vendor/login');
+      return;
+    }
 
-        const headers = { Authorization: `Bearer ${token}` };
-        const [productsRes, ordersRes, profileRes] = await Promise.all([
-          fetch(`${API_BASE}/vendor/products/`, { headers }),
-          fetch(`${API_BASE}/vendor/orders/`, { headers }),
-          fetch(`${API_BASE}/vendor/me/`, { headers }),
-        ]);
-
-        if (productsRes.status === 401 || ordersRes.status === 401 || profileRes.status === 401) {
-          localStorage.removeItem('vendor_token');
-          localStorage.removeItem('nativeglow_vendor_tokens');
-          navigate('/vendor/login');
-          return;
-        }
-
-        const products = productsRes.ok ? await productsRes.json() : [];
-        const orders = ordersRes.ok ? await ordersRes.json() : [];
-        const profile = profileRes.ok ? await profileRes.json() : null;
-        const productList = Array.isArray(products) ? products : [];
-        const orderList = Array.isArray(orders) ? orders : [];
-
-        const now = new Date();
-        const thisMonth = now.getMonth();
-        const thisYear = now.getFullYear();
-        const todayKey = now.toISOString().slice(0, 10);
-
-        const ordersThisMonth = orderList.filter((o) => {
-          const d = new Date(o?.created_at);
-          return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        });
-
-        const pendingOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'pending').length;
-        const deliveredOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'delivered').length;
-        const totalOrdersToday = orderList.filter((o) => String(o?.created_at || '').slice(0, 10) === todayKey).length;
-
-        const sortedRecentOrders = [...orderList]
-          .sort((a, b) => new Date(b?.created_at).getTime() - new Date(a?.created_at).getTime())
-          .slice(0, 8);
-
-        const lowStock = productList
-          .filter((p) => Number(p?.available_quantity || 0) < 5)
-          .slice(0, 6)
-          .map((p) => ({
-            name: p?.title || p?.name || 'Product',
-            quantity: Number(p?.available_quantity || 0),
-          }));
-
-        setVendorData((prev) => ({
-          ...prev,
-          business_name:
-            profile?.business_name ||
-            vendorSession?.vendor?.business_name ||
-            vendorSession?.business_name ||
-            prev?.business_name ||
-            'Your Store',
-          vendor_slug:
-            profile?.vendor_slug ||
-            routeVendorSlug ||
-            tokenPayload?.vendor_slug ||
-            vendorSession?.vendor?.vendor_slug ||
-            vendorSession?.vendor_slug ||
-            prev?.vendor_slug ||
-            '',
-          site_theme: profile?.site_theme || prev?.site_theme || 'default',
-          site_logo: profile?.site_logo || prev?.site_logo || '',
-          site_banner_image: profile?.site_banner_image || prev?.site_banner_image || '',
-          about_vendor: profile?.about_vendor || prev?.about_vendor || '',
-          youtube_url: profile?.youtube_url || prev?.youtube_url || '',
-          instagram_url: profile?.instagram_url || prev?.instagram_url || '',
-          whatsapp_display: profile?.whatsapp_display !== false,
-        }));
-
-        setStats({
-          total_products: productList.length,
-          orders_this_month: ordersThisMonth.length,
-          pending_orders: pendingOrders,
-          delivered_orders: deliveredOrders,
-          total_orders_today: totalOrdersToday,
-        });
-        setChartData(buildLast7DayChart(orderList));
-        setRecentOrders(sortedRecentOrders);
-        setLowStockProducts(lowStock);
-        setMaintenanceDue(false);
-        setError('');
-      } catch (err) {
-        setError(err?.message || 'Failed to load dashboard data.');
-      } finally {
-        setLoading(false);
+    dashboardRequest.execute(token).catch((err) => {
+      if (err?.status === 401) {
+        localStorage.removeItem('vendor_token');
+        localStorage.removeItem('nativeglow_vendor_tokens');
+        navigate('/vendor/login');
       }
-    };
+    });
+  }, [dashboardRequest.execute, navigate, vendorSession?.access]);
 
-    fetchDashboardData();
-  }, [navigate, routeVendorSlug, tokenPayload?.vendor_slug, vendorSession?.access, vendorSession?.business_name, vendorSession?.vendor?.business_name, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
+  useEffect(() => {
+    if (!dashboardRequest.data) {
+      return;
+    }
+
+    const { products: productList, orders: orderList, profile } = dashboardRequest.data;
+
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const todayKey = now.toISOString().slice(0, 10);
+
+    const ordersThisMonth = orderList.filter((o) => {
+      const d = new Date(o?.created_at);
+      return !Number.isNaN(d.getTime()) && d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+
+    const pendingOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'pending').length;
+    const deliveredOrders = orderList.filter((o) => String(o?.order_status || '').toLowerCase() === 'delivered').length;
+    const totalOrdersToday = orderList.filter((o) => String(o?.created_at || '').slice(0, 10) === todayKey).length;
+
+    const sortedRecentOrders = [...orderList]
+      .sort((a, b) => new Date(b?.created_at).getTime() - new Date(a?.created_at).getTime())
+      .slice(0, 8);
+
+    const lowStock = productList
+      .filter((p) => Number(p?.available_quantity || 0) < 5)
+      .slice(0, 6)
+      .map((p) => ({
+        name: p?.title || p?.name || 'Product',
+        quantity: Number(p?.available_quantity || 0),
+      }));
+
+    setVendorData((prev) => ({
+      ...prev,
+      business_name:
+        profile?.business_name ||
+        vendorSession?.vendor?.business_name ||
+        vendorSession?.business_name ||
+        prev?.business_name ||
+        'Your Store',
+      vendor_slug:
+        profile?.vendor_slug ||
+        routeVendorSlug ||
+        tokenPayload?.vendor_slug ||
+        vendorSession?.vendor?.vendor_slug ||
+        vendorSession?.vendor_slug ||
+        prev?.vendor_slug ||
+        '',
+      site_theme: profile?.site_theme || prev?.site_theme || 'default',
+      site_logo: profile?.site_logo || prev?.site_logo || '',
+      site_banner_image: profile?.site_banner_image || prev?.site_banner_image || '',
+      about_vendor: profile?.about_vendor || prev?.about_vendor || '',
+      youtube_url: profile?.youtube_url || prev?.youtube_url || '',
+      instagram_url: profile?.instagram_url || prev?.instagram_url || '',
+      whatsapp_display: profile?.whatsapp_display !== false,
+    }));
+
+    setStats({
+      total_products: productList.length,
+      orders_this_month: ordersThisMonth.length,
+      pending_orders: pendingOrders,
+      delivered_orders: deliveredOrders,
+      total_orders_today: totalOrdersToday,
+    });
+    setChartData(buildLast7DayChart(orderList));
+    setRecentOrders(sortedRecentOrders);
+    setLowStockProducts(lowStock);
+    setMaintenanceDue(false);
+  }, [dashboardRequest.data, routeVendorSlug, tokenPayload?.vendor_slug, vendorSession?.business_name, vendorSession?.vendor?.business_name, vendorSession?.vendor?.vendor_slug, vendorSession?.vendor_slug]);
+
+  const loading = dashboardRequest.loading && !dashboardRequest.data;
+  const error = dashboardRequest.error || dashboardRequest.data?.partialError || '';
 
   if (loading) {
     return (
@@ -645,8 +727,24 @@ export default function VendorDashboard() {
             Error
           </p>
           <p style={{ color: theme.colors.charcoal }} className="mt-2">
-            {error}
+            Something went wrong. Please try again.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              const token = vendorSession?.access || localStorage.getItem('vendor_token');
+              if (!token) {
+                navigate('/vendor/login');
+                return;
+              }
+              dashboardRequest.execute(token).catch(() => {
+                // Friendly error message is already handled by the hook/UI.
+              });
+            }}
+            className="mt-4 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

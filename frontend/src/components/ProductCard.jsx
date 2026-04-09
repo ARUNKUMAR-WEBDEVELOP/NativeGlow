@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { resolveImageUrl } from '../utils/imageUrl';
+import { applyImageFallback, resolveImageUrl } from '../utils/imageUrl';
 
 function ProductCard({ product, onAddToCart, isAuthenticated }) {
   const price = Number(product.price || 0);
@@ -17,6 +17,7 @@ function ProductCard({ product, onAddToCart, isAuthenticated }) {
           alt={product.title}
           className="mb-3 h-44 w-full rounded-xl border border-zinc-200 object-cover"
           loading="lazy"
+          onError={applyImageFallback}
         />
       ) : (
         <div className="mb-3 h-44 w-full rounded-xl border border-zinc-200 bg-gradient-to-br from-cream via-sand/70 to-white" />

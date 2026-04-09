@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { api } from '../../api';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 import OrderStatusTimeline from '../../components/vendorsite/OrderStatusTimeline';
+import useApiRequest from '../../hooks/useApiRequest';
 
 function isShippedStatus(status) {
   const normalized = String(status || '').toLowerCase();
@@ -45,53 +46,36 @@ export default function BuyerOrders() {
   const vendorSlug = slug || legacyVendorSlug;
   const { buyer, isLoggedIn, ready } = useBuyerAuth();
 
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const [confirmingOrder, setConfirmingOrder] = useState(null);
   const [deliveryRating, setDeliveryRating] = useState(5);
   const [deliveryNote, setDeliveryNote] = useState('');
   const [submittingConfirm, setSubmittingConfirm] = useState(false);
 
-  useEffect(() => {
-    if (!isLoggedIn || !buyer?.accessToken) {
-      setLoading(false);
-      setOrders([]);
-      return;
-    }
-
-    let mounted = true;
-
-    async function loadOrders() {
-      setLoading(true);
-      setError('');
-
-      try {
-        const data = await api.getBuyerOrders(buyer.accessToken);
-        if (!mounted) {
-          return;
-        }
-
-        const list = Array.isArray(data) ? data : [];
-        setOrders(list);
-      } catch (err) {
-        if (mounted) {
-          setError(err.message || 'Could not load your buyer orders.');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+  const buyerOrdersRequest = useApiRequest(
+    async () => {
+      if (!isLoggedIn || !buyer?.accessToken) {
+        return [];
       }
+      const data = await api.getBuyerOrders(buyer.accessToken);
+      return Array.isArray(data) ? data : [];
+    },
+    [isLoggedIn, buyer?.accessToken],
+    {
+      immediate: Boolean(isLoggedIn && buyer?.accessToken),
+      initialData: [],
+      cacheKey:
+        isLoggedIn && buyer?.accessToken
+          ? `buyer:orders:${vendorSlug || 'vendor'}:${buyer.accessToken.slice(-16)}`
+          : '',
+      cacheTtlMs: 60 * 1000,
     }
+  );
 
-    loadOrders();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isLoggedIn, buyer]);
+  const orders = Array.isArray(buyerOrdersRequest.data) ? buyerOrdersRequest.data : [];
+  const loading = buyerOrdersRequest.loading;
+  const error = actionError || buyerOrdersRequest.error;
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)),
@@ -104,7 +88,7 @@ export default function BuyerOrders() {
     }
 
     setSubmittingConfirm(true);
-    setError('');
+    setActionError('');
 
     try {
       await api.confirmBuyerDelivery(
@@ -116,7 +100,7 @@ export default function BuyerOrders() {
         buyer.accessToken
       );
 
-      setOrders((prev) =>
+      buyerOrdersRequest.setData((prev) =>
         prev.map((item) =>
           item.order_code === confirmingOrder.order_code
             ? {
@@ -134,7 +118,7 @@ export default function BuyerOrders() {
       setDeliveryNote('');
       setDeliveryRating(5);
     } catch (err) {
-      setError(err.message || 'Failed to confirm delivery.');
+      setActionError(err.message || 'Failed to confirm delivery.');
     } finally {
       setSubmittingConfirm(false);
     }

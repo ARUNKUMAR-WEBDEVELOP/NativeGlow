@@ -70,6 +70,35 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+#root {
+  min-height: 100vh;
+}
+
+.route-transition {
+  --route-transition-duration: 260ms;
+  --route-transition-distance: 6px;
+  --route-transition-easing: ease;
+  min-height: 100vh;
+  opacity: 0;
+  transform: translateY(var(--route-transition-distance));
+  transition: opacity var(--route-transition-duration) var(--route-transition-easing),
+    transform var(--route-transition-duration) var(--route-transition-easing);
+  will-change: opacity, transform;
+}
+
+.route-transition--active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-transition,
+  .route-transition--active {
+    transition: none;
+    transform: none;
+  }
+}
+
 h1,
 h2,
 h3,

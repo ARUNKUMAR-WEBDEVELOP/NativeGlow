@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
+import useApiRequest from '../../hooks/useApiRequest';
 
 function getBuyerTokenEntries() {
   return Object.keys(localStorage)
@@ -30,101 +31,67 @@ function formatShippingAddress(order) {
 }
 
 function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
-  const [orders, setOrders] = useState([]);
-  const [buyerOrders, setBuyerOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [buyerLoading, setBuyerLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [buyerError, setBuyerError] = useState('');
   const [confirmingOrder, setConfirmingOrder] = useState(null);
   const [deliveryRating, setDeliveryRating] = useState(5);
   const [deliveryNote, setDeliveryNote] = useState('');
   const [submittingConfirm, setSubmittingConfirm] = useState(false);
+  const [actionError, setActionError] = useState('');
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadOrders() {
-      setLoading(true);
-      setError('');
-      try {
-        const data = await api.getMyOrders(tokens, onTokensUpdate, onAuthExpired);
-        if (!mounted) {
-          return;
-        }
-        setOrders(data);
-      } catch (err) {
-        if (mounted) {
-          setError(err.message || 'Could not load your orders.');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
+  const accountOrdersRequest = useApiRequest(
+    () => api.getMyOrders(tokens, onTokensUpdate, onAuthExpired),
+    [tokens?.access, tokens?.refresh],
+    {
+      immediate: Boolean(tokens?.access),
+      initialData: [],
+      cacheKey: tokens?.access ? `orders:account:${tokens.access.slice(-16)}` : '',
+      cacheTtlMs: 60 * 1000,
     }
+  );
 
-    loadOrders();
+  const buyerTokenEntries = getBuyerTokenEntries();
+  const buyerCacheSignature = buyerTokenEntries
+    .map((entry) => `${entry.vendorSlug}:${String(entry.token).slice(-8)}`)
+    .sort()
+    .join('|');
 
-    return () => {
-      mounted = false;
-    };
-  }, [tokens, onTokensUpdate, onAuthExpired]);
+  const buyerOrdersRequest = useApiRequest(
+    async () => {
+      if (!buyerTokenEntries.length) {
+        return [];
+      }
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadBuyerOrders() {
-      setBuyerLoading(true);
-      setBuyerError('');
-
-      try {
-        const entries = getBuyerTokenEntries();
-        if (!entries.length) {
-          if (mounted) {
-            setBuyerOrders([]);
+      const results = await Promise.all(
+        buyerTokenEntries.map(async (entry) => {
+          try {
+            const list = await api.getBuyerOrders(entry.token);
+            return (Array.isArray(list) ? list : []).map((item) => ({
+              ...item,
+              vendor_slug: entry.vendorSlug,
+              _buyerToken: entry.token,
+            }));
+          } catch {
+            return [];
           }
-          return;
-        }
+        })
+      );
 
-        const results = await Promise.all(
-          entries.map(async (entry) => {
-            try {
-              const list = await api.getBuyerOrders(entry.token);
-              return (Array.isArray(list) ? list : []).map((item) => ({
-                ...item,
-                vendor_slug: entry.vendorSlug,
-                _buyerToken: entry.token,
-              }));
-            } catch {
-              return [];
-            }
-          })
-        );
-
-        if (!mounted) {
-          return;
-        }
-
-        const merged = results.flat();
-        setBuyerOrders(merged);
-      } catch (err) {
-        if (mounted) {
-          setBuyerError(err.message || 'Could not load buyer order history.');
-        }
-      } finally {
-        if (mounted) {
-          setBuyerLoading(false);
-        }
-      }
+      return results.flat();
+    },
+    [buyerCacheSignature],
+    {
+      immediate: true,
+      initialData: [],
+      cacheKey: `orders:buyer:multi-store:${buyerCacheSignature || 'none'}`,
+      cacheTtlMs: 45 * 1000,
     }
+  );
 
-    loadBuyerOrders();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const orders = Array.isArray(accountOrdersRequest.data) ? accountOrdersRequest.data : [];
+  const buyerOrders = Array.isArray(buyerOrdersRequest.data) ? buyerOrdersRequest.data : [];
+  const loading = accountOrdersRequest.loading;
+  const buyerLoading = buyerOrdersRequest.loading;
+  const error = accountOrdersRequest.error;
+  const buyerError = actionError || buyerOrdersRequest.error;
 
   async function submitDeliveryConfirmation() {
     if (!confirmingOrder?._buyerToken || !confirmingOrder?.order_code) {
@@ -132,7 +99,7 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
     }
 
     setSubmittingConfirm(true);
-    setBuyerError('');
+    setActionError('');
 
     try {
       await api.confirmBuyerDelivery(
@@ -144,7 +111,7 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
         confirmingOrder._buyerToken
       );
 
-      setBuyerOrders((prev) =>
+      buyerOrdersRequest.setData((prev) =>
         prev.map((item) =>
           item.order_code === confirmingOrder.order_code && item.vendor_slug === confirmingOrder.vendor_slug
             ? { ...item, buyer_confirmed_delivery: true, status: 'delivered' }
@@ -156,7 +123,7 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
       setDeliveryNote('');
       setDeliveryRating(5);
     } catch (err) {
-      setBuyerError(err.message || 'Failed to confirm delivery.');
+      setActionError(err.message || 'Failed to confirm delivery.');
     } finally {
       setSubmittingConfirm(false);
     }

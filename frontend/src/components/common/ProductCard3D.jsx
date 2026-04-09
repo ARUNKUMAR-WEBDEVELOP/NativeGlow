@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { theme } from '../../styles/designSystem';
 import Button from './Button';
+import { applyImageFallback, resolveImageUrl } from '../../utils/imageUrl';
 
 /**
  * Professional 3D product card used across entire NativeGlow platform
@@ -119,9 +120,10 @@ const ProductCard3D = ({
 
         {/* Product Image */}
         <img
-          src={image || '/placeholder-product.jpg'}
+          src={resolveImageUrl(image) || '/fallback-product.svg'}
           alt={name}
           onLoad={() => setIsImageLoaded(true)}
+          onError={applyImageFallback}
           className="w-full h-full object-cover transition-transform duration-300"
           style={{
             transform: hovered ? 'scale(1.1)' : 'scale(1)',

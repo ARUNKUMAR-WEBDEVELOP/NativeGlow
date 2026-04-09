@@ -7,6 +7,22 @@ function getApiBaseOrigin() {
   }
 }
 
+export const PRODUCT_FALLBACK_IMAGE = '/fallback-product.svg';
+
+export function applyImageFallback(event, fallbackSrc = PRODUCT_FALLBACK_IMAGE) {
+  const img = event?.currentTarget;
+  if (!img) {
+    return;
+  }
+
+  if (img.dataset.fallbackApplied === 'true') {
+    return;
+  }
+
+  img.dataset.fallbackApplied = 'true';
+  img.src = fallbackSrc;
+}
+
 export function resolveImageUrl(url) {
   if (!url) {
     return null;

@@ -17,6 +17,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useSortable } from '@dnd-kit/sortable';
 import EditProductModal from '../../pages/vendor/EditProductModal';
 import DiscountModal from '../../pages/vendor/DiscountModal';
+import SkeletonBlock from '../ui/SkeletonBlock';
+import { applyImageFallback } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -100,7 +102,7 @@ function MobileProductCard({
     <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         {productImage ? (
-          <img src={productImage} alt={productLabel} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" />
+          <img src={productImage} alt={productLabel} className="h-16 w-16 rounded-lg border border-zinc-200 object-cover" onError={applyImageFallback} loading="lazy" decoding="async" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
@@ -226,7 +228,7 @@ function SortableProductRow({
     >
       <td className="px-3 py-3 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
         {productImage ? (
-          <img src={productImage} alt={productLabel} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" />
+          <img src={productImage} alt={productLabel} className="h-14 w-14 rounded-lg border border-zinc-200 object-cover" onError={applyImageFallback} loading="lazy" decoding="async" />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">No Image</div>
         )}
@@ -709,13 +711,50 @@ function ProductList() {
     }
   };
 
+  const mobileSkeletonCards = Array.from({ length: 4 }, (_, index) => (
+    <article key={`mobile-skeleton-${index}`} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <SkeletonBlock className="h-16 w-16 rounded-lg" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <SkeletonBlock className="h-4 w-3/4" />
+          <SkeletonBlock className="h-3 w-1/2" />
+          <SkeletonBlock className="h-3 w-2/3" />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <SkeletonBlock className="h-8 w-24 rounded-lg" />
+        <SkeletonBlock className="h-8 w-24 rounded-lg" />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <SkeletonBlock className="h-8 w-full rounded-lg" />
+        <SkeletonBlock className="h-8 w-full rounded-lg" />
+        <SkeletonBlock className="h-8 w-full rounded-lg" />
+      </div>
+    </article>
+  ));
+
+  const desktopSkeletonRows = Array.from({ length: 5 }, (_, index) => (
+    <tr key={`desktop-skeleton-${index}`} className="border-t border-zinc-100 align-top">
+      <td className="px-3 py-3"><SkeletonBlock className="h-14 w-14 rounded-lg" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-4 w-44" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-4 w-20" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-4 w-16" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-8 w-28 rounded-lg" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-4 w-24" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-6 w-20 rounded-full" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-6 w-6 rounded-full" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-6 w-6 rounded-full" /></td>
+      <td className="px-3 py-3"><SkeletonBlock className="h-8 w-40 rounded-lg" /></td>
+    </tr>
+  ));
+
   return (
     <section className="space-y-4">
       {success ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p> : null}
       {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
       <div className="space-y-3 md:hidden">
-        {loading ? <p className="rounded-xl border border-zinc-200 bg-white px-3 py-6 text-center text-sm text-zinc-500">Loading products...</p> : null}
+        {loading ? mobileSkeletonCards : null}
         {!loading && products.length === 0 ? <p className="rounded-xl border border-zinc-200 bg-white px-3 py-6 text-center text-sm text-zinc-500">No products found.</p> : null}
         {!loading && products.map((product) => (
           <MobileProductCard
@@ -760,11 +799,7 @@ function ProductList() {
               strategy={verticalListSortingStrategy}
             >
               <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-zinc-500">Loading products...</td>
-                  </tr>
-                ) : null}
+                {loading ? desktopSkeletonRows : null}
 
                 {!loading && products.length === 0 ? (
                   <tr>

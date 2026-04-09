@@ -6,6 +6,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.db import DatabaseError
 from django.db.models import Sum, Count, Q, F, DecimalField
 from django.db.models.functions import Coalesce
 from datetime import datetime
@@ -144,24 +145,35 @@ class AdminVendorListView(APIView):
 
     def get(self, request):
         """List all vendors with optional filtering."""
-        queryset = Vendor.objects.all()
+        try:
+            queryset = Vendor.objects.all()
 
-        # Filter by status
-        status_filter = request.query_params.get('status')
-        if status_filter == 'pending':
-            queryset = queryset.filter(is_approved=False, is_active=True)
-        elif status_filter == 'approved':
-            queryset = queryset.filter(is_approved=True, is_active=True)
-        elif status_filter == 'inactive':
-            queryset = queryset.filter(is_active=False)
+            # Filter by status
+            status_filter = request.query_params.get('status')
+            if status_filter == 'pending':
+                queryset = queryset.filter(is_approved=False, is_active=True)
+            elif status_filter == 'approved':
+                queryset = queryset.filter(is_approved=True, is_active=True)
+            elif status_filter == 'inactive':
+                queryset = queryset.filter(is_active=False)
 
-        # Search by business name
-        search = request.query_params.get('search', '').strip()
-        if search:
-            queryset = queryset.filter(business_name__icontains=search)
+            # Search by business name
+            search = request.query_params.get('search', '').strip()
+            if search:
+                queryset = queryset.filter(business_name__icontains=search)
 
-        serializer = AdminVendorListSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = AdminVendorListSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while listing vendors.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while listing vendors.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AdminVendorDetailView(APIView):
@@ -705,31 +717,44 @@ class AdminProductListView(APIView):
 
     def get(self, request):
         """List products with filtering."""
-        queryset = Product.objects.all()
+        try:
+            queryset = Product.objects.all()
 
-        # Filter by approval status (maps to 'status' field)
-        approval_status = request.query_params.get('approval_status')
-        if approval_status:
-            if approval_status not in ['pending', 'approved', 'rejected', 'active', 'draft']:
-                raise exceptions.ValidationError('Invalid approval_status value.')
-            queryset = queryset.filter(status=approval_status)
+            # Filter by approval status (maps to 'status' field)
+            approval_status = request.query_params.get('approval_status')
+            if approval_status:
+                if approval_status not in ['pending', 'approved', 'rejected', 'active', 'draft']:
+                    raise exceptions.ValidationError('Invalid approval_status value.')
+                queryset = queryset.filter(status=approval_status)
 
-        # Filter by vendor_id
-        vendor_id = request.query_params.get('vendor_id')
-        if vendor_id:
-            try:
-                vendor_id = int(vendor_id)
-                queryset = queryset.filter(vendor_id=vendor_id)
-            except ValueError:
-                raise exceptions.ValidationError('vendor_id must be an integer.')
+            # Filter by vendor_id
+            vendor_id = request.query_params.get('vendor_id')
+            if vendor_id:
+                try:
+                    vendor_id = int(vendor_id)
+                    queryset = queryset.filter(vendor_id=vendor_id)
+                except ValueError:
+                    raise exceptions.ValidationError('vendor_id must be an integer.')
 
-        # Filter by category_type
-        category_type = request.query_params.get('category_type')
-        if category_type:
-            queryset = queryset.filter(category_type=category_type)
+            # Filter by category_type
+            category_type = request.query_params.get('category_type')
+            if category_type:
+                queryset = queryset.filter(category_type=category_type)
 
-        serializer = AdminProductListSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = AdminProductListSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while listing products.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except exceptions.ValidationError:
+            raise
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while listing products.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AdminProductDetailView(APIView):
@@ -898,54 +923,65 @@ class AdminOrderListView(APIView):
 
     def get(self, request):
         """List all orders with filtering."""
-        queryset = Order.objects.select_related('vendor').prefetch_related('items')
-        
-        # Filter by order status
-        status_filter = request.query_params.get('status')
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        
-        # Filter by vendor
-        vendor_id = request.query_params.get('vendor_id')
-        if vendor_id:
-            try:
-                queryset = queryset.filter(vendor_id=int(vendor_id))
-            except (ValueError, TypeError):
-                return Response({'error': 'Invalid vendor_id'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Filter by month (YYYY-MM format)
-        month = request.query_params.get('month')
-        if month:
-            try:
-                year, month_num = month.split('-')
-                queryset = queryset.filter(created_at__year=int(year), created_at__month=int(month_num))
-            except (ValueError, AttributeError):
-                return Response({'error': 'Invalid month format. Use YYYY-MM'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Build order list with aggregated data
-        orders_data = []
-        for order in queryset.order_by('-created_at'):
-            # Get primary product name (first item in order)
-            product_name = ''
-            if hasattr(order, 'items') and order.items.exists():
-                product_name = order.items.first().product.title
-            
-            orders_data.append({
-                'id': order.id,
-                'order_id': order.order_id,
-                'buyer_name': order.full_name or order.buyer_name or 'Unknown',
-                'product_name': product_name,
-                'vendor_name': order.vendor.business_name if order.vendor else 'Unknown',
-                'vendor_id': order.vendor.id if order.vendor else None,
-                'quantity': order.items.aggregate(Sum('quantity'))['quantity__sum'] or 0,
-                'total_amount': order.total_amount or Decimal('0'),
-                'payment_reference': order.payment_reference,
-                'order_status': order.status,
-                'created_at': order.created_at
-            })
-        
-        serializer = AdminOrderListSerializer(orders_data, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            queryset = Order.objects.select_related('vendor').prefetch_related('items')
+
+            # Filter by order status
+            status_filter = request.query_params.get('status')
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+
+            # Filter by vendor
+            vendor_id = request.query_params.get('vendor_id')
+            if vendor_id:
+                try:
+                    queryset = queryset.filter(vendor_id=int(vendor_id))
+                except (ValueError, TypeError):
+                    return Response({'error': 'Invalid vendor_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Filter by month (YYYY-MM format)
+            month = request.query_params.get('month')
+            if month:
+                try:
+                    year, month_num = month.split('-')
+                    queryset = queryset.filter(created_at__year=int(year), created_at__month=int(month_num))
+                except (ValueError, AttributeError):
+                    return Response({'error': 'Invalid month format. Use YYYY-MM'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Build order list with aggregated data
+            orders_data = []
+            for order in queryset.order_by('-created_at'):
+                # Get primary product name (first item in order)
+                product_name = ''
+                if hasattr(order, 'items') and order.items.exists():
+                    product_name = order.items.first().product.title
+
+                orders_data.append({
+                    'id': order.id,
+                    'order_id': order.order_id,
+                    'buyer_name': order.full_name or order.buyer_name or 'Unknown',
+                    'product_name': product_name,
+                    'vendor_name': order.vendor.business_name if order.vendor else 'Unknown',
+                    'vendor_id': order.vendor.id if order.vendor else None,
+                    'quantity': order.items.aggregate(Sum('quantity'))['quantity__sum'] or 0,
+                    'total_amount': order.total_amount or Decimal('0'),
+                    'payment_reference': order.payment_reference,
+                    'order_status': order.status,
+                    'created_at': order.created_at
+                })
+
+            serializer = AdminOrderListSerializer(orders_data, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while listing orders.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while listing orders.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AdminOrderDetailView(APIView):
@@ -1061,60 +1097,71 @@ class AdminMonthlySalesView(APIView):
 
     def get(self, request):
         """Get monthly sales summary."""
-        # Aggregate orders by month
-        orders = Order.objects.filter(status__in=['confirmed', 'shipped', 'delivered']).select_related('vendor').prefetch_related('items')
-        
-        monthly_data = {}
-        for order in orders:
-            month_key = order.created_at.strftime('%b-%Y')  # "Jan-2025"
-            
-            if month_key not in monthly_data:
-                monthly_data[month_key] = {
-                    'month': month_key,
-                    'total_orders': 0,
-                    'total_revenue': Decimal('0'),
-                    'vendor_revenue': {},
-                    'product_revenue': {}
-                }
-            
-            monthly_data[month_key]['total_orders'] += 1
-            monthly_data[month_key]['total_revenue'] += order.total_amount or Decimal('0')
-            
-            # Track vendor revenue
-            vendor_name = order.vendor.business_name if order.vendor else 'Unknown'
-            if vendor_name not in monthly_data[month_key]['vendor_revenue']:
-                monthly_data[month_key]['vendor_revenue'][vendor_name] = Decimal('0')
-            monthly_data[month_key]['vendor_revenue'][vendor_name] += order.total_amount or Decimal('0')
-            
-            # Track product revenue
-            for item in order.items.all():
-                product_name = item.product.title if hasattr(item, 'product') else 'Unknown'
-                if product_name not in monthly_data[month_key]['product_revenue']:
-                    monthly_data[month_key]['product_revenue'][product_name] = Decimal('0')
-                monthly_data[month_key]['product_revenue'][product_name] += item.quantity * item.price
-        
-        # Format for response
-        result = []
-        for month_key in sorted(monthly_data.keys(), reverse=True):
-            data = monthly_data[month_key]
-            
-            # Find top vendor
-            top_vendor = max(data['vendor_revenue'].items(), key=lambda x: x[1], default=(None, None)) if data['vendor_revenue'] else (None, None)
-            # Find top product
-            top_product = max(data['product_revenue'].items(), key=lambda x: x[1], default=(None, None)) if data['product_revenue'] else (None, None)
-            
-            result.append({
-                'month': data['month'],
-                'total_orders': data['total_orders'],
-                'total_revenue': data['total_revenue'],
-                'top_vendor': top_vendor[0],
-                'top_product': top_product[0],
-                'top_vendor_revenue': top_vendor[1],
-                'top_product_revenue': top_product[1]
-            })
-        
-        serializer = MonthlySalesSerializer(result, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            # Aggregate orders by month
+            orders = Order.objects.filter(status__in=['confirmed', 'shipped', 'delivered']).select_related('vendor').prefetch_related('items')
+
+            monthly_data = {}
+            for order in orders:
+                month_key = order.created_at.strftime('%b-%Y')  # "Jan-2025"
+
+                if month_key not in monthly_data:
+                    monthly_data[month_key] = {
+                        'month': month_key,
+                        'total_orders': 0,
+                        'total_revenue': Decimal('0'),
+                        'vendor_revenue': {},
+                        'product_revenue': {}
+                    }
+
+                monthly_data[month_key]['total_orders'] += 1
+                monthly_data[month_key]['total_revenue'] += order.total_amount or Decimal('0')
+
+                # Track vendor revenue
+                vendor_name = order.vendor.business_name if order.vendor else 'Unknown'
+                if vendor_name not in monthly_data[month_key]['vendor_revenue']:
+                    monthly_data[month_key]['vendor_revenue'][vendor_name] = Decimal('0')
+                monthly_data[month_key]['vendor_revenue'][vendor_name] += order.total_amount or Decimal('0')
+
+                # Track product revenue
+                for item in order.items.all():
+                    product_name = item.product.title if hasattr(item, 'product') else 'Unknown'
+                    if product_name not in monthly_data[month_key]['product_revenue']:
+                        monthly_data[month_key]['product_revenue'][product_name] = Decimal('0')
+                    monthly_data[month_key]['product_revenue'][product_name] += item.quantity * item.price
+
+            # Format for response
+            result = []
+            for month_key in sorted(monthly_data.keys(), reverse=True):
+                data = monthly_data[month_key]
+
+                # Find top vendor
+                top_vendor = max(data['vendor_revenue'].items(), key=lambda x: x[1], default=(None, None)) if data['vendor_revenue'] else (None, None)
+                # Find top product
+                top_product = max(data['product_revenue'].items(), key=lambda x: x[1], default=(None, None)) if data['product_revenue'] else (None, None)
+
+                result.append({
+                    'month': data['month'],
+                    'total_orders': data['total_orders'],
+                    'total_revenue': data['total_revenue'],
+                    'top_vendor': top_vendor[0],
+                    'top_product': top_product[0],
+                    'top_vendor_revenue': top_vendor[1],
+                    'top_product_revenue': top_product[1]
+                })
+
+            serializer = MonthlySalesSerializer(result, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while loading monthly sales.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while loading monthly sales.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AdminVendorMonthlySalesView(APIView):
@@ -1132,46 +1179,59 @@ class AdminVendorMonthlySalesView(APIView):
     def get(self, request, id):
         """Get vendor's monthly sales breakdown."""
         try:
-            vendor = Vendor.objects.get(id=id)
-        except Vendor.DoesNotExist:
-            raise exceptions.NotFound(f'Vendor with id {id} not found.')
-        
-        # Get all orders for this vendor
-        orders = Order.objects.filter(vendor=vendor, status__in=['confirmed', 'shipped', 'delivered']).prefetch_related('items')
-        
-        monthly_data = {}
-        for order in orders:
-            month_key = order.created_at.strftime('%b-%Y')  # "Jan-2025"
-            
-            if month_key not in monthly_data:
-                monthly_data[month_key] = {
-                    'month': month_key,
-                    'vendor_id': vendor.id,
-                    'vendor_name': vendor.business_name,
-                    'orders_count': 0,
-                    'total_revenue': Decimal('0')
-                }
-            
-            monthly_data[month_key]['orders_count'] += 1
-            monthly_data[month_key]['total_revenue'] += order.total_amount or Decimal('0')
-        
-        # Calculate averages and format
-        result = []
-        for month_key in sorted(monthly_data.keys(), reverse=True):
-            data = monthly_data[month_key]
-            avg_order_value = data['total_revenue'] / data['orders_count'] if data['orders_count'] > 0 else Decimal('0')
-            
-            result.append({
-                'month': data['month'],
-                'vendor_id': data['vendor_id'],
-                'vendor_name': data['vendor_name'],
-                'orders_count': data['orders_count'],
-                'total_revenue': data['total_revenue'],
-                'avg_order_value': avg_order_value
-            })
-        
-        serializer = VendorMonthlySalesSerializer(result, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            try:
+                vendor = Vendor.objects.get(id=id)
+            except Vendor.DoesNotExist:
+                raise exceptions.NotFound(f'Vendor with id {id} not found.')
+
+            # Get all orders for this vendor
+            orders = Order.objects.filter(vendor=vendor, status__in=['confirmed', 'shipped', 'delivered']).prefetch_related('items')
+
+            monthly_data = {}
+            for order in orders:
+                month_key = order.created_at.strftime('%b-%Y')  # "Jan-2025"
+
+                if month_key not in monthly_data:
+                    monthly_data[month_key] = {
+                        'month': month_key,
+                        'vendor_id': vendor.id,
+                        'vendor_name': vendor.business_name,
+                        'orders_count': 0,
+                        'total_revenue': Decimal('0')
+                    }
+
+                monthly_data[month_key]['orders_count'] += 1
+                monthly_data[month_key]['total_revenue'] += order.total_amount or Decimal('0')
+
+            # Calculate averages and format
+            result = []
+            for month_key in sorted(monthly_data.keys(), reverse=True):
+                data = monthly_data[month_key]
+                avg_order_value = data['total_revenue'] / data['orders_count'] if data['orders_count'] > 0 else Decimal('0')
+
+                result.append({
+                    'month': data['month'],
+                    'vendor_id': data['vendor_id'],
+                    'vendor_name': data['vendor_name'],
+                    'orders_count': data['orders_count'],
+                    'total_revenue': data['total_revenue'],
+                    'avg_order_value': avg_order_value
+                })
+
+            serializer = VendorMonthlySalesSerializer(result, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except exceptions.NotFound:
+            raise
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while loading vendor monthly sales.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while loading vendor monthly sales.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AdminDashboardStatsView(APIView):
@@ -1191,70 +1251,81 @@ class AdminDashboardStatsView(APIView):
 
     def get(self, request):
         """Get dashboard statistics."""
-        now = timezone.now()
-        current_month = now.month
-        current_year = now.year
-        
-        # VENDOR METRICS
-        total_vendors = Vendor.objects.count()
-        active_vendors = Vendor.objects.filter(is_active=True, is_approved=True).count()
-        pending_vendor_approvals = Vendor.objects.filter(is_approved=False).count()
-        
-        # PRODUCT METRICS
-        total_products = Product.objects.count()
-        pending_product_approvals = Product.objects.filter(status='pending').count()
-        active_products = Product.objects.filter(status='approved', is_active=True).count()
-        
-        # ORDER METRICS (this month)
-        total_orders_this_month = Order.objects.filter(
-            created_at__year=current_year,
-            created_at__month=current_month,
-            status__in=['confirmed', 'shipped', 'delivered']
-        ).count()
-        
-        revenue_this_month = Order.objects.filter(
-            created_at__year=current_year,
-            created_at__month=current_month,
-            status__in=['confirmed', 'shipped', 'delivered']
-        ).aggregate(
-            total=Sum('total_amount', output_field=DecimalField())
-        )['total'] or Decimal('0')
-        
-        # MAINTENANCE FEE METRICS (this month)
-        current_month_str = now.strftime('%Y-%m')
-        
-        maintenance_collected = MaintenanceFee.objects.filter(
-            month=current_month_str,
-            is_paid=True
-        ).aggregate(
-            total=Sum('amount', output_field=DecimalField())
-        )['total'] or Decimal('0')
-        
-        maintenance_pending = MaintenanceFee.objects.filter(
-            month=current_month_str,
-            is_paid=False
-        )
-        maintenance_pending_count = maintenance_pending.count()
-        maintenance_pending_amount = maintenance_pending.aggregate(
-            total=Sum('amount', output_field=DecimalField())
-        )['total'] or Decimal('0')
-        
-        stats = {
-            'total_vendors': total_vendors,
-            'active_vendors': active_vendors,
-            'pending_vendor_approvals': pending_vendor_approvals,
-            'total_products': total_products,
-            'pending_product_approvals': pending_product_approvals,
-            'active_products': active_products,
-            'total_orders_this_month': total_orders_this_month,
-            'revenue_this_month': revenue_this_month,
-            'maintenance_collected_this_month': maintenance_collected,
-            'maintenance_pending_count': maintenance_pending_count,
-            'maintenance_pending_amount': maintenance_pending_amount
-        }
-        
-        serializer = AdminDashboardStatsSerializer(stats)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            now = timezone.now()
+            current_month = now.month
+            current_year = now.year
+
+            # VENDOR METRICS
+            total_vendors = Vendor.objects.count()
+            active_vendors = Vendor.objects.filter(is_active=True, is_approved=True).count()
+            pending_vendor_approvals = Vendor.objects.filter(is_approved=False).count()
+
+            # PRODUCT METRICS
+            total_products = Product.objects.count()
+            pending_product_approvals = Product.objects.filter(status='pending').count()
+            active_products = Product.objects.filter(status='approved', is_active=True).count()
+
+            # ORDER METRICS (this month)
+            total_orders_this_month = Order.objects.filter(
+                created_at__year=current_year,
+                created_at__month=current_month,
+                status__in=['confirmed', 'shipped', 'delivered']
+            ).count()
+
+            revenue_this_month = Order.objects.filter(
+                created_at__year=current_year,
+                created_at__month=current_month,
+                status__in=['confirmed', 'shipped', 'delivered']
+            ).aggregate(
+                total=Sum('total_amount', output_field=DecimalField())
+            )['total'] or Decimal('0')
+
+            # MAINTENANCE FEE METRICS (this month)
+            current_month_str = now.strftime('%Y-%m')
+
+            maintenance_collected = MaintenanceFee.objects.filter(
+                month=current_month_str,
+                is_paid=True
+            ).aggregate(
+                total=Sum('amount', output_field=DecimalField())
+            )['total'] or Decimal('0')
+
+            maintenance_pending = MaintenanceFee.objects.filter(
+                month=current_month_str,
+                is_paid=False
+            )
+            maintenance_pending_count = maintenance_pending.count()
+            maintenance_pending_amount = maintenance_pending.aggregate(
+                total=Sum('amount', output_field=DecimalField())
+            )['total'] or Decimal('0')
+
+            stats = {
+                'total_vendors': total_vendors,
+                'active_vendors': active_vendors,
+                'pending_vendor_approvals': pending_vendor_approvals,
+                'total_products': total_products,
+                'pending_product_approvals': pending_product_approvals,
+                'active_products': active_products,
+                'total_orders_this_month': total_orders_this_month,
+                'revenue_this_month': revenue_this_month,
+                'maintenance_collected_this_month': maintenance_collected,
+                'maintenance_pending_count': maintenance_pending_count,
+                'maintenance_pending_amount': maintenance_pending_amount
+            }
+
+            serializer = AdminDashboardStatsSerializer(stats)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 # ============================================================================
 # PUBLIC PAYMENT DETAILS VIEW

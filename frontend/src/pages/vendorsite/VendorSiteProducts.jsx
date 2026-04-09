@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useVendorSite } from './VendorSiteLayout';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
-import { getPrimaryProductImage } from '../../utils/imageUrl';
+import { applyImageFallback, getPrimaryProductImage } from '../../utils/imageUrl';
 
 function toNumber(value) {
   const n = Number(value);
@@ -26,6 +26,7 @@ export default function VendorSiteProducts() {
   const { allProducts, categories } = useVendorSite();
   const [activeCategory, setActiveCategory] = useState('All');
   const [actionMessage, setActionMessage] = useState('');
+  const [visibleCount, setVisibleCount] = useState(12);
 
   const requireBuyerLogin = (nextPath) => {
     if (!ready) {
@@ -93,6 +94,13 @@ export default function VendorSiteProducts() {
     return allProducts.filter((product) => getProductCategory(product).toLowerCase() === activeCategory.toLowerCase());
   }, [allProducts, activeCategory]);
 
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [activeCategory]);
+
+  const visibleProducts = useMemo(() => filteredProducts.slice(0, visibleCount), [filteredProducts, visibleCount]);
+  const canLoadMore = visibleProducts.length < filteredProducts.length;
+
   return (
     <div className="space-y-6 pb-8">
       <header>
@@ -123,7 +131,7 @@ export default function VendorSiteProducts() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map((product) => {
+        {visibleProducts.map((product, index) => {
           const name = product?.name || product?.title || 'Product';
           const primaryImage = getPrimaryProductImage(product);
           const price = toNumber(product?.price);
@@ -131,12 +139,13 @@ export default function VendorSiteProducts() {
           const hasDiscount = discounted && discounted < price;
           const discountPercent = toNumber(product?.discount_percent);
           const detailPath = `/store/${vendorSlug}/product/${product.id}`;
+          const productKey = product?.id || product?.slug || `${name}-${price}-${index}`;
 
           return (
-            <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+            <article key={productKey} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
               <Link to={detailPath} className="block aspect-[4/3] overflow-hidden bg-slate-100">
                 {primaryImage ? (
-                  <img src={primaryImage} alt={name} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
+                  <img src={primaryImage} alt={name} className="h-full w-full object-cover transition duration-500 hover:scale-105" onError={applyImageFallback} loading="lazy" decoding="async" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm opacity-60">No image</div>
                 )}
@@ -184,6 +193,18 @@ export default function VendorSiteProducts() {
           );
         })}
       </div>
+
+      {canLoadMore ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + 12)}
+            className="rounded-full border border-zinc-300 bg-white px-5 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+          >
+            Load More
+          </button>
+        </div>
+      ) : null}
 
       {filteredProducts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center text-sm text-zinc-500">

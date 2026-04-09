@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
-import { getPrimaryProductImage } from '../../utils/imageUrl';
+import SkeletonBlock from '../../components/ui/SkeletonBlock';
+import { applyImageFallback, getPrimaryProductImage } from '../../utils/imageUrl';
 
 function formatAttributeLabel(key) {
   return String(key || '')
@@ -47,6 +48,7 @@ function VendorStorePage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('newest'); // 'newest', 'price-low', 'price-high'
   const [categories, setCategories] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(12);
   
   // Order modal state
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -114,6 +116,13 @@ function VendorStorePage() {
     setFilteredProducts(filtered);
   }, [products, selectedCategory, sortBy]);
 
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [selectedCategory, sortBy, vendorSlug]);
+
+  const visibleProducts = useMemo(() => filteredProducts.slice(0, visibleCount), [filteredProducts, visibleCount]);
+  const canLoadMore = visibleProducts.length < filteredProducts.length;
+
 
 
   // Error states
@@ -121,24 +130,23 @@ function VendorStorePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-orange-50 pt-20 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {/* Header skeleton */}
-          <div className="mb-12 animate-pulse">
-            <div className="h-12 bg-gray-200 rounded-lg mb-4 w-96"></div>
-            <div className="h-4 bg-gray-200 rounded w-64 mb-4"></div>
-            <div className="flex gap-2 mb-4">
-              <div className="h-6 bg-gray-200 rounded-full w-32"></div>
-              <div className="h-6 bg-gray-200 rounded-full w-32"></div>
+          <div className="mb-12 rounded-lg bg-white p-8 shadow-sm">
+            <SkeletonBlock className="mb-4 h-12 w-96 max-w-full" />
+            <SkeletonBlock className="mb-4 h-4 w-64 max-w-full" />
+            <div className="mb-4 flex gap-2">
+              <SkeletonBlock className="h-6 w-32 rounded-full" />
+              <SkeletonBlock className="h-6 w-32 rounded-full" />
             </div>
           </div>
-          
-          {/* Products skeleton */}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg overflow-hidden shadow animate-pulse">
-                <div className="h-48 bg-gray-200"></div>
-                <div className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div key={i} className="bg-white rounded-lg overflow-hidden shadow">
+                <SkeletonBlock className="h-48 w-full rounded-none" />
+                <div className="p-4 space-y-2">
+                  <SkeletonBlock className="h-4 w-3/4" />
+                  <SkeletonBlock className="h-4 w-1/2" />
+                  <SkeletonBlock className="h-8 w-full rounded-lg" />
                 </div>
               </div>
             ))}
@@ -302,11 +310,13 @@ function VendorStorePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filteredProducts.map(product => {
+            {visibleProducts.map((product, index) => {
               const primaryImage = getPrimaryProductImage(product);
+              const productName = product.name || product.title || 'Product';
+              const productKey = product?.id || product?.slug || `${productName}-${index}`;
               return (
               <div
-                key={product.id}
+                key={productKey}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden"
               >
                 {/* Product Image */}
@@ -314,8 +324,11 @@ function VendorStorePage() {
                   {primaryImage ? (
                     <img
                       src={primaryImage}
-                      alt={product.name || product.title}
+                      alt={productName}
                       className="w-full h-full object-cover group-hover:scale-105 transition cursor-pointer"
+                      onError={applyImageFallback}
+                      loading="lazy"
+                      decoding="async"
                       onClick={() => navigate(`/store/${vendorSlug}/product/${product.id}`)}
                     />
                   ) : (
@@ -424,6 +437,18 @@ function VendorStorePage() {
               );
             })}
           </div>
+
+          {canLoadMore ? (
+            <div className="mb-12 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 12)}
+                className="rounded-full border border-zinc-300 bg-white px-5 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+              >
+                Load More Products
+              </button>
+            </div>
+          ) : null}
         )}
 
         {/* Disclaimer */}

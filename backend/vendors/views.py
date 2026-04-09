@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.utils.text import slugify
+from django.db import DatabaseError
 from django.db.models import Sum
 from decimal import Decimal
 from datetime import timedelta
@@ -134,33 +135,44 @@ class VendorSiteDirectoryView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
-        vendors = Vendor.objects.filter(is_approved=True, is_active=True).order_by('business_name', 'id')
+        try:
+            vendors = Vendor.objects.filter(is_approved=True, is_active=True).order_by('business_name', 'id')
 
-        data = [
-            {
-                'id': vendor.id,
-                'business_name': vendor.business_name,
-                'vendor_slug': vendor.vendor_slug,
-                'store_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
-                'products_url': f'/site/{vendor.vendor_slug}/products' if vendor.vendor_slug else '',
-                'about_url': f'/site/{vendor.vendor_slug}/about' if vendor.vendor_slug else '',
-                'track_url': f'/site/{vendor.vendor_slug}/track' if vendor.vendor_slug else '',
-                'manage_url': '/vendor/dashboard',
-                'site_status': vendor.site_status,
-                'approved': vendor.is_approved,
-                'active': vendor.is_active,
-            }
-            for vendor in vendors
-            if vendor.vendor_slug
-        ]
+            data = [
+                {
+                    'id': vendor.id,
+                    'business_name': vendor.business_name,
+                    'vendor_slug': vendor.vendor_slug,
+                    'store_url': f'/site/{vendor.vendor_slug}' if vendor.vendor_slug else '',
+                    'products_url': f'/site/{vendor.vendor_slug}/products' if vendor.vendor_slug else '',
+                    'about_url': f'/site/{vendor.vendor_slug}/about' if vendor.vendor_slug else '',
+                    'track_url': f'/site/{vendor.vendor_slug}/track' if vendor.vendor_slug else '',
+                    'manage_url': '/vendor/dashboard',
+                    'site_status': vendor.site_status,
+                    'approved': vendor.is_approved,
+                    'active': vendor.is_active,
+                }
+                for vendor in vendors
+                if vendor.vendor_slug
+            ]
 
-        return Response(
-            {
-                'count': len(data),
-                'results': data,
-            },
-            status=status.HTTP_200_OK,
-        )
+            return Response(
+                {
+                    'count': len(data),
+                    'results': data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while loading vendor directory.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while loading vendor directory.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ApplyAsVendorView(generics.CreateAPIView):
@@ -294,46 +306,57 @@ class MyVendorAnalyticsView(APIView):
         if not vendor or vendor.status != 'approved':
             return Response({'detail': 'Approved vendor account required.'}, status=status.HTTP_403_FORBIDDEN)
 
-        vendor_items = OrderItem.objects.filter(product__vendor=vendor)
-        gross = vendor_items.aggregate(total=Sum('line_total'))['total'] or Decimal('0.00')
-        qty = vendor_items.aggregate(total=Sum('quantity'))['total'] or 0
-        rate = vendor.commission_rate or Decimal('0.00')
-        service_fee = (gross * rate) / 100
-        payout = gross - service_fee
+        try:
+            vendor_items = OrderItem.objects.filter(product__vendor=vendor)
+            gross = vendor_items.aggregate(total=Sum('line_total'))['total'] or Decimal('0.00')
+            qty = vendor_items.aggregate(total=Sum('quantity'))['total'] or 0
+            rate = vendor.commission_rate or Decimal('0.00')
+            service_fee = (gross * rate) / 100
+            payout = gross - service_fee
 
-        top_products_qs = (
-            vendor_items.values('product_title')
-            .annotate(
-                total_qty=Sum('quantity'),
-                gross_sales=Sum('line_total'),
+            top_products_qs = (
+                vendor_items.values('product_title')
+                .annotate(
+                    total_qty=Sum('quantity'),
+                    gross_sales=Sum('line_total'),
+                )
+                .order_by('-gross_sales')[:5]
             )
-            .order_by('-gross_sales')[:5]
-        )
 
-        top_products = []
-        for row in top_products_qs:
-            row_gross = row.get('gross_sales') or Decimal('0.00')
-            row_fee = (row_gross * rate) / 100
-            top_products.append(
+            top_products = []
+            for row in top_products_qs:
+                row_gross = row.get('gross_sales') or Decimal('0.00')
+                row_fee = (row_gross * rate) / 100
+                top_products.append(
+                    {
+                        'product_title': row.get('product_title'),
+                        'total_qty': row.get('total_qty', 0),
+                        'gross_sales': str(row_gross),
+                        'service_fee': str(row_fee.quantize(Decimal('0.01'))),
+                    }
+                )
+
+            return Response(
                 {
-                    'product_title': row.get('product_title'),
-                    'total_qty': row.get('total_qty', 0),
-                    'gross_sales': str(row_gross),
-                    'service_fee': str(row_fee.quantize(Decimal('0.01'))),
+                    'vendor': vendor.brand_name,
+                    'commission_rate': str(vendor.commission_rate),
+                    'gross_sales': str(gross),
+                    'service_fee': str(service_fee.quantize(Decimal('0.01'))),
+                    'estimated_payout': str(payout.quantize(Decimal('0.01'))),
+                    'items_sold': qty,
+                    'top_products': top_products,
                 }
             )
-
-        return Response(
-            {
-                'vendor': vendor.brand_name,
-                'commission_rate': str(vendor.commission_rate),
-                'gross_sales': str(gross),
-                'service_fee': str(service_fee.quantize(Decimal('0.01'))),
-                'estimated_payout': str(payout.quantize(Decimal('0.01'))),
-                'items_sold': qty,
-                'top_products': top_products,
-            }
-        )
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while loading vendor analytics.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while loading vendor analytics.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # ============================================================================
@@ -526,7 +549,19 @@ class VendorApprovalStatusView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        vendor = Vendor.objects.filter(email__iexact=email).first()
+        try:
+            vendor = Vendor.objects.filter(email__iexact=email).first()
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while checking approval status.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while checking approval status.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         if not vendor:
             return Response(
                 {'detail': 'Vendor account not found.'},
@@ -571,7 +606,19 @@ class VendorActivateView(APIView):
         if not token:
             return Response({'detail': expired_message}, status=status.HTTP_400_BAD_REQUEST)
 
-        vendor = Vendor.objects.filter(redirect_token=token).first()
+        try:
+            vendor = Vendor.objects.filter(redirect_token=token).first()
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while activating vendor account.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while activating vendor account.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         if not vendor or not vendor.site_activated_at:
             return Response({'detail': expired_message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -586,8 +633,19 @@ class VendorActivateView(APIView):
 
         access_token = str(refresh.access_token)
 
-        vendor.redirect_token = ''
-        vendor.save(update_fields=['redirect_token', 'updated_at'])
+        try:
+            vendor.redirect_token = ''
+            vendor.save(update_fields=['redirect_token', 'updated_at'])
+        except DatabaseError:
+            return Response(
+                {'detail': 'Database operation failed while finalizing vendor activation.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Something went wrong while finalizing vendor activation.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {

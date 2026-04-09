@@ -80,6 +80,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
+    'EXCEPTION_HANDLER': 'nativeglow_backend.exceptions.custom_exception_handler',
 }
 
 # JWT configuration
@@ -98,6 +99,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'nativeglow_backend.middleware.ApiJsonExceptionMiddleware',
 ]
 
 # CORS — allow frontend dev server

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import SiteLayout from './layout/SiteLayout';
 import AdminLayout from './layout/AdminLayout';
@@ -37,6 +37,12 @@ import VendorSiteTrack from './pages/vendorsite/VendorSiteTrack';
 import VendorSiteLogin from './pages/vendorsite/VendorSiteLogin';
 import BuyerOrders from './pages/vendorsite/BuyerOrders';
 import VendorSiteCart from './pages/vendorsite/VendorSiteCart';
+import GlobalLoadingOverlay from './components/ui/GlobalLoadingOverlay';
+import {
+  ensureApiFetchTracking,
+  getNetworkActivityCount,
+  subscribeNetworkActivity,
+} from './state/networkActivity';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -69,6 +75,121 @@ function LegacySiteRedirect() {
   const { vendor_slug: vendorSlug, '*': rest = '' } = useParams();
   const suffix = rest ? `/${rest}` : '';
   return <Navigate to={`/store/${vendorSlug}${suffix}`} replace />;
+}
+
+function getRouteTransitionProfile(pathname) {
+  if (pathname.startsWith('/admin')) {
+    return {
+      section: 'admin',
+      durationMs: 170,
+      distancePx: 3,
+      easing: 'cubic-bezier(0.25, 0.9, 0.38, 1)',
+    };
+  }
+
+  if (pathname.startsWith('/store')) {
+    return {
+      section: 'store',
+      durationMs: 340,
+      distancePx: 9,
+      easing: 'cubic-bezier(0.2, 0.75, 0.2, 1)',
+    };
+  }
+
+  return {
+    section: 'default',
+    durationMs: 260,
+    distancePx: 6,
+    easing: 'ease',
+  };
+}
+
+function GlobalAppLoader() {
+  const location = useLocation();
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [apiLoadingCount, setApiLoadingCount] = useState(getNetworkActivityCount());
+
+  useEffect(() => {
+    const unsubscribe = subscribeNetworkActivity(setApiLoadingCount);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    setRouteLoading(true);
+    const timeout = window.setTimeout(() => setRouteLoading(false), 240);
+    return () => window.clearTimeout(timeout);
+  }, [location.pathname, location.search]);
+
+  const showLoader = routeLoading || apiLoadingCount > 0;
+  const label = apiLoadingCount > 0 ? 'Fetching latest data...' : 'Loading page...';
+
+  return <GlobalLoadingOverlay show={showLoader} label={label} />;
+}
+
+function NavigationExperience({ children }) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const [isVisible, setIsVisible] = useState(false);
+  const scrollPositionsRef = useRef(new Map());
+
+  const routeKey = `${location.pathname}${location.search}`;
+  const transitionProfile = useMemo(
+    () => getRouteTransitionProfile(location.pathname),
+    [location.pathname]
+  );
+
+  useEffect(() => {
+    setIsVisible(false);
+    const frame = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [routeKey]);
+
+  useEffect(() => {
+    return () => {
+      scrollPositionsRef.current.set(routeKey, window.scrollY || 0);
+    };
+  }, [routeKey]);
+
+  useEffect(() => {
+    const runScrollLogic = () => {
+      if (location.hash) {
+        const hashId = decodeURIComponent(location.hash.replace('#', ''));
+        const hashElement = document.getElementById(hashId);
+        if (hashElement) {
+          hashElement.scrollIntoView({ block: 'start' });
+          return;
+        }
+      }
+
+      if (navigationType === 'POP' && scrollPositionsRef.current.has(routeKey)) {
+        window.scrollTo({ top: scrollPositionsRef.current.get(routeKey), left: 0, behavior: 'auto' });
+        return;
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    };
+
+    const timer = window.setTimeout(runScrollLogic, 0);
+    return () => window.clearTimeout(timer);
+  }, [location.hash, navigationType, routeKey]);
+
+  return (
+    <div
+      className={`route-transition route-transition--${transitionProfile.section} ${isVisible ? 'route-transition--active' : ''}`}
+      style={{
+        '--route-transition-duration': `${transitionProfile.durationMs}ms`,
+        '--route-transition-distance': `${transitionProfile.distancePx}px`,
+        '--route-transition-easing': transitionProfile.easing,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function App() {
@@ -162,6 +283,10 @@ function App() {
     setAuthMessage('Session expired. Login again to continue checkout and orders.');
   }
 
+  useEffect(() => {
+    ensureApiFetchTracking();
+  }, []);
+
   function onIncreaseQty(productId) {
     setCartItems((prev) =>
       prev.map((item) =>
@@ -200,6 +325,8 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
+        <GlobalAppLoader />
+        <NavigationExperience>
         <Routes>
         <Route path="/store/:slug/*" element={<VendorSiteLayout />}>
           <Route index element={<VendorSiteHome />} />
@@ -382,6 +509,7 @@ function App() {
           }
         />
         </Routes>
+        </NavigationExperience>
 
         {authMessage ? (
           <div className="fixed right-4 top-4 z-[60] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow">

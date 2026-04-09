@@ -4,6 +4,64 @@ const API_BASE =
     ? 'http://127.0.0.1:8000/api'
     : 'https://nativeglow.onrender.com/api');
 
+const RETRYABLE_HTTP_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+const RETRY_DELAY_MS = 350;
+const GET_CACHE_TTL_MS = 60 * 1000;
+const getResponseCache = new Map();
+
+function cloneCachedData(data) {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(data);
+  }
+  try {
+    return JSON.parse(JSON.stringify(data));
+  } catch {
+    return data;
+  }
+}
+
+function buildGetCacheKey(url, headers) {
+  const authHeader = headers?.Authorization || headers?.authorization || '';
+  return `GET:${url}:AUTH:${authHeader}`;
+}
+
+function getCachedGetResponse(key) {
+  const cached = getResponseCache.get(key);
+  if (!cached) {
+    return { hit: false, value: null };
+  }
+  if (Date.now() - cached.timestamp > GET_CACHE_TTL_MS) {
+    getResponseCache.delete(key);
+    return { hit: false, value: null };
+  }
+  return { hit: true, value: cloneCachedData(cached.value) };
+}
+
+function setCachedGetResponse(key, value) {
+  getResponseCache.set(key, {
+    timestamp: Date.now(),
+    value: cloneCachedData(value),
+  });
+}
+
+function clearGetResponseCache() {
+  getResponseCache.clear();
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableStatus(status) {
+  return RETRYABLE_HTTP_STATUS.has(Number(status));
+}
+
+function isRetryableNetworkError(error) {
+  return error instanceof TypeError || String(error?.message || '').toLowerCase().includes('network');
+}
+
 function getHeaders(options = {}) {
   return {
     'Content-Type': 'application/json',
@@ -43,11 +101,52 @@ async function handleResponse(res) {
 }
 
 async function requestByUrl(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: getHeaders(options),
-  });
-  return handleResponse(res);
+  const method = String(options.method || 'GET').toUpperCase();
+  const headers = getHeaders(options);
+  const useGetCache = method === 'GET' && options.cache !== 'no-store';
+  const getCacheKey = useGetCache ? buildGetCacheKey(url, headers) : null;
+
+  if (useGetCache && getCacheKey) {
+    const cached = getCachedGetResponse(getCacheKey);
+    if (cached.hit) {
+      return cached.value;
+    }
+  }
+
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!res.ok && isRetryableStatus(res.status) && attempt === 0) {
+        await sleep(RETRY_DELAY_MS);
+        continue;
+      }
+
+      const result = await handleResponse(res);
+      if (useGetCache && getCacheKey) {
+        setCachedGetResponse(getCacheKey, result);
+      } else if (method !== 'GET') {
+        clearGetResponseCache();
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === 0 && isRetryableNetworkError(error)) {
+        await sleep(RETRY_DELAY_MS);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError || new Error('API request failed after retry.');
 }
 
 function getAlternateBase() {

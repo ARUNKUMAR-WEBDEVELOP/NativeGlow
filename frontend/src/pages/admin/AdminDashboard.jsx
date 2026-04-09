@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
@@ -12,44 +12,53 @@ import {
   Cell,
 } from 'recharts';
 import api from '../../api';
+import useApiRequest from '../../hooks/useApiRequest';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [monthlySales, setMonthlySales] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        setError('');
+  const statsRequest = useApiRequest(
+    () => api.request('/admin/dashboard/stats/', {}),
+    [],
+    {
+      immediate: true,
+      initialData: null,
+      cacheKey: 'admin:dashboard:stats',
+      cacheTtlMs: 60 * 1000,
+    }
+  );
 
-        // Fetch dashboard stats
-        const statsResponse = await api.request('/admin/dashboard/stats/', {});
-        setStats(statsResponse);
+  const salesRequest = useApiRequest(
+    () => api.request('/admin/sales/monthly/', {}),
+    [],
+    {
+      immediate: true,
+      initialData: [],
+      cacheKey: 'admin:dashboard:sales-monthly',
+      cacheTtlMs: 60 * 1000,
+    }
+  );
 
-        // Fetch monthly sales data
-        const salesResponse = await api.request('/admin/sales/monthly/', {});
-        // Format the data for recharts
-        const formattedSales = Array.isArray(salesResponse.results)
-          ? salesResponse.results
-          : Array.isArray(salesResponse)
-          ? salesResponse
-          : [];
+  const isLoading = statsRequest.loading || salesRequest.loading;
+  const stats = statsRequest.data;
 
-        setMonthlySales(formattedSales);
-      } catch (err) {
-        setError(err?.payload?.detail || err?.message || 'Failed to load dashboard');
-        console.error('Dashboard error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const monthlySales = useMemo(() => {
+    const salesResponse = salesRequest.data;
+    return Array.isArray(salesResponse?.results)
+      ? salesResponse.results
+      : Array.isArray(salesResponse)
+      ? salesResponse
+      : [];
+  }, [salesRequest.data]);
 
-    fetchDashboardData();
-  }, []);
+  const hasError = Boolean(statsRequest.error || salesRequest.error);
+
+  const handleRetry = async () => {
+    await Promise.allSettled([
+      statsRequest.execute(),
+      salesRequest.execute(),
+    ]);
+  };
 
   if (isLoading) {
     return (
@@ -89,9 +98,16 @@ export default function AdminDashboard() {
       </div>
 
       {/* Error Message */}
-      {error && (
+      {hasError && (
         <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-red-400">
-          {error}
+          <p className="font-semibold">Something went wrong. Please try again.</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="mt-3 rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -166,7 +182,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-slate-400">Orders This Month</p>
                 <p className="mt-2 text-3xl font-bold text-white">
-                  {stats.orders_this_month || 0}
+                  {stats.total_orders_this_month || 0}
                 </p>
               </div>
               <span className="text-4xl">🛒</span>
@@ -243,15 +259,15 @@ export default function AdminDashboard() {
                     borderRadius: '8px',
                     color: '#f1f5f9',
                   }}
-                  formatter={(value) => `₹${value.toLocaleString('en-IN')}`}
+                  formatter={(value) => `₹${Number(value || 0).toLocaleString('en-IN')}`}
                   labelStyle={{ color: '#cbd5e1' }}
                 />
                 <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                <Bar dataKey="revenue" fill="#e8b86d" name="Revenue" radius={[8, 8, 0, 0]}>
+                <Bar dataKey="total_revenue" fill="#e8b86d" name="Revenue" radius={[8, 8, 0, 0]}>
                   {monthlySales.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={entry.revenue > 150000 ? '#10b981' : '#e8b86d'}
+                      fill={Number(entry.total_revenue || 0) > 150000 ? '#10b981' : '#e8b86d'}
                     />
                   ))}
                 </Bar>

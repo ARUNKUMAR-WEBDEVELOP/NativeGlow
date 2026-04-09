@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
-import { getPrimaryProductImage, getProductImageUrls } from '../../utils/imageUrl';
+import { applyImageFallback, getPrimaryProductImage, getProductImageUrls } from '../../utils/imageUrl';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 function getNextPath(vendorSlug, productId) {
@@ -303,6 +303,7 @@ function ProductDetailPage() {
                   src={mainImage}
                   alt={product.name}
                   className="w-full h-96 object-cover transition-transform duration-300 group-hover:scale-105 lg:h-[500px]"
+                  onError={applyImageFallback}
                 />
               ) : (
                 <div className="w-full h-96 lg:h-[500px] flex items-center justify-center bg-gray-100 text-gray-400">
@@ -336,6 +337,7 @@ function ProductDetailPage() {
                         src={imgSrc}
                         alt={`${product.name} ${idx + 1}`}
                         className="h-full w-full object-cover"
+                        onError={applyImageFallback}
                       />
                     </button>
                   ))}
@@ -663,6 +665,7 @@ function ProductDetailPage() {
               src={activeLightboxImage}
               alt={product.name}
               className="max-h-[92vh] w-full object-contain"
+              onError={applyImageFallback}
               onClick={(event) => event.stopPropagation()}
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent p-4 text-white">
