@@ -272,6 +272,8 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
 
   const handleLogout = () => {
     localStorage.removeItem('vendor_token');
+    localStorage.removeItem('nativeglow_vendor_tokens');
+    localStorage.removeItem('vendor_slug');
     navigate('/vendor/login');
   };
 
@@ -561,7 +563,7 @@ export default function VendorDashboard() {
     vendorSession,
     storedVendorSlug,
   });
-  const activeVendorToken = vendorSession?.access || localStorage.getItem('vendor_token') || '';
+  const activeVendorToken = vendorSession?.access || '';
   const vendorCacheIdentity = resolvedVendorSlug || tokenPayload?.vendor_slug || storedVendorSlug || 'current';
   const vendorTokenFingerprint = activeVendorToken ? activeVendorToken.slice(-16) : 'anon';
 
@@ -610,7 +612,7 @@ export default function VendorDashboard() {
     }
   }, [routeVendorSlug, resolvedVendorSlug, navigate]);
   useEffect(() => {
-    const token = vendorSession?.access || localStorage.getItem('vendor_token');
+    const token = vendorSession?.access;
     if (!token) {
       navigate('/vendor/login');
       return;
@@ -620,6 +622,7 @@ export default function VendorDashboard() {
       if (err?.status === 401) {
         localStorage.removeItem('vendor_token');
         localStorage.removeItem('nativeglow_vendor_tokens');
+        localStorage.removeItem('vendor_slug');
         navigate('/vendor/login');
       }
     });
@@ -732,7 +735,7 @@ export default function VendorDashboard() {
           <button
             type="button"
             onClick={() => {
-              const token = vendorSession?.access || localStorage.getItem('vendor_token');
+              const token = vendorSession?.access;
               if (!token) {
                 navigate('/vendor/login');
                 return;

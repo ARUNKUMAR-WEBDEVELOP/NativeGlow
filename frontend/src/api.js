@@ -491,13 +491,47 @@ async function adminRequest(path, options = {}) {
     throw new Error('Admin authentication required.');
   }
 
-  return request(path, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${adminTokens.access}`,
-    },
-  });
+  try {
+    return await request(path, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${adminTokens.access}`,
+      },
+    });
+  } catch (error) {
+    if (error?.status !== 401 || !adminTokens?.refresh) {
+      throw error;
+    }
+
+    let refreshed;
+    try {
+      refreshed = await api.refresh(adminTokens.refresh);
+    } catch {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_refresh_token');
+      throw new Error('Session expired. Please login again.');
+    }
+
+    const nextAccess = refreshed?.access;
+    const nextRefresh = refreshed?.refresh || adminTokens.refresh;
+    if (!nextAccess) {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_refresh_token');
+      throw new Error('Session expired. Please login again.');
+    }
+
+    localStorage.setItem('admin_token', nextAccess);
+    localStorage.setItem('admin_refresh_token', nextRefresh);
+
+    return request(path, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${nextAccess}`,
+      },
+    });
+  }
 }
 
 export default api;

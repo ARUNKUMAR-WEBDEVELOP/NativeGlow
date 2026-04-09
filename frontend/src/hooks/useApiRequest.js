@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const requestDataCache = new Map();
 const FRIENDLY_ERROR_MESSAGE = 'Something went wrong. Please try again.';
@@ -43,6 +43,11 @@ export default function useApiRequest(fetcher, deps = [], options = {}) {
   const [loading, setLoading] = useState(Boolean(immediate && !initialCached.hit));
   const [error, setError] = useState('');
   const [data, setData] = useState(initialCached.hit ? initialCached.value : initialData);
+  const fetcherRef = useRef(fetcher);
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
 
   const run = useCallback(async (...args) => {
     setLoading(true);
@@ -51,7 +56,7 @@ export default function useApiRequest(fetcher, deps = [], options = {}) {
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const result = await fetcher(...args);
+        const result = await fetcherRef.current(...args);
         setData(result);
         writeCache(cacheKey, result);
         return result;
@@ -67,7 +72,7 @@ export default function useApiRequest(fetcher, deps = [], options = {}) {
       FRIENDLY_ERROR_MESSAGE;
     setError(message);
     throw lastError;
-  }, [cacheKey, fetcher]);
+  }, [cacheKey]);
 
   useEffect(() => {
     if (!immediate) {
