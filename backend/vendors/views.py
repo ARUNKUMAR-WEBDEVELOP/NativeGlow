@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework import generics, permissions, status, exceptions
+from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -789,6 +790,11 @@ class VendorProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     authentication_classes = (VendorJWTAuthentication,)
 
+    class ServiceUnavailable(APIException):
+        status_code = 503
+        default_detail = 'Database is temporarily unavailable. Please try again in a moment.'
+        default_code = 'service_unavailable'
+
     def get_object(self):
         """
         Get the authenticated Vendor object.
@@ -801,9 +807,6 @@ class VendorProfileView(generics.RetrieveUpdateAPIView):
 
         # Extract vendor_id from JWT token
         try:
-            from rest_framework_simplejwt.utils import decode_complete_token
-            from rest_framework_simplejwt.settings import api_settings
-            
             # Get token from request
             if not hasattr(self.request, 'auth') or self.request.auth is None:
                 raise exceptions.NotAuthenticated('No JWT token provided')
@@ -812,15 +815,19 @@ class VendorProfileView(generics.RetrieveUpdateAPIView):
             # Try to access vendor_id or user_id from validated_data
             try:
                 vendor_id = self.request.auth.get('vendor_id') or self.request.auth.get('user_id')
-            except:
+            except Exception:
                 # If token doesn't contain vendor_id, we need another way
                 # For now, assume the vendor information is in the request
                 raise exceptions.NotAuthenticated('Invalid token')
 
             return Vendor.objects.get(id=vendor_id)
+        except (DatabaseError, OperationalError):
+            raise self.ServiceUnavailable('Database is temporarily unavailable. Please try again in a moment.')
         except Vendor.DoesNotExist:
             raise exceptions.NotFound('Vendor profile not found')
-        except Exception as e:
+        except APIException:
+            raise
+        except Exception:
             # Fallback: return 401 if token validation fails
             raise exceptions.NotAuthenticated('Authentication failed')
 

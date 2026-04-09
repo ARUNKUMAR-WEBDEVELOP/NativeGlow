@@ -70,6 +70,7 @@ function resolveVendorApproval(tokens, tokenPayload) {
 function VendorLogin() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
@@ -159,13 +160,24 @@ function VendorLogin() {
           onChange={onChange}
           placeholder="Email"
         />
-        <NeoInput
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={onChange}
-          placeholder="Password"
-        />
+        <div className="relative">
+          <NeoInput
+            type={showPassword ? 'text' : 'password'}
+            name="password"
+            value={form.password}
+            onChange={onChange}
+            placeholder="Password"
+            className="pr-16"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
 
         <NeoButton
           type="submit"

@@ -1,7 +1,15 @@
+from django.db import DatabaseError, OperationalError, close_old_connections
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
+from rest_framework.exceptions import APIException
 
 from .models import Vendor
+
+
+class ServiceUnavailable(APIException):
+    status_code = 503
+    default_detail = 'Service is temporarily unavailable. Please try again in a moment.'
+    default_code = 'service_unavailable'
 
 
 class VendorJWTAuthentication(JWTAuthentication):
@@ -32,6 +40,14 @@ class VendorJWTAuthentication(JWTAuthentication):
         try:
             vendor = Vendor.objects.get(id=vendor_id)
             request.vendor = vendor
+        except (DatabaseError, OperationalError):
+            # A brief reconnect attempt helps with transient pooler hiccups.
+            close_old_connections()
+            try:
+                vendor = Vendor.objects.get(id=vendor_id)
+                request.vendor = vendor
+            except (DatabaseError, OperationalError):
+                raise ServiceUnavailable('Database is temporarily unavailable. Please try again in a moment.')
         except Vendor.DoesNotExist:
             raise AuthenticationFailed('Vendor not found.')
 

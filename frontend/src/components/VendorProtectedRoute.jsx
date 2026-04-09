@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { api } from '../api';
 
 function parseJwtPayload(token) {
   if (!token || typeof token !== 'string') {
@@ -17,20 +19,26 @@ function parseJwtPayload(token) {
   }
 }
 
-function hasValidVendorSession() {
-  try {
-    const session = JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
-    const token = session?.access;
-    const payload = parseJwtPayload(token);
-
-    if (!token || !payload?.exp) {
-      return false;
-    }
-
-    return payload.exp * 1000 > Date.now();
-  } catch {
+function isTokenActive(token, graceMs = 0) {
+  const payload = parseJwtPayload(token);
+  if (!token || !payload?.exp) {
     return false;
   }
+  return payload.exp * 1000 > Date.now() + graceMs;
+}
+
+function getStoredVendorSession() {
+  try {
+    return JSON.parse(localStorage.getItem('nativeglow_vendor_tokens') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function clearVendorSession() {
+  localStorage.removeItem('nativeglow_vendor_tokens');
+  localStorage.removeItem('vendor_token');
+  localStorage.removeItem('vendor_slug');
 }
 
 function getVendorSlugFromSession() {
@@ -52,10 +60,75 @@ function getVendorSlugFromSession() {
 function VendorProtectedRoute({ children }) {
   const location = useLocation();
   const { vendor_slug: routeVendorSlug } = useParams();
+  const [authState, setAuthState] = useState('checking');
 
-  if (!hasValidVendorSession()) {
-    localStorage.removeItem('nativeglow_vendor_tokens');
-    localStorage.removeItem('vendor_slug');
+  useEffect(() => {
+    let isMounted = true;
+
+    async function validateVendorSession() {
+      const session = getStoredVendorSession();
+      if (!session) {
+        if (isMounted) {
+          setAuthState('expired');
+        }
+        return;
+      }
+
+      if (isTokenActive(session.access, 10 * 1000)) {
+        if (isMounted) {
+          setAuthState('valid');
+        }
+        return;
+      }
+
+      if (!session.refresh || !isTokenActive(session.refresh, 10 * 1000)) {
+        if (isMounted) {
+          setAuthState('expired');
+        }
+        return;
+      }
+
+      try {
+        const refreshed = await api.refresh(session.refresh);
+        const nextSession = {
+          ...session,
+          access: refreshed?.access,
+          refresh: refreshed?.refresh || session.refresh,
+        };
+        localStorage.setItem('nativeglow_vendor_tokens', JSON.stringify(nextSession));
+        if (nextSession.access) {
+          localStorage.setItem('vendor_token', nextSession.access);
+        }
+        if (isMounted) {
+          setAuthState('valid');
+        }
+      } catch {
+        if (isMounted) {
+          setAuthState('expired');
+        }
+      }
+    }
+
+    setAuthState('checking');
+    validateVendorSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [location.pathname]);
+
+  if (authState === 'checking') {
+    return (
+      <section className="mx-auto max-w-4xl px-4 py-10">
+        <div className="rounded-xl border border-violet-200 bg-white/80 px-4 py-3 text-sm text-zinc-700 shadow-sm">
+          Verifying your vendor session...
+        </div>
+      </section>
+    );
+  }
+
+  if (authState !== 'valid') {
+    clearVendorSession();
     return <Navigate to="/vendor/login" state={{ from: location.pathname }} replace />;
   }
 
