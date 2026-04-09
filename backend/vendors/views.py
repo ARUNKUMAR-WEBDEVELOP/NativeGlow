@@ -470,8 +470,9 @@ class VendorLoginView(APIView):
                 elif isinstance(serializer.errors.get('detail'), str):
                     message = serializer.errors.get('detail')
 
+            normalized = message.lower()
             pending_phrase = 'pending admin approval'
-            if pending_phrase in message.lower():
+            if pending_phrase in normalized:
                 email = (request.data.get('email') or '').strip().lower()
                 vendor = Vendor.objects.filter(email__iexact=email).first()
                 payload = {
@@ -490,7 +491,19 @@ class VendorLoginView(APIView):
                     }
                 return Response(payload, status=status.HTTP_403_FORBIDDEN)
 
-            raise exceptions.ValidationError(serializer.errors)
+            if 'deactivated' in normalized:
+                return Response(
+                    {'detail': message or 'Your account has been deactivated.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if 'invalid email or password' in normalized:
+                return Response(
+                    {'detail': message or 'Invalid email or password.'},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         vendor = serializer.validated_data.get('vendor')
 
