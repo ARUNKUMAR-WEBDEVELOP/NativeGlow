@@ -21,8 +21,31 @@ const API = axios.create({
   },
 })
 
+function isPublicVendorAuthRequest(config) {
+  const method = String(config?.method || 'get').toUpperCase()
+  const url = String(config?.url || '')
+  const normalizedUrl = url.replace(/\/+/g, '/')
+
+  if (method === 'POST' && (normalizedUrl.includes('/api/vendor/register/') || normalizedUrl.includes('/api/vendor/login/'))) {
+    return true
+  }
+
+  if (method === 'GET' && normalizedUrl.includes('/api/vendor/approval-status/')) {
+    return true
+  }
+
+  return false
+}
+
 API.interceptors.request.use(
   (config) => {
+    if (isPublicVendorAuthRequest(config)) {
+      if (config?.headers?.Authorization) {
+        delete config.headers.Authorization
+      }
+      return config
+    }
+
     let vendorToken = localStorage.getItem('vendor_token')
     if (!vendorToken) {
       try {

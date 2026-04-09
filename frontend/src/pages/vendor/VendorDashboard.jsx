@@ -150,7 +150,7 @@ function Sidebar({ isOpen, onClose, vendorData, activeTab, onSelectTab, onOpenSt
             style={{ backgroundColor: theme.colors.primaryGlow }}
           >
             {logoUrl ? (
-              <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-1" />
+              <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
             ) : (
               <span className="font-bold text-white">{brandInitials}</span>
             )}
@@ -275,7 +275,7 @@ function Header({ pageTitle, vendorData, onMenuToggle, onOpenStoreAbout }) {
               style={{ backgroundColor: theme.colors.primaryGlow }}
             >
               {logoUrl ? (
-                <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-0.5" />
+                <img src={logoUrl} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
               ) : (
                 brandInitials
               )}
@@ -734,6 +734,12 @@ export default function VendorDashboard() {
     setBrandImageUploading(true);
     try {
       const uploadedUrl = await uploadVendorBrandAsset(file, token, 'brand');
+      const nextForm = {
+        ...brandForm,
+        site_logo: uploadedUrl,
+        site_banner_image: uploadedUrl,
+      };
+
       setBrandForm((prev) => ({
         ...prev,
         site_logo: uploadedUrl,
@@ -744,7 +750,40 @@ export default function VendorDashboard() {
         site_logo: uploadedUrl,
         site_banner_image: uploadedUrl,
       }));
-      setToastMessage('Brand image uploaded. Save profile to publish it on your store.');
+
+      const saveRes = await fetch(`${API_BASE}/vendor/me/update/`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          site_theme: nextForm.site_theme,
+          site_logo: nextForm.site_logo,
+          site_banner_image: nextForm.site_banner_image,
+          about_vendor: nextForm.about_vendor,
+          youtube_url: nextForm.youtube_url,
+          instagram_url: nextForm.instagram_url,
+          whatsapp_display: Boolean(nextForm.whatsapp_display),
+        }),
+      });
+
+      if (!saveRes.ok) {
+        let detail = `Failed to save brand image (${saveRes.status})`;
+        try {
+          const data = await saveRes.json();
+          detail = data?.detail || data?.error || JSON.stringify(data);
+        } catch {
+          // keep fallback detail
+        }
+        throw new Error(detail);
+      }
+
+      const updated = await saveRes.json();
+      setVendorData((prev) => ({ ...prev, ...updated }));
+      setBrandForm((prev) => ({ ...prev, ...updated }));
+
+      setToastMessage('Brand image saved and visible on dashboard and store pages.');
       window.setTimeout(() => setToastMessage(''), 2600);
     } catch (err) {
       setToastMessage(err?.message || 'Could not upload brand image.');
@@ -884,7 +923,7 @@ export default function VendorDashboard() {
               >
                 <div className="mx-auto h-24 w-24 overflow-hidden rounded-full" style={{ backgroundColor: `${theme.colors.primaryGlow}20` }}>
                   {getVendorBrandImage(vendorData) ? (
-                    <img src={getVendorBrandImage(vendorData)} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-contain bg-white p-1" />
+                    <img src={getVendorBrandImage(vendorData)} alt={vendorData?.business_name || 'Brand'} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-2xl font-bold" style={{ color: theme.colors.primary }}>
                       {getBrandInitials(vendorData?.business_name)}
@@ -1410,7 +1449,7 @@ export default function VendorDashboard() {
                     <div className="mt-3 flex items-center gap-3">
                       <div className="h-14 w-14 overflow-hidden rounded-full bg-zinc-100">
                         {getVendorBrandImage(brandForm) ? (
-                          <img src={getVendorBrandImage(brandForm)} alt="Brand logo" className="h-full w-full object-contain bg-white p-1" />
+                          <img src={getVendorBrandImage(brandForm)} alt="Brand logo" className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm font-bold text-zinc-600">
                             {getBrandInitials(vendorData?.business_name)}

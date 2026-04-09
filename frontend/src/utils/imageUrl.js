@@ -68,9 +68,14 @@ function extractImageValue(value) {
   if (typeof value === 'object') {
     return (
       value.image_url ||
+      value.product_image_url ||
+      value.primary_image ||
       value.image ||
+      value.product_image ||
       value.url ||
       value.src ||
+      value.media_url ||
+      value.file_url ||
       value.path ||
       value.filename ||
       value.file_name ||
@@ -88,8 +93,11 @@ export function getProductImageUrls(product) {
 
   const candidates = [
     product.primary_image,
+    product.product_image,
+    product.product_image_url,
     product.image,
     product.image_url,
+    product.media_url,
     product.thumbnail,
   ];
 

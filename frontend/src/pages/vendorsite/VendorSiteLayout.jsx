@@ -276,7 +276,7 @@ export default function VendorSiteLayout() {
                 <img
                   src={logoUrl}
                   alt={storeName}
-                  className="h-10 w-10 rounded-full border bg-white p-0.5 object-contain"
+                  className="h-10 w-10 rounded-full border object-cover"
                   style={{ borderColor: 'var(--primary)' }}
                 />
               ) : (

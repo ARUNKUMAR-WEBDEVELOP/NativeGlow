@@ -397,6 +397,7 @@ class VendorRegisterView(generics.CreateAPIView):
     """
     serializer_class = VendorRegisterSerializer
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
 
     def create(self, request, *args, **kwargs):
         """Handle registration with custom response including generated password."""
@@ -525,6 +526,7 @@ class VendorLoginView(APIView):
     }
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
 
     def post(self, request):
         """Authenticate vendor and issue JWT tokens."""
@@ -633,6 +635,7 @@ class VendorApprovalStatusView(APIView):
     Public endpoint for pending vendors to poll approval state.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
 
     def get(self, request):
         email = (request.query_params.get('email') or '').strip().lower()
@@ -691,6 +694,7 @@ class VendorActivateView(APIView):
     Exchange a one-time redirect token for fresh vendor JWT access token.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
 
     def get(self, request):
         token = request.query_params.get('token', '').strip()

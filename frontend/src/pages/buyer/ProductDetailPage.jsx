@@ -161,6 +161,22 @@ function ProductDetailPage() {
   };
 
   useEffect(() => {
+    if (!actionMessage) {
+      return;
+    }
+
+    if (!actionMessage.toLowerCase().includes('added to cart')) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setActionMessage('');
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [actionMessage]);
+
+  useEffect(() => {
     if (!buyerAuthReady) {
       return;
     }
@@ -275,7 +291,7 @@ function ProductDetailPage() {
         
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600 mb-8">
-          <button onClick={() => navigate('/')} className="hover:text-emerald-600">Home</button>
+          <button onClick={() => navigate(`/store/${vendorSlug}`)} className="hover:text-emerald-600">Home</button>
           <span>/</span>
           <button 
             onClick={() => navigate(`/store/${vendorSlug}`)}

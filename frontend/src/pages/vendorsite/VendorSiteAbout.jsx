@@ -106,7 +106,7 @@ export default function VendorSiteAbout() {
       <section className="rounded-3xl border bg-white/85 p-8 text-center shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
         <div className="mx-auto h-24 w-24 overflow-hidden rounded-full border bg-slate-100" style={{ borderColor: 'var(--primary)' }}>
           {logo ? (
-            <img src={logo} alt={businessName} className="h-full w-full object-contain bg-white p-1" />
+            <img src={logo} alt={businessName} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xl font-bold" style={{ color: 'var(--primary)' }}>
               {String(businessName).slice(0, 2).toUpperCase()}

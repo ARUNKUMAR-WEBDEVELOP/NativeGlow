@@ -302,6 +302,7 @@ function App() {
           <Route path="products" element={<VendorSiteProducts />} />
           <Route path="about" element={<VendorSiteAbout />} />
           <Route path="track" element={<VendorSiteTrack />} />
+          <Route path="track/:orderCode" element={<VendorSiteTrack />} />
           <Route path="login" element={<VendorSiteLogin />} />
           <Route path="my-orders" element={<BuyerOrders />} />
           <Route path="cart" element={<VendorSiteCart />} />
