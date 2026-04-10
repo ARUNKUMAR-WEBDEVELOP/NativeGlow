@@ -7,6 +7,14 @@ function getApiBaseOrigin() {
   }
 }
 
+function getSupabaseProductsPublicBase() {
+  const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+  if (!rawUrl) {
+    return '';
+  }
+  return `${rawUrl.replace(/\/+$/, '')}/storage/v1/object/public/products`;
+}
+
 export function applyImageFallback(event) {
   const target = event?.currentTarget || event?.target;
   if (!target || typeof target !== 'object') {
@@ -34,6 +42,20 @@ export function resolveImageUrl(url) {
 
   if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
+  }
+
+  if (trimmed.startsWith('products/')) {
+    const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
+    if (supabaseProductsPublicBase) {
+      return `${supabaseProductsPublicBase}/${trimmed.slice('products/'.length)}`;
+    }
+  }
+
+  if (trimmed.startsWith('/products/')) {
+    const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
+    if (supabaseProductsPublicBase) {
+      return `${supabaseProductsPublicBase}/${trimmed.slice('/products/'.length)}`;
+    }
   }
 
   if (trimmed.startsWith('media/')) {
