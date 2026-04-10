@@ -119,19 +119,32 @@ def _count_uploaded_images(request):
     return count
 
 
-def _store_uploaded_image(uploaded_file):
-    """Persist an uploaded image and return a URL for ProductImage.image_url."""
+def _store_uploaded_image(uploaded_file, vendor_id):
+    """Persist an uploaded image under the vendor's product folder and return a URL."""
     base_name, extension = os.path.splitext(uploaded_file.name or 'image')
     safe_base_name = slugify(base_name) or 'image'
     safe_extension = (extension or '.jpg').lower()
-    target_path = f"products/gallery/{uuid4().hex}-{safe_base_name}{safe_extension}"
+    vendor_folder = vendor_id or 'unassigned'
+    target_path = f"products/{vendor_folder}/{safe_base_name}{safe_extension}"
     stored_path = default_storage.save(target_path, uploaded_file)
-    return default_storage.url(stored_path)
+    stored_url = default_storage.url(stored_path)
+
+    supabase_url = os.environ.get('SUPABASE_URL', '').strip()
+    if not supabase_url:
+        return stored_url
+
+    normalized_path = str(stored_path).lstrip('/')
+    if normalized_path.startswith('products/'):
+        normalized_path = normalized_path[len('products/'):]
+
+    public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/products/{normalized_path}"
+    return public_url
 
 
 def _sync_product_gallery(product, request):
     """Keep ProductImage rows in sync with primary + up to 3 extra images."""
     extra_images = _extract_additional_images(request)
+    vendor_id = getattr(product, 'vendor_id', None)
     product.images.all().delete()
 
     position = 1
@@ -153,7 +166,7 @@ def _sync_product_gallery(product, request):
     # Create ProductImage entries for extra images
     for uploaded_file in extra_images:
         try:
-            image_url = _store_uploaded_image(uploaded_file)
+            image_url = _store_uploaded_image(uploaded_file, vendor_id)
             if image_url:  # Only create if URL is not empty
                 ProductImage.objects.create(
                     product=product,

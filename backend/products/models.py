@@ -2,6 +2,16 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
+import os
+from django.utils.text import slugify
+
+
+def _vendor_product_upload_to(instance, filename):
+    vendor_id = getattr(instance, 'vendor_id', None) or getattr(getattr(instance, 'vendor', None), 'id', None) or 'unassigned'
+    base_name, extension = os.path.splitext(filename or 'image')
+    safe_base_name = slugify(base_name) or 'image'
+    safe_extension = (extension or '.jpg').lower()
+    return f'products/{vendor_id}/{safe_base_name}{safe_extension}'
 
 
 class Category(models.Model):
@@ -89,7 +99,7 @@ class Product(models.Model):
         default='pcs',
     )
     is_natural_certified = models.BooleanField(default=False)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = models.ImageField(upload_to=_vendor_product_upload_to, blank=True, null=True)
     category_type = models.CharField(
         max_length=20,
         choices=[
