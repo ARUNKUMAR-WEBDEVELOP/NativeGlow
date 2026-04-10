@@ -209,6 +209,22 @@ function ProductDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loggedIn, buyerAuthReady]);
 
+  const productHighlight = useMemo(() => {
+    const attrs = product?.product_attributes || {};
+    return (
+      attrs.garment_type ||
+      attrs.product_form ||
+      attrs.color ||
+      attrs.texture_or_finish ||
+      attrs.skin_type ||
+      attrs.flavor ||
+      attrs.material ||
+      product?.category ||
+      product?.category_name ||
+      'Product'
+    );
+  }, [product]);
+
   // Loading state
   if (loading) {
     return (
@@ -305,21 +321,6 @@ function ProductDetailPage() {
   const discountedPrice = Number(product.discounted_price || 0);
   const hasDiscount = discountedPrice > 0 && discountedPrice < basePrice;
   const currentPrice = (hasDiscount ? discountedPrice : basePrice) + variantExtraPrice;
-  const productHighlight = useMemo(() => {
-    const attrs = product.product_attributes || {};
-    return (
-      attrs.garment_type ||
-      attrs.product_form ||
-      attrs.color ||
-      attrs.texture_or_finish ||
-      attrs.skin_type ||
-      attrs.flavor ||
-      attrs.material ||
-      product.category ||
-      product.category_name ||
-      'Product'
-    );
-  }, [product]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-orange-50 pt-20 pb-20">
