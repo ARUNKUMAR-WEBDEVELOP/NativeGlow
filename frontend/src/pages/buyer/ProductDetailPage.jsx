@@ -51,6 +51,7 @@ function ProductDetailPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoggedIn: loggedIn, ready: buyerAuthReady } = useBuyerAuth();
+  const storeHomePath = vendorSlug ? `/store/${vendorSlug}` : '/';
 
   // State management
   const [product, setProduct] = useState(null);
@@ -257,7 +258,7 @@ function ProductDetailPage() {
           <h1 className="text-4xl font-bold text-gray-800 mb-4">Product Not Found</h1>
           <p className="text-gray-600 mb-8">The product you're looking for doesn't exist or has been removed.</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(storeHomePath)}
             className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition"
           >
             Back to Home
@@ -274,7 +275,7 @@ function ProductDetailPage() {
           <h1 className="text-4xl font-bold text-gray-800 mb-4">Product Unavailable</h1>
           <p className="text-gray-600 mb-8">This product is currently unavailable.</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(storeHomePath)}
             className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition"
           >
             Back to Home
@@ -291,7 +292,7 @@ function ProductDetailPage() {
           <h1 className="text-4xl font-bold text-gray-800 mb-4">Error Loading Product</h1>
           <p className="text-gray-600 mb-8">Something went wrong while loading this product.</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(storeHomePath)}
             className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition"
           >
             Back to Home

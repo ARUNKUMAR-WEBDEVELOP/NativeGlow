@@ -693,8 +693,7 @@ class PublicProductDetailView(APIView):
                 vendor__vendor_slug=vendor_slug,
                 status='approved',
                 is_active=True,
-                is_visible=True,
-                available_quantity__gt=0
+                is_visible=True
             )
         except Product.DoesNotExist:
             return Response(
