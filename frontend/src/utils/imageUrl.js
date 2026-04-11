@@ -12,7 +12,8 @@ function getSupabaseProductsPublicBase() {
   if (!rawUrl) {
     return '';
   }
-  return `${rawUrl.replace(/\/+$/, '')}/storage/v1/object/public/products`;
+  const bucket = (import.meta.env.VITE_SUPABASE_PRODUCT_BUCKET || 'vendor-assets').trim() || 'vendor-assets';
+  return `${rawUrl.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}`;
 }
 
 function mapLegacyAbsoluteProductUrlToSupabase(urlValue) {
@@ -49,14 +50,17 @@ export function applyImageFallback(event) {
   const currentSrc = String(target.src || '');
 
   // Retry once with alternate Supabase object path shape:
-  // - /public/products/products/{vendor}/{file}
-  // - /public/products/{vendor}/{file}
-  // Different environments may have either object key layout.
+  // - /public/{bucket}/products/{vendor}/{file}
+  // - /public/{bucket}/{vendor}/{file}
   if (currentSrc && !target.dataset?.supabasePathRetried) {
-    if (currentSrc.includes('/storage/v1/object/public/products/products/')) {
+    const bucket = (import.meta.env.VITE_SUPABASE_PRODUCT_BUCKET || 'vendor-assets').trim() || 'vendor-assets';
+    const prefixedShape = `/storage/v1/object/public/${bucket}/products/`;
+    const plainShape = `/storage/v1/object/public/${bucket}/`;
+
+    if (currentSrc.includes(prefixedShape)) {
       const retriedSrc = currentSrc.replace(
-        '/storage/v1/object/public/products/products/',
-        '/storage/v1/object/public/products/'
+        prefixedShape,
+        plainShape
       );
       if (retriedSrc !== currentSrc) {
         target.dataset.supabasePathRetried = '1';
@@ -65,10 +69,10 @@ export function applyImageFallback(event) {
       }
     }
 
-    if (currentSrc.includes('/storage/v1/object/public/products/')) {
+    if (currentSrc.includes(plainShape)) {
       const retriedSrc = currentSrc.replace(
-        '/storage/v1/object/public/products/',
-        '/storage/v1/object/public/products/products/'
+        plainShape,
+        prefixedShape
       );
       if (retriedSrc !== currentSrc) {
         target.dataset.supabasePathRetried = '1';

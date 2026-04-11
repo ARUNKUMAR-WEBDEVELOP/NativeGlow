@@ -132,9 +132,10 @@ def _store_uploaded_image(uploaded_file, vendor_id):
     supabase_url = os.environ.get('SUPABASE_URL', '').strip()
     if not supabase_url:
         return stored_url
+    bucket = (os.environ.get('SUPABASE_PRODUCT_IMAGES_BUCKET', 'vendor-assets') or 'vendor-assets').strip()
 
     normalized_path = str(stored_path).lstrip('/')
-    public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/products/{normalized_path}"
+    public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{normalized_path}"
     return public_url
 
 

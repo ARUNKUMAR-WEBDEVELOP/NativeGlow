@@ -41,10 +41,14 @@ def _extract_storage_path_from_url(url):
     parsed = urlparse(value)
     path = parsed.path or ""
 
-    marker = "/storage/v1/object/public/products/"
-    if marker in path:
-        relative = path.split(marker, 1)[1].lstrip("/")
-        return f"products/{relative}" if relative and not relative.startswith("products/") else relative
+    generic_marker = "/storage/v1/object/public/"
+    if generic_marker in path:
+        after_public = path.split(generic_marker, 1)[1].lstrip("/")
+        # Expected shape: {bucket}/{object_key}
+        parts = after_public.split("/", 1)
+        if len(parts) == 2:
+            relative = parts[1].lstrip("/")
+            return relative or None
 
     media_marker = "/media/"
     if media_marker in path:
@@ -54,9 +58,9 @@ def _extract_storage_path_from_url(url):
     return None
 
 
-def _public_products_url(storage_path, supabase_url):
+def _public_products_url(storage_path, supabase_url, bucket):
     normalized = str(storage_path).lstrip("/")
-    return f"{supabase_url.rstrip('/')}/storage/v1/object/public/products/{normalized}"
+    return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{normalized}"
 
 
 class Command(BaseCommand):
@@ -74,6 +78,7 @@ class Command(BaseCommand):
         dry_run = not apply_changes
 
         supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+        bucket = (os.environ.get("SUPABASE_PRODUCT_IMAGES_BUCKET", "vendor-assets") or "vendor-assets").strip()
 
         product_checked = 0
         product_updated = 0
@@ -145,7 +150,7 @@ class Command(BaseCommand):
                                 default_storage.delete(old_path)
 
                     if supabase_url:
-                        new_url = _public_products_url(new_path, supabase_url)
+                        new_url = _public_products_url(new_path, supabase_url, bucket)
                     else:
                         new_url = default_storage.url(new_path)
 
