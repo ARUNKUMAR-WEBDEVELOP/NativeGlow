@@ -15,6 +15,31 @@ function getSupabaseProductsPublicBase() {
   return `${rawUrl.replace(/\/+$/, '')}/storage/v1/object/public/products`;
 }
 
+function mapLegacyAbsoluteProductUrlToSupabase(urlValue) {
+  const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
+  if (!supabaseProductsPublicBase) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(urlValue);
+    const path = parsed.pathname || '';
+
+    if (path.startsWith('/products/')) {
+      return `${supabaseProductsPublicBase}/${path.slice('/products/'.length)}`;
+    }
+
+    // Handle older media-style absolute links like /media/products/{vendor}/{file}.
+    if (path.startsWith('/media/products/')) {
+      return `${supabaseProductsPublicBase}/${path.slice('/media/products/'.length)}`;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function applyImageFallback(event) {
   const target = event?.currentTarget || event?.target;
   if (!target || typeof target !== 'object') {
@@ -43,7 +68,12 @@ export function resolveImageUrl(url) {
   // Some records can carry Windows-style separators from legacy paths.
   const normalized = trimmed.replace(/\\/g, '/');
 
-  if (/^https?:\/\//i.test(normalized) || normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+  if (/^https?:\/\//i.test(normalized)) {
+    const remapped = mapLegacyAbsoluteProductUrlToSupabase(normalized);
+    return remapped || normalized;
+  }
+
+  if (normalized.startsWith('data:') || normalized.startsWith('blob:')) {
     return normalized;
   }
 
