@@ -134,9 +134,6 @@ def _store_uploaded_image(uploaded_file, vendor_id):
         return stored_url
 
     normalized_path = str(stored_path).lstrip('/')
-    if normalized_path.startswith('products/'):
-        normalized_path = normalized_path[len('products/'):]
-
     public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/products/{normalized_path}"
     return public_url
 

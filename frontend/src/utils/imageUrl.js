@@ -26,12 +26,12 @@ function mapLegacyAbsoluteProductUrlToSupabase(urlValue) {
     const path = parsed.pathname || '';
 
     if (path.startsWith('/products/')) {
-      return `${supabaseProductsPublicBase}/${path.slice('/products/'.length)}`;
+      return `${supabaseProductsPublicBase}${path}`;
     }
 
     // Handle older media-style absolute links like /media/products/{vendor}/{file}.
     if (path.startsWith('/media/products/')) {
-      return `${supabaseProductsPublicBase}/${path.slice('/media/products/'.length)}`;
+      return `${supabaseProductsPublicBase}/${path.slice('/media/'.length)}`;
     }
   } catch {
     return null;
@@ -80,14 +80,14 @@ export function resolveImageUrl(url) {
   if (normalized.startsWith('products/')) {
     const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
     if (supabaseProductsPublicBase) {
-      return `${supabaseProductsPublicBase}/${normalized.slice('products/'.length)}`;
+      return `${supabaseProductsPublicBase}/${normalized}`;
     }
   }
 
   if (normalized.startsWith('/products/')) {
     const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
     if (supabaseProductsPublicBase) {
-      return `${supabaseProductsPublicBase}/${normalized.slice('/products/'.length)}`;
+      return `${supabaseProductsPublicBase}${normalized}`;
     }
   }
 

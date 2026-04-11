@@ -56,8 +56,6 @@ def _extract_storage_path_from_url(url):
 
 def _public_products_url(storage_path, supabase_url):
     normalized = str(storage_path).lstrip("/")
-    if normalized.startswith("products/"):
-        normalized = normalized[len("products/") :]
     return f"{supabase_url.rstrip('/')}/storage/v1/object/public/products/{normalized}"
 
 
