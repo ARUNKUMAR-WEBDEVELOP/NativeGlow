@@ -40,42 +40,45 @@ export function resolveImageUrl(url) {
     return null;
   }
 
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-    return trimmed;
+  // Some records can carry Windows-style separators from legacy paths.
+  const normalized = trimmed.replace(/\\/g, '/');
+
+  if (/^https?:\/\//i.test(normalized) || normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+    return normalized;
   }
 
-  if (trimmed.startsWith('products/')) {
+  if (normalized.startsWith('products/')) {
     const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
     if (supabaseProductsPublicBase) {
-      return `${supabaseProductsPublicBase}/${trimmed.slice('products/'.length)}`;
+      return `${supabaseProductsPublicBase}/${normalized.slice('products/'.length)}`;
     }
   }
 
-  if (trimmed.startsWith('/products/')) {
+  if (normalized.startsWith('/products/')) {
     const supabaseProductsPublicBase = getSupabaseProductsPublicBase();
     if (supabaseProductsPublicBase) {
-      return `${supabaseProductsPublicBase}/${trimmed.slice('/products/'.length)}`;
+      return `${supabaseProductsPublicBase}/${normalized.slice('/products/'.length)}`;
     }
   }
 
-  if (trimmed.startsWith('media/')) {
-    return `${getApiBaseOrigin()}/${trimmed}`;
+  if (normalized.startsWith('media/')) {
+    return `${getApiBaseOrigin()}/${normalized}`;
   }
 
-  if (trimmed.startsWith('/media/')) {
-    return `${getApiBaseOrigin()}${trimmed}`;
+  if (normalized.startsWith('/media/')) {
+    return `${getApiBaseOrigin()}${normalized}`;
   }
 
-  if (trimmed.startsWith('/')) {
-    return `${getApiBaseOrigin()}${trimmed}`;
+  if (normalized.startsWith('/')) {
+    return `${getApiBaseOrigin()}${normalized}`;
   }
 
   // Most backend image fields are media-relative paths; handle bare filenames safely.
-  if (/\.(png|jpe?g|webp|gif|svg|bmp|avif)$/i.test(trimmed)) {
-    return `${getApiBaseOrigin()}/media/${trimmed.replace(/^\/+/, '')}`;
+  if (/\.(png|jpe?g|webp|gif|svg|bmp|avif)$/i.test(normalized)) {
+    return `${getApiBaseOrigin()}/media/${normalized.replace(/^\/+/, '')}`;
   }
 
-  return `${getApiBaseOrigin()}/${trimmed}`;
+  return `${getApiBaseOrigin()}/${normalized}`;
 }
 
 function extractImageValue(value) {
