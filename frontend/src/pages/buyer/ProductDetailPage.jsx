@@ -61,10 +61,12 @@ function ProductDetailPage() {
   const [expandedIngredients, setExpandedIngredients] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [lightboxImageIndex, setLightboxImageIndex] = useState(null);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [activeInfoTab, setActiveInfoTab] = useState('overview');
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   // Fetch product detail
   useEffect(() => {
@@ -210,6 +212,66 @@ function ProductDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loggedIn, buyerAuthReady]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadRecommendedProducts() {
+      if (!vendorSlug || !product?.id) {
+        if (active) {
+          setRecommendedProducts([]);
+        }
+        return;
+      }
+
+      const currentCategory = String(
+        product?.category || product?.category_name || product?.category_type || ''
+      ).trim().toLowerCase();
+
+      if (!currentCategory) {
+        if (active) {
+          setRecommendedProducts([]);
+        }
+        return;
+      }
+
+      if (active) {
+        setLoadingRecommendations(true);
+      }
+
+      try {
+        const storeData = await api.getVendorStore(vendorSlug);
+        const storeProducts = Array.isArray(storeData?.products) ? storeData.products : [];
+
+        const related = storeProducts
+          .filter((item) => Number(item?.id) !== Number(product.id))
+          .filter((item) => {
+            const category = String(
+              item?.category || item?.category_name || item?.category_type || ''
+            ).trim().toLowerCase();
+            return category && category === currentCategory;
+          })
+          .slice(0, 8);
+
+        if (active) {
+          setRecommendedProducts(related);
+        }
+      } catch {
+        if (active) {
+          setRecommendedProducts([]);
+        }
+      } finally {
+        if (active) {
+          setLoadingRecommendations(false);
+        }
+      }
+    }
+
+    loadRecommendedProducts();
+    return () => {
+      active = false;
+    };
+  }, [vendorSlug, product?.id, product?.category, product?.category_name, product?.category_type]);
+
   const productHighlight = useMemo(() => {
     const attrs = product?.product_attributes || {};
     return (
@@ -306,10 +368,6 @@ function ProductDetailPage() {
   const safeSelectedImageIndex =
     selectedImageIndex < galleryImages.length ? selectedImageIndex : 0;
   const mainImage = galleryImages.length > 0 ? galleryImages[safeSelectedImageIndex] : null;
-  const activeLightboxImage =
-    lightboxImageIndex !== null && galleryImages[lightboxImageIndex]
-      ? galleryImages[lightboxImageIndex]
-      : null;
   const ingredientsList = product.ingredients_list || [];
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
   const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
@@ -332,10 +390,10 @@ function ProductDetailPage() {
           <button onClick={() => navigate(`/store/${vendorSlug}`)} className="hover:text-emerald-600">Home</button>
           <span>/</span>
           <button 
-            onClick={() => navigate(`/store/${vendorSlug}`)}
+            onClick={() => navigate(`/store/${vendorSlug}/products`)}
             className="hover:text-emerald-600"
           >
-            {vendor.business_name}
+            Products
           </button>
           <span>/</span>
           <span className="text-gray-800 font-medium line-clamp-1">{product.name}</span>
@@ -346,43 +404,16 @@ function ProductDetailPage() {
           
           {/* Left Column - Images */}
           <div>
-            {/* Main Image */}
-            <button
-              type="button"
-              onClick={() => setLightboxImageIndex(selectedImageIndex)}
-              className="group relative mb-4 block w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5"
-            >
-              {mainImage ? (
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="w-full h-96 object-cover transition-transform duration-300 group-hover:scale-105 lg:h-[500px]"
-                  onError={applyImageFallback}
-                />
-              ) : (
-                <div className="w-full h-96 lg:h-[500px] flex items-center justify-center bg-gray-100 text-gray-400">
-                  No image available
-                </div>
-              )}
-              <span className="pointer-events-none absolute m-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white opacity-0 transition group-hover:opacity-100">
-                Click to zoom
-              </span>
-            </button>
-
-            {/* Thumbnail Gallery */}
-            {galleryImages.length > 1 && (
-              <>
-                <div className="flex gap-2 overflow-x-auto">
+            <div className="flex gap-3">
+              {galleryImages.length > 1 ? (
+                <div className="flex max-h-[500px] w-20 flex-shrink-0 flex-col gap-2 overflow-y-auto">
                   {galleryImages.map((imgSrc, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => {
-                        setSelectedImageIndex(idx);
-                        setLightboxImageIndex(idx);
-                      }}
-                      className={`flex-shrink-0 h-20 w-20 overflow-hidden rounded-lg border-2 transition ${
-                        selectedImageIndex === idx
+                      onClick={() => setSelectedImageIndex(idx)}
+                      className={`h-20 w-20 overflow-hidden rounded-lg border-2 transition ${
+                        safeSelectedImageIndex === idx
                           ? 'border-emerald-600'
                           : 'border-gray-200 hover:border-emerald-400'
                       }`}
@@ -396,9 +427,27 @@ function ProductDetailPage() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-gray-500">Click an image to view it full size, like a standard ecommerce gallery.</p>
-              </>
-            )}
+              ) : null}
+
+              {/* Main Image */}
+              <div className="group relative flex-1 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                {mainImage ? (
+                  <img
+                    src={mainImage}
+                    alt={product.name}
+                    className="w-full h-96 object-cover transition-transform duration-300 group-hover:scale-105 lg:h-[500px]"
+                    onError={applyImageFallback}
+                  />
+                ) : (
+                  <div className="w-full h-96 lg:h-[500px] flex items-center justify-center bg-gray-100 text-gray-400">
+                    No image available
+                  </div>
+                )}
+              </div>
+            </div>
+            {galleryImages.length > 1 ? (
+              <p className="mt-2 text-xs text-gray-500">Select thumbnails to change the main image.</p>
+            ) : null}
           </div>
 
           {/* Right Column - Product Info */}
@@ -639,77 +688,217 @@ function ProductDetailPage() {
               </p>
             </div>
 
-            {/* Seller Info Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Seller Information</h3>
-              <div className="space-y-3 mb-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Business</p>
-                  <p className="font-semibold text-gray-900">{vendor.business_name}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Seller</p>
+                  <p className="text-sm font-semibold text-gray-900">{vendor.business_name}</p>
                 </div>
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Location</p>
-                  <p className="font-semibold text-gray-900">📍 {vendor.city || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Status</p>
-                  <p className="inline-flex items-center text-green-700 font-semibold">
-                    ✅ Verified Seller
-                  </p>
-                </div>
+                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+                  Verified
+                </span>
               </div>
               <button
                 onClick={() => navigate(`/store/${vendorSlug}`)}
-                className="w-full py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50 transition font-medium"
+                className="mt-3 w-full rounded-lg border border-emerald-600 py-2 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-50"
               >
-                View Full Store →
+                View Full Store
               </button>
             </div>
           </div>
         </div>
 
-        {/* Product Details Section */}
+        {/* Product Info Section - Click-to-view, Flipkart style */}
         {(product.description || ingredientsList.length > 0 || attributeEntries.length > 0) && (
-          <div className="bg-white rounded-lg shadow-sm p-8 mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {product.description && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">About this product</h3>
-                  <p className="text-gray-700 leading-relaxed">{product.description}</p>
+          <div className="mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-4 py-3 sm:px-6">
+              <h2 className="text-xl font-bold text-gray-900">Product Information</h2>
+              <p className="mt-1 text-xs text-gray-500">Tap a section to view details</p>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto border-b border-gray-200 px-3 py-3 sm:px-6">
+              {[
+                { key: 'overview', label: 'Overview' },
+                { key: 'ingredients', label: 'Ingredients' },
+                { key: 'specs', label: 'Specifications' },
+                { key: 'seller', label: 'Seller Info' },
+                { key: 'payment', label: 'Payment' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveInfoTab(tab.key)}
+                  className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    activeInfoTab === tab.key
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-emerald-400 hover:text-emerald-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {activeInfoTab === 'overview' && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900">About this product</h3>
+                  <p className="text-sm leading-relaxed text-gray-700">{product.description || 'No description available.'}</p>
                 </div>
               )}
-              {ingredientsList.length > 0 && (
+
+              {activeInfoTab === 'ingredients' && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Ingredients</h3>
-                  <ul className="space-y-2">
-                    {ingredientsList.map((ing, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-emerald-600 font-bold">✓</span>
-                        <span className="text-gray-700">{ing}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className="mb-3 text-lg font-semibold text-gray-900">Key Ingredients</h3>
+                  {ingredientsList.length > 0 ? (
+                    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {ingredientsList.map((ing, idx) => (
+                        <li key={idx} className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                          <span className="mt-0.5 font-bold text-emerald-600">✓</span>
+                          <span>{ing}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-600">Ingredients are not listed for this product.</p>
+                  )}
                 </div>
               )}
-              {attributeEntries.length > 0 && (
-                <div className={product.description ? '' : 'md:col-span-2'}>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Specifications</h3>
+
+              {activeInfoTab === 'specs' && (
+                <div>
+                  <h3 className="mb-3 text-lg font-semibold text-gray-900">Specifications</h3>
+                  {attributeEntries.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {attributeEntries.map(([key, value]) => (
+                        <div key={key} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{formatAttributeLabel(key)}</p>
+                          <p className="mt-1 text-sm text-gray-800">{formatAttributeValue(value)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">No specifications available.</p>
+                  )}
+                </div>
+              )}
+
+              {activeInfoTab === 'seller' && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Seller Information</h3>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {attributeEntries.map(([key, value]) => (
-                      <div key={key} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {formatAttributeLabel(key)}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-800">{formatAttributeValue(value)}</p>
-                      </div>
-                    ))}
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Business</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">{vendor.business_name}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Location</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">{vendor.city || 'N/A'}</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => navigate(`/store/${vendorSlug}`)}
+                    className="rounded-lg border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-50"
+                  >
+                    Visit Seller Store
+                  </button>
+                </div>
+              )}
+
+              {activeInfoTab === 'payment' && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Information</h3>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {vendor.upi_id ? (
+                      <>
+                        UPI ID: <code className="rounded bg-white px-2 py-1 text-xs">{vendor.upi_id}</code>
+                      </>
+                    ) : (
+                      <>Contact seller for payment details.</>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Pay directly to the seller and use your payment reference when placing the order.
+                  </p>
                 </div>
               )}
             </div>
           </div>
         )}
+
+        {/* Recommended Products - Same Category */}
+        {loadingRecommendations || recommendedProducts.length > 0 ? (
+          <section className="mb-12">
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Recommended Products</h2>
+                <p className="text-sm text-gray-500">Similar items from the same category</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/store/${vendorSlug}/products`)}
+                className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-semibold text-emerald-600 hover:bg-emerald-50"
+              >
+                View All
+              </button>
+            </div>
+
+            {loadingRecommendations ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {[...Array(4)].map((_, idx) => (
+                  <div key={idx} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-3 shadow-sm animate-pulse">
+                    <div className="h-32 w-full rounded-lg bg-gray-200" />
+                    <div className="mt-3 h-3 w-3/4 rounded bg-gray-200" />
+                    <div className="mt-2 h-3 w-1/2 rounded bg-gray-200" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {recommendedProducts.map((item) => {
+                  const itemImage = getPrimaryProductImage(item);
+                  const itemName = item?.name || item?.title || 'Product';
+                  const itemPrice = Number(item?.discounted_price || item?.price || 0);
+                  const itemOriginal = Number(item?.price || 0);
+                  const itemHasDiscount = item?.discounted_price && itemPrice < itemOriginal;
+
+                  return (
+                    <article
+                      key={item.id}
+                      onClick={() => navigate(`/store/${vendorSlug}/product/${item.id}`)}
+                      className="cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <div className="relative h-32 overflow-hidden rounded-lg bg-gray-100 sm:h-40">
+                        {itemImage ? (
+                          <img
+                            src={itemImage}
+                            alt={itemName}
+                            className="h-full w-full object-cover"
+                            onError={applyImageFallback}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">No image</div>
+                        )}
+                      </div>
+
+                      <h3 className="mt-3 line-clamp-2 text-sm font-semibold text-gray-900">{itemName}</h3>
+
+                      {itemHasDiscount ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <p className="text-sm font-bold text-emerald-600">₹{itemPrice.toFixed(0)}</p>
+                          <p className="text-xs text-gray-400 line-through">₹{itemOriginal.toFixed(0)}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm font-bold text-emerald-600">₹{itemPrice.toFixed(0)}</p>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        ) : null}
 
         {/* Disclaimer */}
         <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
@@ -733,33 +922,6 @@ function ProductDetailPage() {
         />
       )}
 
-      {lightboxImageIndex !== null && activeLightboxImage ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4"
-          onClick={() => setLightboxImageIndex(null)}
-        >
-          <div className="relative max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-zinc-950 shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setLightboxImageIndex(null)}
-              className="absolute right-3 top-3 z-10 rounded-full bg-white/15 px-3 py-1 text-sm font-semibold text-white backdrop-blur hover:bg-white/25"
-            >
-              Close
-            </button>
-            <img
-              src={activeLightboxImage}
-              alt={product.name}
-              className="max-h-[92vh] w-full object-contain"
-              onError={applyImageFallback}
-              onClick={(event) => event.stopPropagation()}
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/75 to-transparent p-4 text-white">
-              <p className="text-sm font-semibold">{product.name}</p>
-              <p className="text-xs text-white/70">Image {lightboxImageIndex + 1} of {galleryImages.length}</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
