@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const STATUS_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -48,7 +49,7 @@ function ProductCard({
       <div className="relative mb-3 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/40">
         {product.image ? (
           <img
-            src={product.image}
+            src={resolveImageUrl(product.image)}
             alt={product.title || product.name || 'Product'}
             className="h-44 w-full object-cover"
           />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const TRACK_STEPS = ['Order Placed', 'Confirmed', 'Shipped', 'Delivered'];
 
@@ -245,7 +246,7 @@ function OrderTrackPage() {
                     <div className="h-28 w-full overflow-hidden rounded-lg bg-zinc-100 md:h-24 md:w-[110px]">
                       {order.product_image ? (
                         <img
-                          src={order.product_image}
+                          src={resolveImageUrl(order.product_image)}
                           alt={order.product_name}
                           className="h-full w-full object-cover"
                           loading="lazy"

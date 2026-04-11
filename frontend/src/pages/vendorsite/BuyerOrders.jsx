@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 import OrderStatusTimeline from '../../components/vendorsite/OrderStatusTimeline';
 import useApiRequest from '../../hooks/useApiRequest';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 function isShippedStatus(status) {
   const normalized = String(status || '').toLowerCase();
@@ -184,7 +185,7 @@ export default function BuyerOrders() {
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[96px_1fr]">
                 <div className="h-20 w-full overflow-hidden rounded-lg bg-zinc-100 sm:w-20">
                   {order.product_image ? (
-                    <img src={order.product_image} alt={order.product} className="h-full w-full object-cover" />
+                    <img src={resolveImageUrl(order.product_image)} alt={order.product} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs text-zinc-500">No Image</div>
                   )}

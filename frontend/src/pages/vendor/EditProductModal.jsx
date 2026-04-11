@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
 import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import { resolveImageUrl } from '../../utils/imageUrl';
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
@@ -194,7 +195,7 @@ function EditProductModal({ product, onClose, onSave, loading }) {
             <label className="block text-sm font-semibold text-zinc-800">Product Images (minimum 1, maximum 4)</label>
             {(product?.image || product?.primary_image) && !previewUrls.length ? (
               <img
-                src={product.image || product.primary_image}
+                src={resolveImageUrl(product.image || product.primary_image)}
                 alt={form.title || 'Current product image'}
                 className="h-24 w-24 rounded-lg border border-zinc-200 object-cover"
               />

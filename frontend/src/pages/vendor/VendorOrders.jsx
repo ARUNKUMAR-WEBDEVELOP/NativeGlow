@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -373,7 +374,7 @@ function VendorOrders() {
                   </div>
                   {order.product_image ? (
                     <img
-                      src={order.product_image}
+                      src={resolveImageUrl(order.product_image)}
                       alt={order.product_name}
                       className="h-16 w-16 rounded-2xl border border-zinc-200 object-cover"
                     />
