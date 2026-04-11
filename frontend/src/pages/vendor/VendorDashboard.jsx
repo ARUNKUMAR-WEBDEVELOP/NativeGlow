@@ -689,7 +689,7 @@ export default function VendorDashboard() {
         whatsapp_display: Boolean(brandForm.whatsapp_display),
       };
 
-      const res = await fetch(`${API_BASE}/vendor/me/update/`, {
+      const res = await fetch(`${API_BASE}/vendor/me/`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -751,7 +751,7 @@ export default function VendorDashboard() {
         site_banner_image: uploadedUrl,
       }));
 
-      const saveRes = await fetch(`${API_BASE}/vendor/me/update/`, {
+      const saveRes = await fetch(`${API_BASE}/vendor/me/`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

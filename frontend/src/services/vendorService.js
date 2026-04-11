@@ -5,7 +5,7 @@ export const registerVendor  = (data)      => API.post('/api/vendor/register/', 
 export const loginVendor     = (data)      => API.post('/api/vendor/login/', data)
 export const activateVendor  = (token)     => API.get(`/api/vendor/activate/?token=${token}`)
 export const getVendorMe     = ()          => API.get('/api/vendor/me/')
-export const updateVendorMe  = (data)      => API.put('/api/vendor/me/update/', data)
+export const updateVendorMe  = (data)      => API.put('/api/vendor/me/', data)
 
 // Products
 export const getMyProducts   = ()          => API.get('/api/vendor/products/')
