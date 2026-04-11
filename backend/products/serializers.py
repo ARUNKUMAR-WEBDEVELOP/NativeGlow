@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from django.core.files.storage import default_storage
 from django.utils.text import slugify
 from uuid import uuid4
+import requests
 import os
 from .models import Category, Product, ProductImage, ProductVariant
 from vendors.models import Vendor
@@ -119,24 +119,74 @@ def _count_uploaded_images(request):
     return count
 
 
-def _store_uploaded_image(uploaded_file, vendor_id):
-    """Persist an uploaded image under the vendor's product folder and return a URL."""
+def _get_product_images_bucket():
+    return (os.environ.get('SUPABASE_PRODUCT_IMAGES_BUCKET', 'vendor-assets') or 'vendor-assets').strip()
+
+
+def _resolve_public_product_url(storage_path):
+    if not storage_path:
+        return None
+    value = str(storage_path).strip().replace('\\', '/')
+    if value.startswith('http://') or value.startswith('https://'):
+        return value
+    supabase_url = os.environ.get('SUPABASE_URL', '').strip()
+    if not supabase_url:
+        return value
+    bucket = _get_product_images_bucket()
+    normalized = value.lstrip('/')
+    if normalized.startswith(f'{bucket}/'):
+        normalized = normalized[len(bucket) + 1 :]
+    if normalized.startswith('products/'):
+        normalized = normalized
+    else:
+        normalized = f'products/{normalized}'
+    return f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{normalized}"
+
+
+def _upload_product_image_to_supabase(uploaded_file, vendor_id):
+    """Upload a product image to Supabase Storage and return (storage_path, public_url)."""
     base_name, extension = os.path.splitext(uploaded_file.name or 'image')
     safe_base_name = slugify(base_name) or 'image'
     safe_extension = (extension or '.jpg').lower()
     vendor_folder = vendor_id or 'unassigned'
     target_path = f"products/{vendor_folder}/{safe_base_name}{safe_extension}"
-    stored_path = default_storage.save(target_path, uploaded_file)
-    stored_url = default_storage.url(stored_path)
-
     supabase_url = os.environ.get('SUPABASE_URL', '').strip()
-    if not supabase_url:
-        return stored_url
-    bucket = (os.environ.get('SUPABASE_PRODUCT_IMAGES_BUCKET', 'vendor-assets') or 'vendor-assets').strip()
+    service_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+    bucket = _get_product_images_bucket()
 
-    normalized_path = str(stored_path).lstrip('/')
-    public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{normalized_path}"
-    return public_url
+    if not supabase_url or not service_key:
+        raise serializers.ValidationError(
+            {'image': 'Supabase storage is not configured for product image uploads. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'}
+        )
+
+    upload_url = f"{supabase_url.rstrip('/')}/storage/v1/object/{bucket}/{target_path}"
+    content_type = uploaded_file.content_type or 'application/octet-stream'
+
+    try:
+        response = requests.post(
+            upload_url,
+            headers={
+                'apikey': service_key,
+                'Authorization': f'Bearer {service_key}',
+                'Content-Type': content_type,
+                'x-upsert': 'true',
+            },
+            data=uploaded_file.read(),
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        raise serializers.ValidationError({'image': f'Could not upload image to Supabase: {exc}'}) from exc
+
+    if not response.ok:
+        detail = response.text
+        try:
+            payload = response.json()
+            detail = payload.get('message') or payload.get('error') or payload.get('detail') or detail
+        except Exception:
+            pass
+        raise serializers.ValidationError({'image': f'Storage upload failed ({response.status_code}). {detail}'})
+
+    return target_path, _resolve_public_product_url(target_path)
 
 
 def _sync_product_gallery(product, request):
@@ -149,7 +199,7 @@ def _sync_product_gallery(product, request):
     # Create ProductImage for primary image if it exists and has a valid URL
     if product.image:
         try:
-            image_url = product.image.url
+            image_url = _resolve_public_product_url(getattr(product.image, 'name', '') or product.image)
             if image_url:  # Only create if URL is not empty
                 ProductImage.objects.create(
                     product=product,
@@ -164,7 +214,7 @@ def _sync_product_gallery(product, request):
     # Create ProductImage entries for extra images
     for uploaded_file in extra_images:
         try:
-            image_url = _store_uploaded_image(uploaded_file, vendor_id)
+            _, image_url = _upload_product_image_to_supabase(uploaded_file, vendor_id)
             if image_url:  # Only create if URL is not empty
                 ProductImage.objects.create(
                     product=product,
@@ -227,7 +277,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         if img:
             return _absolute_url(request, img.image_url)
         if obj.image:
-            return _absolute_url(request, obj.image.url)
+            return _absolute_url(request, _resolve_public_product_url(getattr(obj.image, 'name', '') or obj.image))
         return None
 
 
@@ -371,6 +421,7 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         
         vendor = self.context['request'].vendor  # Vendor extracted from JWT
         request = self.context.get('request')
+        image_file = validated_data.pop('image', None)
 
         uploaded_count = _count_uploaded_images(request)
         if uploaded_count < 1:
@@ -407,10 +458,9 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
 
         product = super().create(validated_data)
         
-        # Ensure primary image is saved from request.FILES if not already in validated_data
-        if request and request.FILES.get('image') and not product.image:
-            primary_image = request.FILES.get('image')
-            product.image = primary_image
+        if image_file:
+            storage_path, _ = _upload_product_image_to_supabase(image_file, vendor.id)
+            product.image.name = storage_path
             product.save(update_fields=['image'])
         
         _sync_product_gallery(product, request)
@@ -438,7 +488,7 @@ class VendorProductListSerializer(serializers.ModelSerializer):
         if img:
             return _absolute_url(request, img.image_url)
         if obj.image:
-            return _absolute_url(request, obj.image.url)
+            return _absolute_url(request, _resolve_public_product_url(getattr(obj.image, 'name', '') or obj.image))
         return None
 
     def get_discounted_price(self, obj):
@@ -497,6 +547,7 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         instance.admin_rejection_reason = ''
         variants_payload = validated_data.pop('variants_payload', None)
         request = self.context.get('request')
+        image_file = validated_data.pop('image', None)
         if request and request.FILES:
             uploaded_count = _count_uploaded_images(request)
             if uploaded_count > MAX_PRODUCT_IMAGES:
@@ -508,10 +559,9 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         
         instance.save()
         
-        # Ensure primary image is saved from request.FILES if provided
-        if request and request.FILES.get('image'):
-            primary_image = request.FILES.get('image')
-            instance.image = primary_image
+        if image_file:
+            storage_path, _ = _upload_product_image_to_supabase(image_file, instance.vendor_id)
+            instance.image.name = storage_path
             instance.save(update_fields=['image'])
         
         if request and request.FILES:
@@ -611,7 +661,7 @@ class PublicProductSerializer(serializers.ModelSerializer):
         if img:
             return _absolute_url(request, img.image_url)
         if obj.image:
-            return _absolute_url(request, obj.image.url)
+            return _absolute_url(request, _resolve_public_product_url(getattr(obj.image, 'name', '') or obj.image))
         return None
 
     def get_discounted_price(self, obj):
