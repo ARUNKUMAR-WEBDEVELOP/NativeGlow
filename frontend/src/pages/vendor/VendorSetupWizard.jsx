@@ -295,7 +295,7 @@ export default function VendorSetupWizard() {
       }
 
       await authRequest(
-        ['/vendor/me/update/', '/vendor/me/'],
+        ['/vendor/me/'],
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
