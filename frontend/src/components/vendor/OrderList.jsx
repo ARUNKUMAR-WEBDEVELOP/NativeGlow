@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { applyImageFallback, resolveImageUrl } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -352,9 +353,10 @@ function OrderList() {
                   </div>
                   {order.product_image ? (
                     <img
-                      src={order.product_image}
+                      src={resolveImageUrl(order.product_image)}
                       alt={order.product_name}
                       className="h-14 w-14 rounded-lg border border-zinc-200 object-cover"
+                      onError={applyImageFallback}
                     />
                   ) : (
                     <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500">

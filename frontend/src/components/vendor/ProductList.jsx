@@ -18,7 +18,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import EditProductModal from '../../pages/vendor/EditProductModal';
 import DiscountModal from '../../pages/vendor/DiscountModal';
 import SkeletonBlock from '../ui/SkeletonBlock';
-import { applyImageFallback } from '../../utils/imageUrl';
+import { applyImageFallback, resolveImageUrl } from '../../utils/imageUrl';
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -69,14 +69,14 @@ function getDiscountedPrice(product) {
 
 function getPrimaryImage(product) {
   if (product?.image) {
-    return product.image;
+    return resolveImageUrl(product.image);
   }
   if (product?.primary_image) {
-    return product.primary_image;
+    return resolveImageUrl(product.primary_image);
   }
   if (Array.isArray(product?.images) && product.images.length > 0) {
     const firstImage = product.images[0];
-    return firstImage?.image_url || firstImage?.image || null;
+    return resolveImageUrl(firstImage?.image_url || firstImage?.image || null);
   }
   return null;
 }
