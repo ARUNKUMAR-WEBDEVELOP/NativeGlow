@@ -46,6 +46,38 @@ export function applyImageFallback(event) {
     return;
   }
 
+  const currentSrc = String(target.src || '');
+
+  // Retry once with alternate Supabase object path shape:
+  // - /public/products/products/{vendor}/{file}
+  // - /public/products/{vendor}/{file}
+  // Different environments may have either object key layout.
+  if (currentSrc && !target.dataset?.supabasePathRetried) {
+    if (currentSrc.includes('/storage/v1/object/public/products/products/')) {
+      const retriedSrc = currentSrc.replace(
+        '/storage/v1/object/public/products/products/',
+        '/storage/v1/object/public/products/'
+      );
+      if (retriedSrc !== currentSrc) {
+        target.dataset.supabasePathRetried = '1';
+        target.src = retriedSrc;
+        return;
+      }
+    }
+
+    if (currentSrc.includes('/storage/v1/object/public/products/')) {
+      const retriedSrc = currentSrc.replace(
+        '/storage/v1/object/public/products/',
+        '/storage/v1/object/public/products/products/'
+      );
+      if (retriedSrc !== currentSrc) {
+        target.dataset.supabasePathRetried = '1';
+        target.src = retriedSrc;
+        return;
+      }
+    }
+  }
+
   // Prevent infinite loops if the fallback image also fails.
   target.onerror = null;
   target.src = '/placeholder-product.svg';
