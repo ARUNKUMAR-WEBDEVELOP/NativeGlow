@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
 import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import ProductVariantOptionsEditor from '../../components/vendor/ProductVariantOptionsEditor';
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
@@ -10,6 +11,8 @@ import {
   getEmptyProductAttributes,
   sanitizeVariantRows,
   sanitizeProductAttributes,
+  getCategorySizeOptions,
+  getCategoryColorOptions,
 } from '../../components/vendor/productTemplates';
 import { uploadVendorBrandAsset } from '../../utils/vendorBrandAsset';
 
@@ -106,6 +109,8 @@ export default function VendorSetupWizard() {
     images: [],
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
+    color_options: [],
+    size_options: getCategorySizeOptions('face_wash'),
   });
 
   const vendorSession = useMemo(() => getVendorSession(), []);
@@ -263,6 +268,8 @@ export default function VendorSetupWizard() {
     formData.append('unit', 'pcs');
     formData.append('product_attributes', JSON.stringify(productAttributes));
     formData.append('variants_payload', JSON.stringify(variantsPayload));
+    formData.append('color_options', JSON.stringify(productForm.color_options || []));
+    formData.append('size_options', JSON.stringify(productForm.size_options || []));
 
     if (!productForm.images || productForm.images.length === 0) {
       throw new Error('Please upload at least 1 product image.');
@@ -509,6 +516,7 @@ why you started..."
                       ...prev.product_attributes,
                     },
                     variants: getDefaultVariantRows(mappedType),
+                    size_options: getCategorySizeOptions(e.target.value),
                   }));
                 }}
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm"
@@ -584,6 +592,18 @@ why you started..."
               productType={productForm.product_type}
               variants={productForm.variants}
               onChange={(nextVariants) => setProductForm((prev) => ({ ...prev, variants: nextVariants }))}
+            />
+
+            <ProductVariantOptionsEditor
+              categoryType={productForm.category_type}
+              colorOptions={productForm.color_options}
+              sizeOptions={productForm.size_options}
+              onColorOptionsChange={(colorOptions) =>
+                setProductForm((prev) => ({ ...prev, color_options: colorOptions }))
+              }
+              onSizeOptionsChange={(sizeOptions) =>
+                setProductForm((prev) => ({ ...prev, size_options: sizeOptions }))
+              }
             />
 
             <input

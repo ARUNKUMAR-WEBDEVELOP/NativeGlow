@@ -476,3 +476,84 @@ export function getVariantPresetHelp(productType) {
       return 'Recommended variants: size, texture, or pack size.';
   }
 }
+
+// ============================================================================
+// SIZE OPTIONS BY CATEGORY
+// ============================================================================
+
+export const CATEGORY_SIZE_OPTIONS = {
+  // Men's Clothing
+  shirt: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  t_shirt: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  pants: ['28', '30', '32', '34', '36', '38', '40', '42'],
+  trousers: ['28', '30', '32', '34', '36', '38', '40', '42'],
+  track_pants: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  hoodie: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+  
+  // Women's Clothing
+  kurti: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  top: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  dress: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  leggings: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  
+  // Skincare & Beauty - Volume
+  face_wash: ['30ml', '50ml', '100ml', '150ml', '200ml'],
+  serum: ['15ml', '30ml', '50ml'],
+  moisturizer: ['30ml', '50ml', '100ml'],
+  hair_oil: ['100ml', '200ml', '500ml'],
+  
+  // Body Care - Volume
+  body_lotion: ['100ml', '200ml', '500ml'],
+  soap: ['50g', '75g', '100g', '125g'],
+  
+  // Cosmetics - Shade/Finish
+  cosmetics: ['Light', 'Medium', 'Dark'],
+  
+  // Accessories
+  accessories: ['One Size', 'Free Size'],
+  
+  // Food & Grocery
+  snacks: ['50g', '100g', '150g', '200g', '250g', '500g'],
+  groceries: ['250g', '500g', '1kg', '2kg', '5kg'],
+  
+  // Default
+  default: ['One Size'],
+};
+
+// ============================================================================
+// COMMON COLOR OPTIONS
+// ============================================================================
+
+export const COMMON_COLOR_OPTIONS = [
+  'Red', 'Blue', 'Green', 'Yellow', 'Orange', 'Purple', 'Pink', 'Brown', 'Black', 'White',
+  'Grey', 'Maroon', 'Navy', 'Olive', 'Teal', 'Gold', 'Silver', 'Beige', 'Cream', 'Khaki',
+  'Turquoise', 'Coral', 'Rose', 'Salmon', 'Peach', 'Lavender', 'Lime', 'Mint', 'Ivory', 'Charcoal',
+];
+
+export function getCategoryColorOptions(categoryType) {
+  const skinCareColors = ['Natural', 'Fair', 'Medium', 'Tan', 'Deep'];
+  const clothingColors = COMMON_COLOR_OPTIONS;
+  const foodColors = ['Natural', 'Mild', 'Hot', 'Extra Hot'];
+  
+  switch (categoryType) {
+    case 'cosmetics':
+      return ['Fair', 'Light', 'Medium', 'Deep', 'Very Deep'];
+    case 'clothing':
+    case 'accessories':
+      return clothingColors;
+    case 'food':
+    case 'snacks':
+      return foodColors;
+    case 'face_wash':
+    case 'serum':
+    case 'moisturizer':
+    case 'soap':
+      return skinCareColors;
+    default:
+      return COMMON_COLOR_OPTIONS;
+  }
+}
+
+export function getCategorySizeOptions(categoryType) {
+  return CATEGORY_SIZE_OPTIONS[categoryType] || CATEGORY_SIZE_OPTIONS.default;
+}

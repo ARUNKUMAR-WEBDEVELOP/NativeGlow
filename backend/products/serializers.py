@@ -397,7 +397,8 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
             'title', 'name', 'description', 'short_description',
             'category_type', 'ingredients', 'price', 'available_quantity',
             'image', 'is_natural_certified', 'sku', 'tags',
-            'product_type', 'unit', 'product_attributes', 'variants_payload'
+            'product_type', 'unit', 'product_attributes', 'variants_payload',
+            'color_options', 'size_options'
         )
 
     def validate_product_attributes(self, value):
@@ -504,7 +505,7 @@ class VendorProductListSerializer(serializers.ModelSerializer):
             'status', 'status_display', 'available', 'is_active',
             'is_natural_certified', 'rejection_reason', 'is_visible', 'is_featured',
             'product_type', 'product_attributes', 'unit',
-            'variants',
+            'variants', 'color_options', 'size_options',
             'created_at', 'updated_at'
         )
         read_only_fields = fields
@@ -524,7 +525,7 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
             'title', 'name', 'description', 'short_description',
             'category_type', 'ingredients', 'price', 'available_quantity',
             'image', 'is_natural_certified', 'tags', 'unit', 'product_type', 'product_attributes',
-            'variants_payload'
+            'variants_payload', 'color_options', 'size_options'
         )
 
     def validate_product_attributes(self, value):

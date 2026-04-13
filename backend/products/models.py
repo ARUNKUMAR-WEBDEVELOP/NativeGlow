@@ -145,6 +145,16 @@ class Product(models.Model):
     )
     seo_title = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=500, blank=True)
+    color_options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of available color options. E.g.: ["Red", "Blue", "Green"]'
+    )
+    size_options = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of available size options based on category. E.g.: ["S", "M", "L", "XL"] or ["28", "30", "32"] for pants'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
