@@ -62,6 +62,8 @@ function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   const [activeInfoTab, setActiveInfoTab] = useState('overview');
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
@@ -85,6 +87,10 @@ function ProductDetailPage() {
           });
           setQuantity(1);
           setSelectedVariantIndex(0);
+          const initialColors = Array.isArray(data.color_options) ? data.color_options : [];
+          const initialSizes = Array.isArray(data.size_options) ? data.size_options : [];
+          setSelectedColor(initialColors[0] || '');
+          setSelectedSize(initialSizes[0] || '');
           setActionMessage('');
         }
       } catch (err) {
@@ -145,9 +151,16 @@ function ProductDetailPage() {
       const baseUnitPrice = Number(product?.discounted_price ?? product?.price ?? 0);
       const variantExtraPrice = Number(selectedVariant?.additional_price || 0);
       const unitPrice = baseUnitPrice + variantExtraPrice;
+      const selectedOptionParts = [];
+      if (selectedColor) {
+        selectedOptionParts.push(`Color: ${selectedColor}`);
+      }
+      if (selectedSize) {
+        selectedOptionParts.push(`Size: ${selectedSize}`);
+      }
       const selectedVariantLabel = selectedVariant
-        ? `${selectedVariant.option_name}: ${selectedVariant.option_value}`
-        : '';
+        ? `${selectedVariant.option_name}: ${selectedVariant.option_value}${selectedOptionParts.length ? ` | ${selectedOptionParts.join(' | ')}` : ''}`
+        : selectedOptionParts.join(' | ');
       const existing = current.find((item) =>
         item.id === product.id && String(item.selected_variant_label || '') === selectedVariantLabel
       );
@@ -211,6 +224,10 @@ function ProductDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loggedIn, buyerAuthReady]);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedVariantIndex]);
 
   useEffect(() => {
     let active = true;
@@ -364,18 +381,24 @@ function ProductDetailPage() {
     );
   }
 
-  const galleryImages = getProductImageUrls(product);
-  const safeSelectedImageIndex =
-    selectedImageIndex < galleryImages.length ? selectedImageIndex : 0;
-  const mainImage = galleryImages.length > 0 ? galleryImages[safeSelectedImageIndex] : null;
   const ingredientsList = product.ingredients_list || [];
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
+  const selectedVariant = variantsList[selectedVariantIndex] || null;
+  const galleryImages = getProductImageUrls(product);
+  const selectedVariantImages = Array.isArray(selectedVariant?.image_urls)
+    ? selectedVariant.image_urls.filter(Boolean)
+    : [];
+  const activeGalleryImages = selectedVariantImages.length > 0 ? selectedVariantImages : galleryImages;
+  const safeSelectedImageIndex =
+    selectedImageIndex < activeGalleryImages.length ? selectedImageIndex : 0;
+  const mainImage = activeGalleryImages.length > 0 ? activeGalleryImages[safeSelectedImageIndex] : null;
+  const colorOptions = Array.isArray(product.color_options) ? product.color_options : [];
+  const sizeOptions = Array.isArray(product.size_options) ? product.size_options : [];
   const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
     const formatted = formatAttributeValue(value);
     return formatted !== '';
   });
   const basePrice = Number(product.price || 0);
-  const selectedVariant = variantsList[selectedVariantIndex] || null;
   const variantExtraPrice = Number(selectedVariant?.additional_price || 0);
   const discountedPrice = Number(product.discounted_price || 0);
   const hasDiscount = discountedPrice > 0 && discountedPrice < basePrice;
@@ -405,9 +428,9 @@ function ProductDetailPage() {
           {/* Left Column - Images */}
           <div>
             <div className="flex gap-3">
-              {galleryImages.length > 1 ? (
+              {activeGalleryImages.length > 1 ? (
                 <div className="flex max-h-[500px] w-20 flex-shrink-0 flex-col gap-2 overflow-y-auto">
-                  {galleryImages.map((imgSrc, idx) => (
+                  {activeGalleryImages.map((imgSrc, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -445,7 +468,7 @@ function ProductDetailPage() {
                 )}
               </div>
             </div>
-            {galleryImages.length > 1 ? (
+            {activeGalleryImages.length > 1 ? (
               <p className="mt-2 text-xs text-gray-500">Select thumbnails to change the main image.</p>
             ) : null}
           </div>
@@ -582,6 +605,56 @@ function ProductDetailPage() {
               </div>
             )}
 
+            {colorOptions.length > 0 ? (
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Choose Color</h3>
+                <div className="flex flex-wrap gap-2">
+                  {colorOptions.map((color) => {
+                    const active = selectedColor === color;
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                          active
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-emerald-400 hover:text-emerald-700'
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {sizeOptions.length > 0 ? (
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">Choose Size</h3>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((size) => {
+                    const active = selectedSize === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setSelectedSize(size)}
+                        className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                          active
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-emerald-400 hover:text-emerald-700'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             {/* Quantity Selector */}
             {product.available_quantity > 0 && (
               <div>
@@ -670,6 +743,16 @@ function ProductDetailPage() {
                     <p className="mt-1 text-sm text-gray-800">{formatVariantPrice(selectedVariant.additional_price)}</p>
                   </div>
                 </div>
+                {(selectedColor || selectedSize) ? (
+                  <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Chosen Options</p>
+                    <p className="mt-1 text-sm text-gray-800">
+                      {[selectedColor ? `Color: ${selectedColor}` : '', selectedSize ? `Size: ${selectedSize}` : '']
+                        .filter(Boolean)
+                        .join(' | ')}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -916,6 +999,9 @@ function ProductDetailPage() {
           product={product}
           vendor={vendor}
           quantity={quantity}
+          selectedVariantLabel={[selectedColor ? `Color: ${selectedColor}` : '', selectedSize ? `Size: ${selectedSize}` : '']
+            .filter(Boolean)
+            .join(' | ')}
           onClose={() => setShowOrderModal(false)}
           onSuccess={() => setShowOrderModal(false)}
           vendorSlug={vendorSlug}

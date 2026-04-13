@@ -10,6 +10,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
       sku_suffix: '',
       additional_price: '',
       stock: '',
+      image_positions: [],
     }))
     : [];
 
@@ -47,8 +48,19 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
         sku_suffix: '',
         additional_price: '',
         stock: '',
+        image_positions: [],
       },
     ]);
+  }
+
+  function toggleImagePosition(index, position) {
+    const row = rows[index] || {};
+    const existing = Array.isArray(row.image_positions) ? row.image_positions : [];
+    const hasPosition = existing.includes(position);
+    const nextPositions = hasPosition
+      ? existing.filter((item) => item !== position)
+      : [...existing, position].sort((a, b) => a - b);
+    updateRow(index, 'image_positions', nextPositions);
   }
 
   function removeRow(index) {
@@ -174,6 +186,34 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                 />
               </label>
+            </div>
+
+            <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+              <p className="mb-2 text-xs font-medium text-zinc-600">
+                Variant Images (optional): select image slots to show for this variant
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4].map((position) => {
+                  const selected = Array.isArray(row.image_positions) && row.image_positions.includes(position);
+                  return (
+                    <button
+                      key={`${index}-img-slot-${position}`}
+                      type="button"
+                      onClick={() => toggleImagePosition(index, position)}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                        selected
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-zinc-300 bg-white text-zinc-700 hover:border-indigo-400 hover:text-indigo-700'
+                      }`}
+                    >
+                      Image {position}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Example: for Red color variant choose image slots 1 and 2 if those images are red product photos.
+              </p>
             </div>
           </div>
         )) : (

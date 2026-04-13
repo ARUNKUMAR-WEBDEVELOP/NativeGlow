@@ -226,3 +226,20 @@ class ProductVariant(models.Model):
 
     def __str__(self):
         return f"{self.product.title} - {self.option_name}: {self.option_value}"
+
+
+class ProductVariantImage(models.Model):
+    """Optional mapping between a variant and one or more product gallery images."""
+
+    variant = models.ForeignKey(
+        ProductVariant, on_delete=models.CASCADE, related_name='image_mappings'
+    )
+    product_image = models.ForeignKey(
+        ProductImage, on_delete=models.CASCADE, related_name='variant_mappings'
+    )
+
+    class Meta:
+        unique_together = ('variant', 'product_image')
+
+    def __str__(self):
+        return f"{self.variant} -> image {self.product_image.position}"

@@ -419,6 +419,7 @@ export function getDefaultVariantRows(productType) {
     sku_suffix: '',
     additional_price: '',
     stock: '',
+    image_positions: [],
   }));
 }
 
@@ -430,6 +431,11 @@ export function sanitizeVariantRows(rows) {
       sku_suffix: String(row?.sku_suffix || '').trim(),
       additional_price: row?.additional_price === '' || row?.additional_price === null || row?.additional_price === undefined ? 0 : Number(row.additional_price),
       stock: row?.stock === '' || row?.stock === null || row?.stock === undefined ? 0 : Number(row.stock),
+      image_positions: Array.isArray(row?.image_positions)
+        ? row.image_positions
+            .map((position) => Number(position))
+            .filter((position) => Number.isInteger(position) && position > 0)
+        : [],
     }))
     .filter((row) => row.option_name && row.option_value);
 }
@@ -534,7 +540,11 @@ export function getClothingVariantRows(targetAudience, garmentType) {
   };
 
   const sizes = audienceMap[garment] || defaultMap[garment] || [];
-  return sizes.map((size) => ({ option_name: 'Size', option_value: size }));
+  return sizes.map((size) => ({
+    option_name: 'Size',
+    option_value: size,
+    image_positions: [],
+  }));
 }
 
 // ============================================================================

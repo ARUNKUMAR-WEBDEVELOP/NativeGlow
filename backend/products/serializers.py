@@ -3,7 +3,7 @@ from django.utils.text import slugify
 from uuid import uuid4
 import requests
 import os
-from .models import Category, Product, ProductImage, ProductVariant
+from .models import Category, Product, ProductImage, ProductVariant, ProductVariantImage
 from vendors.models import Vendor
 
 
@@ -19,6 +19,30 @@ PRODUCT_ATTRIBUTE_REQUIREMENTS = {
 }
 
 MAX_PRODUCT_IMAGES = 4
+
+
+def _normalize_variant_image_positions(value):
+    if value in (None, ''):
+        return []
+    if not isinstance(value, list):
+        raise serializers.ValidationError('image_positions must be a list of image position numbers.')
+
+    seen = set()
+    positions = []
+    for item in value:
+        try:
+            position = int(item)
+        except (TypeError, ValueError) as exc:
+            raise serializers.ValidationError('image_positions values must be integers.') from exc
+        if position < 1 or position > MAX_PRODUCT_IMAGES:
+            raise serializers.ValidationError(
+                f'image_positions values must be between 1 and {MAX_PRODUCT_IMAGES}.'
+            )
+        if position in seen:
+            continue
+        seen.add(position)
+        positions.append(position)
+    return positions
 
 
 def _is_missing_value(value):
@@ -84,6 +108,7 @@ def _normalize_variant_item(item):
         'sku_suffix': str(item.get('sku_suffix', '')).strip(),
         'additional_price': item.get('additional_price', 0) or 0,
         'stock': item.get('stock', 0) or 0,
+        'image_positions': _normalize_variant_image_positions(item.get('image_positions', [])),
     }
 
 
@@ -227,6 +252,33 @@ def _sync_product_gallery(product, request):
             print(f"Warning: Failed to save extra image for product {product.id}: {str(e)}")
 
 
+def _sync_variant_image_mappings(product, created_variant_pairs):
+    """Attach optional image-position mappings to newly-created variants."""
+    ProductVariantImage.objects.filter(variant__product=product).delete()
+
+    if not created_variant_pairs:
+        return
+
+    images_by_position = {
+        image.position: image
+        for image in product.images.all()
+    }
+
+    bulk_rows = []
+    for variant, normalized_variant_data in created_variant_pairs:
+        image_positions = normalized_variant_data.get('image_positions') or []
+        for position in image_positions:
+            mapped_image = images_by_position.get(position)
+            if mapped_image is None:
+                continue
+            bulk_rows.append(
+                ProductVariantImage(variant=variant, product_image=mapped_image)
+            )
+
+    if bulk_rows:
+        ProductVariantImage.objects.bulk_create(bulk_rows, ignore_conflicts=True)
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -246,12 +298,29 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
+    image_urls = serializers.SerializerMethodField()
+    image_positions = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductVariant
         fields = (
             'id', 'option_name', 'option_value',
             'sku_suffix', 'additional_price', 'stock',
+            'image_urls', 'image_positions',
         )
+
+    def get_image_urls(self, obj):
+        request = self.context.get('request')
+        rows = obj.image_mappings.select_related('product_image').all()
+        return [
+            _absolute_url(request, row.product_image.image_url)
+            for row in rows
+            if getattr(row.product_image, 'image_url', None)
+        ]
+
+    def get_image_positions(self, obj):
+        rows = obj.image_mappings.select_related('product_image').all()
+        return [row.product_image.position for row in rows]
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -466,8 +535,19 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
         
         _sync_product_gallery(product, request)
         if variants_payload:
+            created_variant_pairs = []
             for variant_data in variants_payload:
-                ProductVariant.objects.create(product=product, **variant_data)
+                image_positions = variant_data.get('image_positions', [])
+                variant = ProductVariant.objects.create(
+                    product=product,
+                    option_name=variant_data.get('option_name', ''),
+                    option_value=variant_data.get('option_value', ''),
+                    sku_suffix=variant_data.get('sku_suffix', ''),
+                    additional_price=variant_data.get('additional_price', 0),
+                    stock=variant_data.get('stock', 0),
+                )
+                created_variant_pairs.append((variant, {'image_positions': image_positions}))
+            _sync_variant_image_mappings(product, created_variant_pairs)
         return product
 
 
@@ -569,8 +649,19 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
             _sync_product_gallery(instance, request)
         if variants_payload is not None:
             instance.variants.all().delete()
+            created_variant_pairs = []
             for variant_data in variants_payload:
-                ProductVariant.objects.create(product=instance, **variant_data)
+                image_positions = variant_data.get('image_positions', [])
+                variant = ProductVariant.objects.create(
+                    product=instance,
+                    option_name=variant_data.get('option_name', ''),
+                    option_value=variant_data.get('option_value', ''),
+                    sku_suffix=variant_data.get('sku_suffix', ''),
+                    additional_price=variant_data.get('additional_price', 0),
+                    stock=variant_data.get('stock', 0),
+                )
+                created_variant_pairs.append((variant, {'image_positions': image_positions}))
+            _sync_variant_image_mappings(instance, created_variant_pairs)
         return instance
 
 
@@ -644,6 +735,7 @@ class PublicProductSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     discounted_price = serializers.SerializerMethodField()
     images = ProductImageSerializer(many=True, read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -653,6 +745,7 @@ class PublicProductSerializer(serializers.ModelSerializer):
             'category_name', 'category', 'vendor_slug',
             'discount_percent', 'discounted_price',
             'primary_image', 'images', 'product_attributes', 'product_type',
+            'variants', 'color_options', 'size_options',
         )
 
     def get_primary_image(self, obj):
@@ -720,6 +813,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     ingredients_list = serializers.SerializerMethodField()
     product_attributes = serializers.JSONField(read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -729,6 +823,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
             'discount_percent', 'discounted_price',
             'ingredients', 'ingredients_list',
             'product_attributes',
+            'variants', 'color_options', 'size_options',
             'category', 'category_name', 'vendor_business_name',
             'vendor_whatsapp', 'vendor_upi',
             'images', 'created_at',
@@ -761,6 +856,7 @@ class SiteProductSerializer(serializers.ModelSerializer):
     discounted_price = serializers.SerializerMethodField()
     primary_image = serializers.SerializerMethodField()
     product_attributes = serializers.JSONField(read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -780,6 +876,9 @@ class SiteProductSerializer(serializers.ModelSerializer):
             'is_featured',
             'primary_image',
             'product_attributes',
+            'variants',
+            'color_options',
+            'size_options',
         )
 
     def get_discounted_price(self, obj):
