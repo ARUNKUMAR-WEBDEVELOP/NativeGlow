@@ -38,7 +38,9 @@ class OrderReadSerializer(serializers.ModelSerializer):
             'address_line1', 'address_line2', 'city', 'state',
             'pincode', 'country', 'subtotal', 'shipping_fee',
             'discount_total', 'coupon_code', 'total', 'payment_provider',
-            'payment_reference', 'payment_status', 'notes', 'items', 'created_at',
+            'payment_reference', 'payment_status', 'notes',
+            'selected_color', 'selected_size', 'selected_variant_label',
+            'items', 'created_at',
         )
 
 
@@ -59,6 +61,9 @@ class OrderCreateSerializer(serializers.Serializer):
     country = serializers.CharField(max_length=100, default='India')
     notes = serializers.CharField(required=False, allow_blank=True)
     coupon_code = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    selected_color = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    selected_size = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    selected_variant_label = serializers.CharField(max_length=255, required=False, allow_blank=True)
     items = OrderCreateItemSerializer(many=True)
 
     def create(self, validated_data):
@@ -173,6 +178,9 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
     payment_reference = serializers.CharField(max_length=120, required=True)
     product_id = serializers.IntegerField(write_only=True)
     vendor_slug = serializers.CharField(max_length=255, write_only=True, required=False)
+    selected_color = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    selected_size = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    selected_variant_label = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
     class Meta:
         model = Order
@@ -192,6 +200,9 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             'quantity',
             'payment_method',
             'payment_reference',
+            'selected_color',
+            'selected_size',
+            'selected_variant_label',
             'total_amount',
             'order_status',
             'created_at',
@@ -268,6 +279,9 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
         buyer_state = (validated_data.pop('buyer_state', '') or '').strip() or 'NA'
         buyer_country = (validated_data.pop('buyer_country', '') or '').strip() or 'India'
         buyer_address_line1 = (validated_data.get('buyer_address') or '').strip()
+        selected_color = (validated_data.pop('selected_color', '') or '').strip()
+        selected_size = (validated_data.pop('selected_size', '') or '').strip()
+        selected_variant_label = (validated_data.pop('selected_variant_label', '') or '').strip()
 
         if buyer and buyer.vendor_id != product.vendor_id:
             raise serializers.ValidationError(
@@ -290,6 +304,9 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             state=buyer_state,
             pincode=validated_data.get('buyer_pincode', '000000'),
             country=buyer_country,
+            selected_color=selected_color,
+            selected_size=selected_size,
+            selected_variant_label=selected_variant_label,
             total_amount=total_amount,
             total=total_amount,
             subtotal=total_amount,
@@ -324,6 +341,8 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             f"I placed an order on NativeGlow.\n"
             f"Order Code: {instance.order_code}\n"
             f"Product: {product.name if product else 'N/A'} x {instance.quantity}\n"
+            f"Selected Color: {instance.selected_color or 'N/A'}\n"
+            f"Selected Size: {instance.selected_size or 'N/A'}\n"
             f"Amount Paid: ₹{instance.total_amount}\n"
             f"Payment Ref: {instance.payment_reference}\n\n"
             f"Buyer Details:\n"
@@ -345,6 +364,9 @@ class PublicOrderPlaceSerializer(serializers.ModelSerializer):
             'total_amount': str(instance.total_amount),
             'payment_reference': instance.payment_reference,
             'payment_method': instance.payment_method,
+            'selected_color': instance.selected_color,
+            'selected_size': instance.selected_size,
+            'selected_variant_label': instance.selected_variant_label,
             'vendor_whatsapp': vendor_whatsapp,
             'whatsapp_confirm_url': whatsapp_confirm_url,
             'message': f'Order {instance.order_code} placed successfully. Please share this code with vendor {vendor.business_name if vendor else ""}. Click the WhatsApp link to confirm order details with vendor.'
@@ -386,6 +408,9 @@ class VendorOrderListSerializer(serializers.ModelSerializer):
             'total_amount',
             'payment_method',
             'payment_reference',
+            'selected_color',
+            'selected_size',
+            'selected_variant_label',
             'order_status',
             'tracking_id',
             'courier_name',

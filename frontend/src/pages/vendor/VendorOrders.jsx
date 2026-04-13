@@ -356,7 +356,11 @@ function VendorOrders() {
 
             const buyerPhoneDigits = String(order.buyer_phone || '').replace(/\D/g, '');
             const businessName = vendorSession?.vendor?.business_name || 'NativeGlow Store';
-            const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
+            const chosenOptions = [
+              order.selected_color ? `Color: ${order.selected_color}` : '',
+              order.selected_size ? `Size: ${order.selected_size}` : '',
+            ].filter(Boolean).join(' | ');
+            const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name}${chosenOptions ? ` (${chosenOptions})` : ''} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
 
             return (
               <article key={order.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
@@ -389,6 +393,13 @@ function VendorOrders() {
                   <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
                     <p className="font-semibold text-zinc-900">{order.product_name}</p>
                     <p className="mt-1">Qty {order.quantity} · {String(order.payment_method || 'upi').toUpperCase()} · Ref {order.payment_reference || 'N/A'}</p>
+                    {order.selected_color || order.selected_size ? (
+                      <p className="mt-1 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">
+                        {[order.selected_color ? `Color: ${order.selected_color}` : '', order.selected_size ? `Size: ${order.selected_size}` : '']
+                          .filter(Boolean)
+                          .join(' | ')}
+                      </p>
+                    ) : null}
                     <p className="mt-1">Buyer: <span className="font-semibold text-zinc-900">{order.buyer_name}</span> · {order.buyer_phone}</p>
                     <p className="mt-1 leading-6">Address: {order.buyer_address}{order.buyer_pincode ? ` ${order.buyer_pincode}` : ''}</p>
                   </div>

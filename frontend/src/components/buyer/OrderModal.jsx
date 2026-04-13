@@ -4,7 +4,7 @@ import BuyerGoogleLogin from '../vendorsite/BuyerGoogleLogin';
 import { BuyerAuthProvider, useBuyerAuth } from '../vendorsite/BuyerAuthContext';
 import platformContent from '../../content/platformContent';
 
-function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug, selectedVariantLabel }) {
+function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug, selectedVariantLabel, selectedColor, selectedSize }) {
   const { buyer, isLoggedIn, ready } = useBuyerAuth();
   const { vendor_site: vendorSiteContent } = platformContent;
   const [step, setStep] = useState(0);
@@ -154,7 +154,10 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
         buyer_pincode: formData.buyerPincode,
         quantity: parseInt(formData.quantity),
         payment_method: formData.paymentMethod,
-        payment_reference: formData.paymentReference
+        payment_reference: formData.paymentReference,
+        selected_color: selectedColor || '',
+        selected_size: selectedSize || '',
+        selected_variant_label: selectedVariantLabel || '',
       }, isLoggedIn ? buyer?.accessToken : null);
 
       setOrderResponse(response);

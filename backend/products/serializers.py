@@ -85,6 +85,76 @@ def _normalize_json_payload(value, *, field_name):
     return value
 
 
+def _normalize_color_options_payload(value):
+    if isinstance(value, str):
+        import json
+        raw = value.strip()
+        if not raw:
+            return []
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise serializers.ValidationError('color_options must be valid JSON.') from exc
+    if value in (None, ''):
+        return []
+    if not isinstance(value, list):
+        raise serializers.ValidationError('color_options must be a list of colors.')
+
+    normalized = []
+    seen = set()
+    for item in value:
+        if isinstance(item, str):
+            color_value = item.strip()
+            image_positions = []
+        elif isinstance(item, dict):
+            color_value = str(item.get('value') or item.get('label') or item.get('name') or '').strip()
+            image_positions = item.get('image_positions', [])
+            if not isinstance(image_positions, list):
+                image_positions = []
+        else:
+            continue
+
+        if not color_value or color_value in seen:
+            continue
+        seen.add(color_value)
+        normalized.append({
+            'value': color_value,
+            'image_positions': [
+                int(position)
+                for position in image_positions
+                if str(position).isdigit() and int(position) > 0
+            ],
+        })
+
+    return normalized
+
+
+def _normalize_size_options_payload(value):
+    if isinstance(value, str):
+        import json
+        raw = value.strip()
+        if not raw:
+            return []
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise serializers.ValidationError('size_options must be valid JSON.') from exc
+    if value in (None, ''):
+        return []
+    if not isinstance(value, list):
+        raise serializers.ValidationError('size_options must be a list of sizes.')
+
+    normalized = []
+    seen = set()
+    for item in value:
+        size_value = str(item.get('value') if isinstance(item, dict) else item).strip()
+        if not size_value or size_value in seen:
+            continue
+        seen.add(size_value)
+        normalized.append(size_value)
+    return normalized
+
+
 def _validate_product_attributes(product_type, attributes):
     required_fields = PRODUCT_ATTRIBUTE_REQUIREMENTS.get(product_type or 'skincare', [])
     missing_fields = [field for field in required_fields if _is_missing_value(attributes.get(field))]
@@ -458,6 +528,8 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     """
     sku = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     variants_payload = serializers.JSONField(required=False, write_only=True)
+    color_options = serializers.JSONField(required=False)
+    size_options = serializers.JSONField(required=False)
     image = serializers.ImageField(required=False, allow_null=True, use_url=False)
 
     class Meta:
@@ -476,6 +548,12 @@ class VendorProductCreateSerializer(serializers.ModelSerializer):
     def validate_variants_payload(self, value):
         normalized = _normalize_json_payload(value, field_name='variants_payload')
         return [_normalize_variant_item(item) for item in normalized]
+
+    def validate_color_options(self, value):
+        return _normalize_color_options_payload(value)
+
+    def validate_size_options(self, value):
+        return _normalize_size_options_payload(value)
 
     def validate(self, attrs):
         product_type = attrs.get('product_type') or 'skincare'
@@ -597,6 +675,8 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
     PUT /api/vendor/products/<id>/edit/
     """
     variants_payload = serializers.JSONField(required=False, write_only=True)
+    color_options = serializers.JSONField(required=False)
+    size_options = serializers.JSONField(required=False)
     image = serializers.ImageField(required=False, allow_null=True, use_url=False)
 
     class Meta:
@@ -614,6 +694,12 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
     def validate_variants_payload(self, value):
         normalized = _normalize_json_payload(value, field_name='variants_payload')
         return [_normalize_variant_item(item) for item in normalized]
+
+    def validate_color_options(self, value):
+        return _normalize_color_options_payload(value)
+
+    def validate_size_options(self, value):
+        return _normalize_size_options_payload(value)
 
     def validate(self, attrs):
         product_type = attrs.get('product_type') or getattr(self.instance, 'product_type', 'skincare')

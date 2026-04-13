@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import OrderModal from '../../components/buyer/OrderModal';
-import { applyImageFallback, getPrimaryProductImage, getProductImageUrls } from '../../utils/imageUrl';
+import { applyImageFallback, getPrimaryProductImage, getProductImageUrls, resolveImageUrl } from '../../utils/imageUrl';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 function getNextPath(vendorSlug, productId) {
@@ -37,6 +37,38 @@ function formatVariantPrice(value) {
     return 'No extra charge';
   }
   return `+₹${amount.toFixed(0)}`;
+}
+
+function normalizeColorOption(option) {
+  if (typeof option === 'string') {
+    return { value: option, image_positions: [] };
+  }
+  if (option && typeof option === 'object') {
+    return {
+      value: String(option.value || option.label || option.name || '').trim(),
+      image_positions: Array.isArray(option.image_positions)
+        ? option.image_positions.map((position) => Number(position)).filter((position) => Number.isInteger(position) && position > 0)
+        : [],
+    };
+  }
+  return { value: '', image_positions: [] };
+}
+
+function getImagesForPositions(images, positions) {
+  const imageList = Array.isArray(images) ? images : [];
+  const imageMap = new Map(
+    imageList
+      .map((image, index) => {
+        const imageUrl = resolveImageUrl(image?.image_url || image?.url || image?.src || image);
+        const position = Number(image?.position || index + 1);
+        return imageUrl ? [position, imageUrl] : null;
+      })
+      .filter(Boolean)
+  );
+
+  return (Array.isArray(positions) ? positions : [])
+    .map((position) => imageMap.get(Number(position)))
+    .filter(Boolean);
 }
 
 function ProductDetailPage() {
@@ -89,8 +121,17 @@ function ProductDetailPage() {
           setSelectedVariantIndex(0);
           const initialColors = Array.isArray(data.color_options) ? data.color_options : [];
           const initialSizes = Array.isArray(data.size_options) ? data.size_options : [];
-          setSelectedColor(initialColors[0] || '');
-          setSelectedSize(initialSizes[0] || '');
+          const firstColor = initialColors[0];
+          setSelectedColor(
+            typeof firstColor === 'string'
+              ? firstColor
+              : String(firstColor?.value || firstColor?.label || firstColor?.name || '')
+          );
+          setSelectedSize(
+            typeof initialSizes[0] === 'string'
+              ? initialSizes[0]
+              : String(initialSizes[0]?.value || initialSizes[0]?.label || initialSizes[0]?.name || '')
+          );
           setActionMessage('');
         }
       } catch (err) {
@@ -227,7 +268,7 @@ function ProductDetailPage() {
 
   useEffect(() => {
     setSelectedImageIndex(0);
-  }, [selectedVariantIndex]);
+  }, [selectedColor]);
 
   useEffect(() => {
     let active = true;
@@ -385,15 +426,18 @@ function ProductDetailPage() {
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
   const selectedVariant = variantsList[selectedVariantIndex] || null;
   const galleryImages = getProductImageUrls(product);
-  const selectedVariantImages = Array.isArray(selectedVariant?.image_urls)
-    ? selectedVariant.image_urls.filter(Boolean)
+  const colorOptions = Array.isArray(product.color_options)
+    ? product.color_options.map(normalizeColorOption).filter((option) => option.value)
     : [];
-  const activeGalleryImages = selectedVariantImages.length > 0 ? selectedVariantImages : galleryImages;
+  const sizeOptions = Array.isArray(product.size_options) ? product.size_options : [];
+  const selectedColorOption = colorOptions.find((option) => option.value === selectedColor) || null;
+  const selectedColorImages = selectedColorOption
+    ? getImagesForPositions(product.images, selectedColorOption.image_positions)
+    : [];
+  const activeGalleryImages = selectedColorImages.length > 0 ? selectedColorImages : galleryImages;
   const safeSelectedImageIndex =
     selectedImageIndex < activeGalleryImages.length ? selectedImageIndex : 0;
   const mainImage = activeGalleryImages.length > 0 ? activeGalleryImages[safeSelectedImageIndex] : null;
-  const colorOptions = Array.isArray(product.color_options) ? product.color_options : [];
-  const sizeOptions = Array.isArray(product.size_options) ? product.size_options : [];
   const attributeEntries = Object.entries(product.product_attributes || {}).filter(([, value]) => {
     const formatted = formatAttributeValue(value);
     return formatted !== '';
@@ -605,28 +649,33 @@ function ProductDetailPage() {
               </div>
             )}
 
-            {colorOptions.length > 0 ? (
+              {colorOptions.length > 0 ? (
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <h3 className="mb-3 text-lg font-semibold text-gray-900">Choose Color</h3>
                 <div className="flex flex-wrap gap-2">
-                  {colorOptions.map((color) => {
-                    const active = selectedColor === color;
+                  {colorOptions.map((colorOption) => {
+                    const active = selectedColor === colorOption.value;
                     return (
                       <button
-                        key={color}
+                        key={colorOption.value}
                         type="button"
-                        onClick={() => setSelectedColor(color)}
+                        onClick={() => setSelectedColor(colorOption.value)}
                         className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
                           active
                             ? 'border-emerald-600 bg-emerald-600 text-white'
                             : 'border-gray-300 bg-white text-gray-700 hover:border-emerald-400 hover:text-emerald-700'
                         }`}
                       >
-                        {color}
+                        {colorOption.value}
                       </button>
                     );
                   })}
                 </div>
+                {selectedColorOption?.image_positions?.length ? (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Showing images for {selectedColorOption.value}.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -690,8 +739,8 @@ function ProductDetailPage() {
             {/* CTA Buttons */}
             {product.available_quantity > 0 && (
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => handleRequireLoginAction(() => setShowOrderModal(true))}
+                    <button
+                      onClick={() => handleRequireLoginAction(() => setShowOrderModal(true))}
                   disabled={!buyerAuthReady}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 transition"
                 >
@@ -1002,6 +1051,8 @@ function ProductDetailPage() {
           selectedVariantLabel={[selectedColor ? `Color: ${selectedColor}` : '', selectedSize ? `Size: ${selectedSize}` : '']
             .filter(Boolean)
             .join(' | ')}
+          selectedColor={selectedColor}
+          selectedSize={selectedSize}
           onClose={() => setShowOrderModal(false)}
           onSuccess={() => setShowOrderModal(false)}
           vendorSlug={vendorSlug}

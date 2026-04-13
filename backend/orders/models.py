@@ -53,6 +53,9 @@ class Order(models.Model):
         blank=True,
         related_name='order_records',
     )
+    selected_color = models.CharField(max_length=120, blank=True)
+    selected_size = models.CharField(max_length=120, blank=True)
+    selected_variant_label = models.CharField(max_length=255, blank=True)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -1,38 +1,81 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { getCategoryColorOptions, getCategorySizeOptions } from './productTemplates';
 
-function VariantOptionBadges({ options, onRemove, readOnly = false }) {
+function normalizeOptionValue(option) {
+  if (typeof option === 'string') {
+    return { value: option, image_positions: [] };
+  }
+  if (option && typeof option === 'object') {
+    return {
+      value: String(option.value || option.label || option.name || '').trim(),
+      image_positions: Array.isArray(option.image_positions)
+        ? option.image_positions.map((position) => Number(position)).filter((position) => Number.isInteger(position) && position > 0)
+        : [],
+    };
+  }
+  return { value: '', image_positions: [] };
+}
+
+function VariantBadgeList({ options, onRemove, onToggleImagePosition, readOnly = false, showImageSlots = false, title = '' }) {
   if (!options || options.length === 0) {
     return <p className="text-sm text-zinc-500">No options selected yet</p>;
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option, index) => (
-        <div
-          key={index}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-800"
-        >
-          <span>{option}</span>
-          {!readOnly && (
-            <button
-              onClick={() => onRemove(index)}
-              className="text-emerald-600 hover:text-emerald-800"
-              type="button"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      ))}
+    <div className="space-y-3">
+      {options.map((option, index) => {
+        const normalized = normalizeOptionValue(option);
+        return (
+          <div key={`${title}-${index}`} className="rounded-xl border border-zinc-200 bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-800">
+                <span>{normalized.value}</span>
+                {!readOnly && (
+                  <button
+                    onClick={() => onRemove(index)}
+                    className="text-emerald-600 hover:text-emerald-800"
+                    type="button"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {showImageSlots ? (
+              <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <p className="mb-2 text-xs font-medium text-zinc-600">Image slots for this color</p>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 4].map((position) => {
+                    const selected = normalized.image_positions.includes(position);
+                    return (
+                      <button
+                        key={`${title}-${index}-${position}`}
+                        type="button"
+                        onClick={() => onToggleImagePosition(index, position)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                          selected
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-zinc-300 bg-white text-zinc-700 hover:border-indigo-400 hover:text-indigo-700'
+                        }`}
+                      >
+                        Image {position}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function AvailableOptionsList({ availableOptions, selectedOptions, onAdd }) {
-  const unselectedOptions = availableOptions.filter(
-    (opt) => !selectedOptions.includes(opt)
-  );
+  const selectedValues = selectedOptions.map((option) => normalizeOptionValue(option).value);
+  const unselectedOptions = availableOptions.filter((opt) => !selectedValues.includes(String(opt)));
 
   if (unselectedOptions.length === 0) {
     return <p className="text-xs text-zinc-500">All options selected</p>;
@@ -66,19 +109,39 @@ export default function ProductVariantOptionsEditor({
   const [customColor, setCustomColor] = useState('');
   const [customSize, setCustomSize] = useState('');
 
+  const normalizedColorOptions = useMemo(
+    () => colorOptions.map((option) => normalizeOptionValue(option)).filter((option) => option.value),
+    [colorOptions]
+  );
+
   const handleAddColor = (color) => {
-    if (!colorOptions.includes(color)) {
-      onColorOptionsChange([...colorOptions, color]);
+    if (!normalizedColorOptions.some((option) => option.value === color)) {
+      onColorOptionsChange([...normalizedColorOptions, { value: color, image_positions: [] }]);
     }
   };
 
   const handleRemoveColor = (index) => {
-    onColorOptionsChange(colorOptions.filter((_, i) => i !== index));
+    onColorOptionsChange(normalizedColorOptions.filter((_, i) => i !== index));
+  };
+
+  const toggleColorImagePosition = (index, position) => {
+    const next = normalizedColorOptions.map((option, optionIndex) => {
+      if (optionIndex !== index) {
+        return option;
+      }
+      const current = Array.isArray(option.image_positions) ? option.image_positions : [];
+      const hasPosition = current.includes(position);
+      const image_positions = hasPosition
+        ? current.filter((item) => item !== position)
+        : [...current, position].sort((a, b) => a - b);
+      return { ...option, image_positions };
+    });
+    onColorOptionsChange(next);
   };
 
   const handleAddCustomColor = () => {
-    if (customColor.trim() && !colorOptions.includes(customColor.trim())) {
-      onColorOptionsChange([...colorOptions, customColor.trim()]);
+    if (customColor.trim() && !normalizedColorOptions.some((option) => option.value === customColor.trim())) {
+      onColorOptionsChange([...normalizedColorOptions, { value: customColor.trim(), image_positions: [] }]);
       setCustomColor('');
     }
   };
@@ -114,9 +177,12 @@ export default function ProductVariantOptionsEditor({
       <div className="space-y-3">
         <div>
           <label className="mb-2 block text-sm font-medium text-zinc-700">Selected Colors</label>
-          <VariantOptionBadges
-            options={colorOptions}
+          <VariantBadgeList
+            title="color"
+            options={normalizedColorOptions}
             onRemove={handleRemoveColor}
+            onToggleImagePosition={toggleColorImagePosition}
+            showImageSlots
           />
         </div>
 
@@ -124,7 +190,7 @@ export default function ProductVariantOptionsEditor({
           <label className="mb-2 block text-sm font-medium text-zinc-700">Quick Add from Suggestions</label>
           <AvailableOptionsList
             availableOptions={availableColors}
-            selectedOptions={colorOptions}
+            selectedOptions={normalizedColorOptions}
             onAdd={handleAddColor}
           />
         </div>
@@ -162,7 +228,7 @@ export default function ProductVariantOptionsEditor({
       <div className="space-y-3">
         <div>
           <label className="mb-2 block text-sm font-medium text-zinc-700">Selected Sizes</label>
-          <VariantOptionBadges
+          <VariantBadgeList
             options={sizeOptions}
             onRemove={handleRemoveSize}
           />
