@@ -715,6 +715,7 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         variants_payload = validated_data.pop('variants_payload', None)
         request = self.context.get('request')
         image_file = validated_data.pop('image', None)
+        quantity_provided = 'available_quantity' in validated_data
         if request and request.FILES:
             uploaded_count = _count_uploaded_images(request)
             if uploaded_count > MAX_PRODUCT_IMAGES:
@@ -733,6 +734,9 @@ class VendorProductUpdateSerializer(serializers.ModelSerializer):
         
         if request and request.FILES:
             _sync_product_gallery(instance, request)
+        if quantity_provided:
+            instance.is_active = int(instance.available_quantity or 0) > 0
+            instance.save(update_fields=['is_active'])
         if variants_payload is not None:
             instance.variants.all().delete()
             created_variant_pairs = []
@@ -777,6 +781,7 @@ class VendorProductQuantitySerializer(serializers.Serializer):
         qty = validated_data.get('available_quantity')
         instance.available_quantity = qty
         instance.inventory_qty = qty  # Keep in sync
+        instance.is_active = qty > 0
         instance.save()
         return instance
 

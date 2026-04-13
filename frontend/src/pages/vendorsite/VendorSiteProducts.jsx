@@ -142,6 +142,7 @@ export default function VendorSiteProducts() {
           const variantPreview = getVariantPreview(product);
           const variantCount = Array.isArray(product?.variants) ? product.variants.length : 0;
           const availableQuantity = toNumber(product?.available_quantity);
+          const isOutOfStock = availableQuantity <= 0;
 
           return (
             <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
@@ -210,26 +211,29 @@ export default function VendorSiteProducts() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (isOutOfStock) {
+                        return;
+                      }
                       if (variantCount > 0) {
                         navigate(detailPath);
                         return;
                       }
                       orderNow(product.id);
                     }}
-                    disabled={!ready}
+                    disabled={!ready || isOutOfStock}
                     className="inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold"
                     style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
                   >
-                    {variantCount > 0 ? 'Choose Options' : 'Order Now'}
+                    {isOutOfStock ? 'Out of Stock' : variantCount > 0 ? 'Choose Options' : 'Order Now'}
                   </button>
                   <button
                     type="button"
                     onClick={() => addToCart(product)}
-                    disabled={!ready}
+                    disabled={!ready || isOutOfStock}
                     className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold"
                     style={{ borderColor: 'var(--primary)', color: 'var(--primary)' }}
                   >
-                    Add to Cart
+                    {isOutOfStock ? 'Unavailable' : 'Add to Cart'}
                   </button>
                 </div>
               </div>

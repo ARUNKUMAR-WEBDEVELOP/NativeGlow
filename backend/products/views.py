@@ -72,7 +72,7 @@ class ProductListView(generics.ListAPIView):
     ordering_fields = ('price', 'created_at')
 
     def get_queryset(self):
-        qs = Product.objects.filter(is_active=True, is_visible=True)
+        qs = Product.objects.filter(is_active=True, is_visible=True, available_quantity__gt=0)
         category = self.request.query_params.get('category')
         tag = self.request.query_params.get('tag')
         vendor_id = self.request.query_params.get('vendor')
@@ -96,21 +96,21 @@ class FeaturedProductsView(generics.ListAPIView):
     """GET /api/products/featured/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_visible=True, is_featured=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, available_quantity__gt=0, is_featured=True)
 
 
 class BestSellersView(generics.ListAPIView):
     """GET /api/products/best-sellers/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_visible=True, is_bestseller=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, available_quantity__gt=0, is_bestseller=True)
 
 
 class NewArrivalsView(generics.ListAPIView):
     """GET /api/products/new-arrivals/"""
     serializer_class = ProductListSerializer
     permission_classes = (permissions.AllowAny,)
-    queryset = Product.objects.filter(is_active=True, is_visible=True, is_new_arrival=True)
+    queryset = Product.objects.filter(is_active=True, is_visible=True, available_quantity__gt=0, is_new_arrival=True)
 
 
 class ProductCreateView(generics.CreateAPIView):
@@ -665,7 +665,8 @@ class PublicVendorStoreView(generics.RetrieveAPIView):
             vendor=vendor,
             status='approved',
             is_active=True,
-            is_visible=True
+            is_visible=True,
+            available_quantity__gt=0,
         ).order_by('-created_at')
         
         products_serializer = PublicProductSerializer(products, many=True, context={'request': request})
@@ -693,7 +694,8 @@ class PublicProductDetailView(APIView):
                 vendor__vendor_slug=vendor_slug,
                 status='approved',
                 is_active=True,
-                is_visible=True
+                is_visible=True,
+                available_quantity__gt=0,
             )
         except Product.DoesNotExist:
             return Response(
@@ -808,6 +810,7 @@ class StoreFeaturedView(APIView):
             status='approved',
             is_active=True,
             is_visible=True,
+            available_quantity__gt=0,
             vendor__is_approved=True,
             vendor__is_active=True
         ).annotate(
@@ -844,6 +847,7 @@ class PublicVendorSiteView(APIView):
                 status='approved',
                 is_visible=True,
                 is_active=True,
+                available_quantity__gt=0,
             ).select_related('category').prefetch_related(
                 Prefetch('images')
             ).order_by('product_order', '-created_at')
@@ -908,6 +912,7 @@ class PublicVendorSiteProductsView(APIView):
                 status='approved',
                 is_visible=True,
                 is_active=True,
+                available_quantity__gt=0,
             ).select_related('category').prefetch_related(
                 Prefetch('images')
             )
@@ -974,6 +979,7 @@ class PublicVendorSiteAboutView(APIView):
                 status='approved',
                 is_visible=True,
                 is_active=True,
+                available_quantity__gt=0,
             ).count()
             delivered_count = Order.objects.filter(vendor=vendor, order_status='delivered').count()
 

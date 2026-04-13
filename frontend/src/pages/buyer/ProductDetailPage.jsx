@@ -567,6 +567,11 @@ function ProductDetailPage() {
                   </span>
                 )}
               </div>
+              {product.available_quantity <= 0 ? (
+                <p className="mt-2 text-sm font-medium text-red-600">
+                  This item is currently hidden from the store until the vendor restocks it.
+                </p>
+              ) : null}
             </div>
 
             {/* Description */}

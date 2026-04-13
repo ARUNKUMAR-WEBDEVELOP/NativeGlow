@@ -324,6 +324,8 @@ function VendorStorePage() {
               const productKey = product?.id || product?.slug || `${productName}-${index}`;
               const variantPreview = getVariantPreview(product);
               const variantCount = Array.isArray(product?.variants) ? product.variants.length : 0;
+              const availableQuantity = Number(product.available_quantity || 0);
+              const isOutOfStock = availableQuantity <= 0;
               return (
               <div
                 key={productKey}
@@ -359,12 +361,12 @@ function VendorStorePage() {
                         100% Natural 🌿
                       </span>
                     )}
-                    {product.available_quantity < 5 && product.available_quantity > 0 && (
+                    {availableQuantity < 5 && availableQuantity > 0 && (
                       <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
-                        Only {product.available_quantity} left!
+                        Only {availableQuantity} left!
                       </span>
                     )}
-                    {product.available_quantity === 0 && (
+                    {isOutOfStock && (
                       <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
                         Out of Stock
                       </span>
@@ -441,9 +443,9 @@ function VendorStorePage() {
                   )}
 
                   {/* Quantity info */}
-                  {product.available_quantity > 0 && (
+                  {availableQuantity > 0 && (
                     <p className="text-xs text-gray-500 mb-4">
-                      Available: {product.available_quantity} items
+                      Available: {availableQuantity} items
                     </p>
                   )}
 
@@ -451,24 +453,31 @@ function VendorStorePage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
+                        if (isOutOfStock) {
+                          return;
+                        }
                         if (variantCount > 0) {
                           navigate(`/store/${vendorSlug}/product/${product.id}`);
                           return;
                         }
                         setSelectedProduct(product);
                       }}
-                      disabled={product.available_quantity === 0}
+                      disabled={isOutOfStock}
                       className="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
-                      {variantCount > 0 ? 'Choose Options' : 'Buy Now'}
+                      {isOutOfStock ? 'Out of Stock' : variantCount > 0 ? 'Choose Options' : 'Buy Now'}
                     </button>
                     <a
                       href={`https://wa.me/${(vendor?.whatsapp || '').replace(/\D/g, '')}?text=Hi%20I%27m%20interested%20in%20${encodeURIComponent(product.name || product.title || 'this product')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600 transition text-center"
+                      className={`flex-1 py-2 rounded-lg font-medium transition text-center ${
+                        isOutOfStock
+                          ? 'bg-gray-300 text-gray-500 pointer-events-none'
+                          : 'bg-green-500 text-white hover:bg-green-600'
+                      }`}
                     >
-                      WhatsApp
+                      {isOutOfStock ? 'Unavailable' : 'WhatsApp'}
                     </a>
                   </div>
                 </div>
