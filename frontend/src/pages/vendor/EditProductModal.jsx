@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
 import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import ProductVariantOptionsEditor from '../../components/vendor/ProductVariantOptionsEditor';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import {
   CATEGORY_TYPE_OPTIONS,
@@ -8,6 +9,7 @@ import {
   getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
+  getCategorySizeOptions,
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
@@ -26,6 +28,8 @@ function EditProductModal({ product, onClose, onSave, loading }) {
     is_natural_certified: false,
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
+    color_options: [],
+    size_options: getCategorySizeOptions('other'),
   });
   const [newImages, setNewImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
@@ -60,6 +64,10 @@ function EditProductModal({ product, onClose, onSave, loading }) {
             stock: variant.stock ?? '',
           }))
         : getDefaultVariantRows(product.product_type || 'skincare'),
+      color_options: Array.isArray(product.color_options) ? product.color_options : [],
+      size_options: Array.isArray(product.size_options)
+        ? product.size_options
+        : getCategorySizeOptions(product.category_type || 'other'),
     });
     setNewImages([]);
     setImageError('');
@@ -104,6 +112,7 @@ function EditProductModal({ product, onClose, onSave, loading }) {
           ...prev.product_attributes,
         },
         variants: getDefaultVariantRows(mappedType),
+        size_options: getCategorySizeOptions(value),
       }));
       return;
     }
@@ -148,6 +157,8 @@ function EditProductModal({ product, onClose, onSave, loading }) {
       available_quantity: Number(form.available_quantity),
       product_attributes: productAttributes,
       variants_payload: variantsPayload,
+      color_options: form.color_options || [],
+      size_options: form.size_options || [],
     }, newImages);
   };
 
@@ -243,6 +254,14 @@ function EditProductModal({ product, onClose, onSave, loading }) {
             variants={form.variants}
             productAttributes={form.product_attributes}
             onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
+
+          <ProductVariantOptionsEditor
+            categoryType={form.category_type}
+            colorOptions={form.color_options}
+            sizeOptions={form.size_options}
+            onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
+            onSizeOptionsChange={(sizeOptions) => setForm((prev) => ({ ...prev, size_options: sizeOptions }))}
           />
 
           <label className="flex items-center gap-2 text-sm text-zinc-700">

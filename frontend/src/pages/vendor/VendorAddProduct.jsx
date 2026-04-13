@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductAttributeFields from '../../components/vendor/ProductAttributeFields';
 import ProductVariantsEditor from '../../components/vendor/ProductVariantsEditor';
+import ProductVariantOptionsEditor from '../../components/vendor/ProductVariantOptionsEditor';
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
   getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
+  getCategorySizeOptions,
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
@@ -29,6 +31,8 @@ function VendorAddProduct() {
     is_natural_certified: false,
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
+    color_options: [],
+    size_options: getCategorySizeOptions('other'),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,6 +50,7 @@ function VendorAddProduct() {
           ...prev.product_attributes,
         },
         variants: getDefaultVariantRows(mappedType),
+        size_options: getCategorySizeOptions(value),
       }));
       return;
     }
@@ -99,6 +104,8 @@ function VendorAddProduct() {
           unit: 'pcs',
           product_attributes: productAttributes,
           variants_payload: variantsPayload,
+          color_options: form.color_options || [],
+          size_options: form.size_options || [],
         }),
       });
 
@@ -166,6 +173,14 @@ function VendorAddProduct() {
             variants={form.variants}
             productAttributes={form.product_attributes}
             onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
+
+          <ProductVariantOptionsEditor
+            categoryType={form.category_type}
+            colorOptions={form.color_options}
+            sizeOptions={form.size_options}
+            onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
+            onSizeOptionsChange={(sizeOptions) => setForm((prev) => ({ ...prev, size_options: sizeOptions }))}
           />
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input type="checkbox" name="is_natural_certified" checked={form.is_natural_certified} onChange={onChange} className="h-4 w-4 rounded border-zinc-300 text-sage" />

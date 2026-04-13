@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProductAttributeFields from './ProductAttributeFields';
 import ProductVariantsEditor from './ProductVariantsEditor';
+import ProductVariantOptionsEditor from './ProductVariantOptionsEditor';
 import {
   CATEGORY_TYPE_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
   getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
+  getCategorySizeOptions,
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from './productTemplates';
@@ -29,6 +31,8 @@ function ProductForm({ onSuccess, onCancel }) {
     images: [], // Array of image files
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
+    color_options: [],
+    size_options: getCategorySizeOptions('face_wash'),
   });
   const [previewUrls, setPreviewUrls] = useState([]); // Array of preview URLs
   const [loading, setLoading] = useState(false);
@@ -77,6 +81,7 @@ function ProductForm({ onSuccess, onCancel }) {
           ...prev.product_attributes,
         },
         variants: getDefaultVariantRows(mappedType),
+        size_options: getCategorySizeOptions(value),
       }));
       return;
     }
@@ -140,6 +145,8 @@ function ProductForm({ onSuccess, onCancel }) {
       formData.append('unit', 'pcs');
       formData.append('product_attributes', JSON.stringify(productAttributes));
       formData.append('variants_payload', JSON.stringify(variantsPayload));
+      formData.append('color_options', JSON.stringify(form.color_options || []));
+      formData.append('size_options', JSON.stringify(form.size_options || []));
 
       // Append all image files
       form.images.slice(1, maxImages).forEach((image, index) => {
@@ -182,6 +189,8 @@ function ProductForm({ onSuccess, onCancel }) {
         images: [],
         product_attributes: getEmptyProductAttributes('skincare'),
         variants: getDefaultVariantRows('skincare'),
+        color_options: [],
+        size_options: getCategorySizeOptions('face_wash'),
       });
 
       // Call onSuccess callback after a short delay to show the success message
@@ -312,6 +321,14 @@ function ProductForm({ onSuccess, onCancel }) {
             variants={form.variants}
             productAttributes={form.product_attributes}
             onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+          />
+
+          <ProductVariantOptionsEditor
+            categoryType={form.category_type}
+            colorOptions={form.color_options}
+            sizeOptions={form.size_options}
+            onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
+            onSizeOptionsChange={(sizeOptions) => setForm((prev) => ({ ...prev, size_options: sizeOptions }))}
           />
 
           <div>

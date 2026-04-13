@@ -4,7 +4,7 @@ import BuyerGoogleLogin from '../vendorsite/BuyerGoogleLogin';
 import { BuyerAuthProvider, useBuyerAuth } from '../vendorsite/BuyerAuthContext';
 import platformContent from '../../content/platformContent';
 
-function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug }) {
+function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vendorSlug, selectedVariantLabel }) {
   const { buyer, isLoggedIn, ready } = useBuyerAuth();
   const { vendor_site: vendorSiteContent } = platformContent;
   const [step, setStep] = useState(0);
@@ -215,6 +215,12 @@ function OrderModalContent({ product, vendor, quantity, onClose, onSuccess, vend
             ×
           </button>
         </div>
+
+        {selectedVariantLabel ? (
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+            Selected options: <strong>{selectedVariantLabel}</strong>
+          </div>
+        ) : null}
 
         {/* Step indicators */}
         <div className="flex gap-2 mb-6">
