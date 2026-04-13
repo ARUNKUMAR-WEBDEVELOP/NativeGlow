@@ -310,6 +310,7 @@ function ProductForm({ onSuccess, onCancel }) {
           <ProductVariantsEditor
             productType={form.product_type}
             variants={form.variants}
+            productAttributes={form.product_attributes}
             onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
           />
 

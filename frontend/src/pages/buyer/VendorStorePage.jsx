@@ -32,6 +32,14 @@ function getEffectivePrice(product) {
   return Number(product?.price || 0);
 }
 
+function getVariantPreview(product) {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  if (variants.length === 0) {
+    return [];
+  }
+  return variants.slice(0, 2).map((variant) => `${variant.option_name}: ${variant.option_value}`);
+}
+
 function VendorStorePage() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
@@ -314,6 +322,8 @@ function VendorStorePage() {
               const primaryImage = getPrimaryProductImage(product);
               const productName = product.name || product.title || 'Product';
               const productKey = product?.id || product?.slug || `${productName}-${index}`;
+              const variantPreview = getVariantPreview(product);
+              const variantCount = Array.isArray(product?.variants) ? product.variants.length : 0;
               return (
               <div
                 key={productKey}
@@ -378,6 +388,29 @@ function VendorStorePage() {
                     </span>
                   )}
 
+                  {variantCount > 0 ? (
+                    <div className="mb-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Variants ({variantCount})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {variantPreview.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                        {variantCount > variantPreview.length ? (
+                          <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600">
+                            +{variantCount - variantPreview.length} more
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {Object.entries(product.product_attributes || {})
                     .filter(([, value]) => formatAttributeValue(value))
                     .slice(0, 2)
@@ -417,11 +450,17 @@ function VendorStorePage() {
                   {/* Buttons */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={() => {
+                        if (variantCount > 0) {
+                          navigate(`/store/${vendorSlug}/product/${product.id}`);
+                          return;
+                        }
+                        setSelectedProduct(product);
+                      }}
                       disabled={product.available_quantity === 0}
                       className="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-medium hover:bg-emerald-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
-                      Buy Now
+                      {variantCount > 0 ? 'Choose Options' : 'Buy Now'}
                     </button>
                     <a
                       href={`https://wa.me/${(vendor?.whatsapp || '').replace(/\D/g, '')}?text=Hi%20I%27m%20interested%20in%20${encodeURIComponent(product.name || product.title || 'this product')}`}

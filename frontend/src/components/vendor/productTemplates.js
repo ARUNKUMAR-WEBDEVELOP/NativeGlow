@@ -191,7 +191,9 @@ const TEMPLATE_FIELDS = {
         'Pants',
         'Track Pants',
         'Trousers',
+        'Saree',
         'Kurti',
+        'Blouse',
         'Top',
         'Dress',
         'Leggings',
@@ -475,6 +477,64 @@ export function getVariantPresetHelp(productType) {
     default:
       return 'Recommended variants: size, texture, or pack size.';
   }
+}
+
+const CLOTHING_SIZES_BY_AUDIENCE_AND_GARMENT = {
+  men: {
+    Shirt: ['S', 'M', 'L', 'XL', 'XXL'],
+    'T-Shirt': ['S', 'M', 'L', 'XL', 'XXL'],
+    Pants: ['28', '30', '32', '34', '36', '38', '40'],
+    Trousers: ['28', '30', '32', '34', '36', '38', '40'],
+    'Track Pants': ['S', 'M', 'L', 'XL', 'XXL'],
+    Hoodie: ['S', 'M', 'L', 'XL', 'XXL'],
+  },
+  women: {
+    Saree: ['5.5 Meter', '6.3 Meter', 'Free Size'],
+    Blouse: ['30', '32', '34', '36', '38', '40'],
+    Kurti: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    Top: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    Dress: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    Leggings: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  },
+  unisex: {
+    Shirt: ['S', 'M', 'L', 'XL', 'XXL'],
+    'T-Shirt': ['S', 'M', 'L', 'XL', 'XXL'],
+    Hoodie: ['S', 'M', 'L', 'XL', 'XXL'],
+  },
+  kids: {
+    Shirt: ['2Y', '4Y', '6Y', '8Y', '10Y', '12Y'],
+    'T-Shirt': ['2Y', '4Y', '6Y', '8Y', '10Y', '12Y'],
+    Pants: ['2Y', '4Y', '6Y', '8Y', '10Y', '12Y'],
+    Dress: ['2Y', '4Y', '6Y', '8Y', '10Y', '12Y'],
+  },
+};
+
+function normalizeAudience(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+export function getClothingVariantRows(targetAudience, garmentType) {
+  const audience = normalizeAudience(targetAudience);
+  const garment = String(garmentType || '').trim();
+  if (!garment) {
+    return [];
+  }
+
+  const audienceMap = CLOTHING_SIZES_BY_AUDIENCE_AND_GARMENT[audience] || {};
+  const defaultMap = {
+    Shirt: ['S', 'M', 'L', 'XL'],
+    'T-Shirt': ['S', 'M', 'L', 'XL'],
+    Pants: ['28', '30', '32', '34', '36'],
+    Saree: ['5.5 Meter', '6.3 Meter', 'Free Size'],
+    Kurti: ['S', 'M', 'L', 'XL'],
+    Top: ['S', 'M', 'L', 'XL'],
+    Dress: ['S', 'M', 'L', 'XL'],
+    Leggings: ['S', 'M', 'L', 'XL'],
+    Hoodie: ['S', 'M', 'L', 'XL'],
+  };
+
+  const sizes = audienceMap[garment] || defaultMap[garment] || [];
+  return sizes.map((size) => ({ option_name: 'Size', option_value: size }));
 }
 
 // ============================================================================

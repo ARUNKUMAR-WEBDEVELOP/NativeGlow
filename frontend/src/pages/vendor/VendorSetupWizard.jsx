@@ -591,6 +591,7 @@ why you started..."
             <ProductVariantsEditor
               productType={productForm.product_type}
               variants={productForm.variants}
+              productAttributes={productForm.product_attributes}
               onChange={(nextVariants) => setProductForm((prev) => ({ ...prev, variants: nextVariants }))}
             />
 

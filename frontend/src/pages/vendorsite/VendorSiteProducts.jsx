@@ -17,6 +17,14 @@ function getProductCategory(product) {
   return String(product?.category || product?.category_type || '').trim();
 }
 
+function getVariantPreview(product) {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  if (variants.length === 0) {
+    return [];
+  }
+  return variants.slice(0, 2).map((variant) => `${variant.option_name}: ${variant.option_value}`);
+}
+
 export default function VendorSiteProducts() {
   const { slug, vendor_slug: legacyVendorSlug } = useParams();
   const vendorSlug = slug || legacyVendorSlug;
@@ -131,6 +139,9 @@ export default function VendorSiteProducts() {
           const hasDiscount = discounted && discounted < price;
           const discountPercent = toNumber(product?.discount_percent);
           const detailPath = `/store/${vendorSlug}/product/${product.id}`;
+          const variantPreview = getVariantPreview(product);
+          const variantCount = Array.isArray(product?.variants) ? product.variants.length : 0;
+          const availableQuantity = toNumber(product?.available_quantity);
 
           return (
             <article key={product.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
@@ -164,15 +175,52 @@ export default function VendorSiteProducts() {
                   <p className="mt-1 text-sm font-semibold">{formatPrice(price)}</p>
                 )}
 
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    availableQuantity > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {availableQuantity > 0 ? `${availableQuantity} in stock` : 'Out of stock'}
+                  </span>
+                  {variantCount > 0 ? (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                      {variantCount} variants
+                    </span>
+                  ) : null}
+                </div>
+
+                {variantCount > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {variantPreview.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                    {variantCount > variantPreview.length ? (
+                      <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600">
+                        +{variantCount - variantPreview.length} more
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => orderNow(product.id)}
+                    onClick={() => {
+                      if (variantCount > 0) {
+                        navigate(detailPath);
+                        return;
+                      }
+                      orderNow(product.id);
+                    }}
                     disabled={!ready}
                     className="inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold"
                     style={{ backgroundColor: 'var(--primary)', color: 'var(--secondary)' }}
                   >
-                    Order Now
+                    {variantCount > 0 ? 'Choose Options' : 'Order Now'}
                   </button>
                   <button
                     type="button"
