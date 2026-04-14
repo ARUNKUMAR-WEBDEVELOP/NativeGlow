@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { getCategoryColorOptions, getCategorySizeOptions } from './productTemplates';
+import { getCategoryColorOptions } from './productTemplates';
 
 function normalizeOptionValue(option) {
   if (typeof option === 'string') {
@@ -100,15 +100,10 @@ function AvailableOptionsList({ availableOptions, selectedOptions, onAdd }) {
 export default function ProductVariantOptionsEditor({
   categoryType,
   colorOptions = [],
-  sizeOptions = [],
   onColorOptionsChange,
-  onSizeOptionsChange,
-  showSizeOptions = true,
 }) {
   const availableColors = getCategoryColorOptions(categoryType);
-  const availableSizes = getCategorySizeOptions(categoryType);
   const [customColor, setCustomColor] = useState('');
-  const [customSize, setCustomSize] = useState('');
 
   const normalizedColorOptions = useMemo(
     () => colorOptions.map((option) => normalizeOptionValue(option)).filter((option) => option.value),
@@ -144,23 +139,6 @@ export default function ProductVariantOptionsEditor({
     if (customColor.trim() && !normalizedColorOptions.some((option) => option.value === customColor.trim())) {
       onColorOptionsChange([...normalizedColorOptions, { value: customColor.trim(), image_positions: [] }]);
       setCustomColor('');
-    }
-  };
-
-  const handleAddSize = (size) => {
-    if (!sizeOptions.includes(size)) {
-      onSizeOptionsChange([...sizeOptions, size]);
-    }
-  };
-
-  const handleRemoveSize = (index) => {
-    onSizeOptionsChange(sizeOptions.filter((_, i) => i !== index));
-  };
-
-  const handleAddCustomSize = () => {
-    if (customSize.trim() && !sizeOptions.includes(customSize.trim())) {
-      onSizeOptionsChange([...sizeOptions, customSize.trim()]);
-      setCustomSize('');
     }
   };
 
@@ -214,63 +192,6 @@ export default function ProductVariantOptionsEditor({
           </button>
         </div>
       </div>
-
-      {showSizeOptions ? (
-        <>
-          <hr className="border-zinc-300" />
-
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700">
-              Product Size Options
-            </h3>
-            <p className="mt-1 text-xs text-zinc-600">
-              Select available sizes based on your product category - customers can choose their size
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">Selected Sizes</label>
-              <VariantBadgeList
-                options={sizeOptions}
-                onRemove={handleRemoveSize}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">Quick Add from Suggestions</label>
-              <div className="rounded-lg bg-white p-3">
-                <p className="mb-2 text-xs font-medium text-zinc-600">
-                  Category: <span className="text-emerald-700 font-semibold">{categoryType}</span>
-                </p>
-                <AvailableOptionsList
-                  availableOptions={availableSizes}
-                  selectedOptions={sizeOptions}
-                  onAdd={handleAddSize}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customSize}
-                onChange={(e) => setCustomSize(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddCustomSize()}
-                placeholder="Add custom size (e.g., XXL, 44, etc.)..."
-                className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-              />
-              <button
-                onClick={handleAddCustomSize}
-                type="button"
-                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
 
       <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-3 text-xs text-zinc-600">
         <p className="font-medium text-zinc-700">💡 Pro Tips:</p>
