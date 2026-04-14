@@ -782,7 +782,11 @@ class VendorProductQuantitySerializer(serializers.Serializer):
         instance.available_quantity = qty
         instance.inventory_qty = qty  # Keep in sync
         instance.is_active = qty > 0
-        instance.save()
+        if qty <= 0:
+            instance.status = 'out_of_stock'
+        elif instance.status == 'out_of_stock':
+            instance.status = 'approved'
+        instance.save(update_fields=['available_quantity', 'inventory_qty', 'is_active', 'status', 'updated_at'])
         return instance
 
 

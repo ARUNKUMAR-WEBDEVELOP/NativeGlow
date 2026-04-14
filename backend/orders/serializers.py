@@ -437,6 +437,12 @@ class VendorOrderStatusUpdateSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('order_status', 'tracking_id', 'courier_name', 'tracking_info', 'cancel_reason')
 
+    def validate_order_status(self, value):
+        normalized = str(value or '').strip().lower()
+        if normalized in {'confirm', 'conform', 'confirmation'}:
+            return 'confirmed'
+        return normalized
+
     def validate(self, attrs):
         new_status = attrs.get('order_status', getattr(self.instance, 'order_status', None))
         cancel_reason = attrs.get('cancel_reason', '')

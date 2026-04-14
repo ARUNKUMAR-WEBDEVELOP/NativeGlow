@@ -457,13 +457,20 @@ class VendorProductQuantityView(generics.UpdateAPIView):
             
             instance.available_quantity = qty
             instance.inventory_qty = qty  # Keep in sync
-            instance.save()
+            instance.is_active = qty > 0
+            if qty <= 0:
+                instance.status = 'out_of_stock'
+            elif instance.status == 'out_of_stock':
+                instance.status = 'approved'
+            instance.save(update_fields=['available_quantity', 'inventory_qty', 'is_active', 'status', 'updated_at'])
             
             return Response(
                 {
                     'id': instance.id,
                     'title': instance.title,
                     'available_quantity': instance.available_quantity,
+                    'is_available': instance.is_active,
+                    'status': instance.status,
                     'message': f'Quantity updated to {qty}'
                 },
                 status=status.HTTP_200_OK

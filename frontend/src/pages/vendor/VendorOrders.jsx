@@ -58,6 +58,23 @@ function formatAmount(amount) {
   return n.toFixed(2);
 }
 
+function buildSelectedOptions(order) {
+  const explicitLabel = String(order?.selected_variant_label || '').trim();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const color = String(order?.selected_color || order?.selectedColor || '').trim();
+  const size = String(order?.selected_size || order?.selectedSize || '').trim();
+
+  return [
+    color ? `Color: ${color}` : '',
+    size ? `Size: ${size}` : '',
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 function isNewOrder(createdAt) {
   if (!createdAt) {
     return false;
@@ -356,10 +373,7 @@ function VendorOrders() {
 
             const buyerPhoneDigits = String(order.buyer_phone || '').replace(/\D/g, '');
             const businessName = vendorSession?.vendor?.business_name || 'NativeGlow Store';
-            const chosenOptions = [
-              order.selected_color ? `Color: ${order.selected_color}` : '',
-              order.selected_size ? `Size: ${order.selected_size}` : '',
-            ].filter(Boolean).join(' | ');
+            const chosenOptions = buildSelectedOptions(order);
             const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name}${chosenOptions ? ` (${chosenOptions})` : ''} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
 
             return (
@@ -393,11 +407,9 @@ function VendorOrders() {
                   <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
                     <p className="font-semibold text-zinc-900">{order.product_name}</p>
                     <p className="mt-1">Qty {order.quantity} · {String(order.payment_method || 'upi').toUpperCase()} · Ref {order.payment_reference || 'N/A'}</p>
-                    {order.selected_color || order.selected_size ? (
+                    {chosenOptions ? (
                       <p className="mt-1 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">
-                        {[order.selected_color ? `Color: ${order.selected_color}` : '', order.selected_size ? `Size: ${order.selected_size}` : '']
-                          .filter(Boolean)
-                          .join(' | ')}
+                        {chosenOptions}
                       </p>
                     ) : null}
                     <p className="mt-1">Buyer: <span className="font-semibold text-zinc-900">{order.buyer_name}</span> · {order.buyer_phone}</p>

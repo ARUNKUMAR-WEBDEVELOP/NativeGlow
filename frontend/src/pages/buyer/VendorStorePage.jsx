@@ -69,14 +69,22 @@ function VendorStorePage() {
       try {
         const data = await api.getVendorStore(vendorSlug);
         if (active) {
+          const availableProducts = (Array.isArray(data.products) ? data.products : []).filter((product) => {
+            const quantity = Number(product?.available_quantity || 0);
+            const isActive = product?.is_active !== false;
+            const status = String(product?.status || '').toLowerCase();
+            const statusAllowed = !status || status === 'approved' || status === 'active';
+            return quantity > 0 && isActive && statusAllowed;
+          });
+
           setVendor({
             ...data,
             whatsapp: data.whatsapp || data.whatsapp_number || '',
           });
-          setProducts(Array.isArray(data.products) ? data.products : []);
+          setProducts(availableProducts);
           
           // Extract unique categories
-          const cats = [...new Set((data.products || []).map((p) => p.category || p.category_name || p.category_type).filter(Boolean))];
+          const cats = [...new Set(availableProducts.map((p) => p.category || p.category_name || p.category_type).filter(Boolean))];
           setCategories(cats);
         }
       } catch (err) {
