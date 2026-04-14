@@ -164,19 +164,28 @@ function VendorAddProduct() {
             }
           />
 
-          <ProductVariantsEditor
-            productType={form.product_type}
-            variants={form.variants}
-            productAttributes={form.product_attributes}
-            onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
-          />
+          <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-700">Variant Options</h3>
+              <p className="mt-1 text-xs text-zinc-500">Add variant rows, prices, and stock values for this product.</p>
+            </div>
 
-          <ProductVariantOptionsEditor
-            categoryType={form.category_type}
-            colorOptions={form.color_options}
-            onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
-            showSizeOptions={false}
-          />
+            <div className="space-y-4">
+              <ProductVariantsEditor
+                productType={form.product_type}
+                variants={form.variants}
+                productAttributes={form.product_attributes}
+                onChange={(nextVariants) => setForm((prev) => ({ ...prev, variants: nextVariants }))}
+              />
+
+              <ProductVariantOptionsEditor
+                categoryType={form.category_type}
+                colorOptions={form.color_options}
+                onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
+                showSizeOptions={false}
+              />
+            </div>
+          </section>
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input type="checkbox" name="is_natural_certified" checked={form.is_natural_certified} onChange={onChange} className="h-4 w-4 rounded border-zinc-300 text-sage" />
             Natural certified
