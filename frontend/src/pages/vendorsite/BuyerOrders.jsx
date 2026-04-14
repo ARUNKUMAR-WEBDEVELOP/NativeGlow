@@ -29,6 +29,27 @@ function formatMoney(value) {
   return `Rs ${n.toLocaleString('en-IN')}`;
 }
 
+function getOrderStatus(order) {
+  return String(order?.status || order?.order_status || 'pending').toLowerCase();
+}
+
+function buildSelectedOptions(order) {
+  const explicitLabel = String(order?.selected_variant_label || '').trim();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const color = String(order?.selected_color || '').trim();
+  const size = String(order?.selected_size || '').trim();
+
+  return [
+    color ? `Color: ${color}` : '',
+    size ? `Size: ${size}` : '',
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 function formatShippingAddress(order) {
   const parts = [
     order.buyer_address_line1 || order.shipping_address_line1 || order.buyer_address || order.shipping_address,
@@ -110,6 +131,7 @@ export default function BuyerOrders() {
                 buyer_confirmed_at: new Date().toISOString(),
                 delivery_rating: deliveryRating,
                 status: 'delivered',
+                order_status: 'delivered',
               }
             : item
         )
@@ -160,7 +182,9 @@ export default function BuyerOrders() {
 
       <div className="space-y-4">
         {sortedOrders.map((order) => {
-          const highlight = isShippedStatus(order.status) && !order.buyer_confirmed_delivery;
+          const status = getOrderStatus(order);
+          const highlight = isShippedStatus(status) && !order.buyer_confirmed_delivery;
+          const selectedOptions = buildSelectedOptions(order);
 
           return (
             <article
@@ -199,11 +223,16 @@ export default function BuyerOrders() {
                     <p>Payment Ref: <strong>{order.payment_reference || 'N/A'}</strong></p>
                     <p>Buyer: <strong>{order.buyer_name || 'N/A'}</strong></p>
                   </div>
+                  {selectedOptions ? (
+                    <p className="mt-2 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
+                      {selectedOptions}
+                    </p>
+                  ) : null}
                   <p className="mt-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{formatShippingAddress(order)}</p>
                 </div>
               </div>
 
-              <OrderStatusTimeline status={order.status} />
+              <OrderStatusTimeline status={status} />
 
               {highlight ? (
                 <button

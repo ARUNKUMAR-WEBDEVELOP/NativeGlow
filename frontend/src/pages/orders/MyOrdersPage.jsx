@@ -30,6 +30,27 @@ function formatShippingAddress(order) {
   return parts.length ? parts.join(' · ') : 'Shipping details not available';
 }
 
+function getOrderStatus(order) {
+  return String(order?.status || order?.order_status || 'pending').toLowerCase();
+}
+
+function buildSelectedOptions(order) {
+  const explicitLabel = String(order?.selected_variant_label || '').trim();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const color = String(order?.selected_color || '').trim();
+  const size = String(order?.selected_size || '').trim();
+
+  return [
+    color ? `Color: ${color}` : '',
+    size ? `Size: ${size}` : '',
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
   const [confirmingOrder, setConfirmingOrder] = useState(null);
   const [deliveryRating, setDeliveryRating] = useState(5);
@@ -154,7 +175,7 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
                 <p className="text-sm text-zinc-600">Placed {new Date(order.created_at).toLocaleString()}</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700">{order.status}</span>
+                <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700">{getOrderStatus(order)}</span>
                 <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">Payment {order.payment_status}</span>
               </div>
             </div>
@@ -189,6 +210,13 @@ function MyOrdersPage({ tokens, onTokensUpdate, onAuthExpired }) {
                 <p className="mt-1">Coupon: {order.coupon_code || 'none'}</p>
               </div>
             </div>
+
+            {buildSelectedOptions(order) ? (
+              <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Selected Options</p>
+                <p className="mt-1 font-semibold">{buildSelectedOptions(order)}</p>
+              </div>
+            ) : null}
 
             <ul className="mt-4 space-y-2 border-t border-zinc-200 pt-4 text-sm text-zinc-700">
               {order.items.map((item) => (

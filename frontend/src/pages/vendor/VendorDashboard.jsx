@@ -1248,6 +1248,17 @@ export default function VendorDashboard() {
                     </thead>
                     <tbody>
                       {recentOrders.map((order, idx) => (
+                        (() => {
+                          const status = String(order.order_status || order.status || 'pending').toLowerCase();
+                          const selectedOptions = [
+                            order.selected_variant_label ? String(order.selected_variant_label).trim() : '',
+                            order.selected_color ? `Color: ${order.selected_color}` : '',
+                            order.selected_size ? `Size: ${order.selected_size}` : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' | ');
+
+                          return (
                         <tr
                           key={idx}
                           className="border-t hover:bg-opacity-50 transition-all"
@@ -1261,6 +1272,11 @@ export default function VendorDashboard() {
                           </td>
                           <td className="px-6 py-3" style={{ color: theme.colors.charcoal }}>
                             {order.product_name || 'Product'}
+                            {selectedOptions ? (
+                              <div className="mt-1 text-xs" style={{ color: theme.colors.muted }}>
+                                {selectedOptions}
+                              </div>
+                            ) : null}
                           </td>
                           <td className="px-6 py-3" style={{ color: theme.colors.charcoal }}>
                             {order.buyer_name || 'Unknown'}
@@ -1273,23 +1289,25 @@ export default function VendorDashboard() {
                               className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold"
                               style={{
                                 backgroundColor:
-                                  order.status === 'delivered'
+                                  status === 'delivered'
                                     ? `${theme.colors.success}20`
-                                    : order.status === 'pending'
+                                    : status === 'pending'
                                     ? `${theme.colors.warning}20`
                                     : `${theme.colors.info}20`,
                                 color:
-                                  order.status === 'delivered'
+                                  status === 'delivered'
                                     ? theme.colors.success
-                                    : order.status === 'pending'
+                                    : status === 'pending'
                                     ? theme.colors.warning
                                     : theme.colors.info,
                               }}
                             >
-                              {order.status?.replace('_', ' ').charAt(0).toUpperCase() + order.status?.slice(1) || 'Pending'}
+                              {status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1) || 'Pending'}
                             </span>
                           </td>
                         </tr>
+                          );
+                        })()
                       ))}
                     </tbody>
                   </table>

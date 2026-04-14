@@ -58,6 +58,27 @@ function formatAmount(amount) {
   return n.toFixed(2);
 }
 
+function getOrderStatus(order) {
+  return String(order?.order_status || order?.status || 'pending').toLowerCase();
+}
+
+function buildSelectedOptions(order) {
+  const explicitLabel = String(order?.selected_variant_label || '').trim();
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  const color = String(order?.selected_color || order?.selectedColor || '').trim();
+  const size = String(order?.selected_size || order?.selectedSize || '').trim();
+
+  return [
+    color ? `Color: ${color}` : '',
+    size ? `Size: ${size}` : '',
+  ]
+    .filter(Boolean)
+    .join(' | ');
+}
+
 function isNewOrder(createdAt) {
   if (!createdAt) {
     return false;
@@ -138,7 +159,7 @@ function OrderList() {
         const initialDrafts = {};
         sorted.forEach((order) => {
           initialDrafts[order.id] = {
-            status: order.order_status,
+            status: order.order_status || order.status,
             tracking_id: order.tracking_id || '',
             courier_name: order.courier_name || '',
             tracking_info: order.tracking_info || '',
@@ -170,7 +191,7 @@ function OrderList() {
     if (activeTab === 'all') {
       return orders;
     }
-    return orders.filter((order) => String(order.order_status).toLowerCase() === activeTab);
+    return orders.filter((order) => getOrderStatus(order) === activeTab);
   }, [activeTab, orders]);
 
   function updateDraft(orderId, patch) {
@@ -324,7 +345,7 @@ function OrderList() {
         <div className="space-y-4">
           {filteredOrders.map((order) => {
             const draft = drafts[order.id] || {
-              status: order.order_status,
+              status: order.order_status || order.status,
               tracking_id: order.tracking_id || '',
               courier_name: order.courier_name || '',
               tracking_info: order.tracking_info || '',
@@ -335,7 +356,8 @@ function OrderList() {
 
             const buyerPhoneDigits = String(order.buyer_phone || '').replace(/\D/g, '');
             const businessName = vendorSession?.vendor?.business_name || 'NativeGlow Store';
-            const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
+            const chosenOptions = buildSelectedOptions(order);
+            const whatsappMessage = `Hi ${order.buyer_name}, your order ${order.order_code} for ${order.product_name}${chosenOptions ? ` (${chosenOptions})` : ''} has been ${draft.status}. Thank you for shopping with ${businessName}!`;
 
             return (
               <article key={order.id} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
@@ -368,6 +390,11 @@ function OrderList() {
                 <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
                   <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
                     <p className="font-semibold text-zinc-900">{order.product_name}</p>
+                    {chosenOptions ? (
+                      <p className="mt-1 rounded-lg bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">
+                        {chosenOptions}
+                      </p>
+                    ) : null}
                     <p className="mt-1">Qty {order.quantity} · {String(order.payment_method || 'upi').toUpperCase()}</p>
                     <p className="mt-1">Buyer: <span className="font-semibold text-zinc-900">{order.buyer_name}</span> · {order.buyer_phone}</p>
                     <p className="mt-1 leading-6">Address: {order.buyer_address}{order.buyer_pincode ? ` ${order.buyer_pincode}` : ''}</p>
