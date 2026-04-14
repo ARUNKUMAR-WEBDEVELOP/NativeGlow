@@ -110,6 +110,16 @@ function ProductDetailPage() {
       try {
         const data = await api.getProductDetail(vendorSlug, resolvedProductId);
         if (active) {
+          const canonicalVendorSlug = String(data?.vendor_slug || '').trim();
+          if (
+            canonicalVendorSlug &&
+            vendorSlug &&
+            canonicalVendorSlug !== vendorSlug
+          ) {
+            navigate(`/store/${canonicalVendorSlug}/product/${resolvedProductId}`, { replace: true });
+            return;
+          }
+
           setProduct(data);
           setVendor({
             business_name: data.vendor_business_name,

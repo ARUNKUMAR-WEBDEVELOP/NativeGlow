@@ -695,16 +695,26 @@ class PublicProductDetailView(APIView):
 
     def get(self, request, vendor_slug, product_id):
         """Retrieve single product detail with vendor payment info."""
-        try:
-            product = Product.objects.get(
+        product = Product.objects.filter(
+            id=product_id,
+            vendor__vendor_slug=vendor_slug,
+            status='approved',
+            is_visible=True,
+            vendor__is_approved=True,
+            vendor__is_active=True,
+        ).first()
+
+        # Fallback: if URL has stale/incorrect vendor slug, resolve by product id.
+        if not product:
+            product = Product.objects.filter(
                 id=product_id,
-                vendor__vendor_slug=vendor_slug,
                 status='approved',
-                is_active=True,
                 is_visible=True,
-                available_quantity__gt=0,
-            )
-        except Product.DoesNotExist:
+                vendor__is_approved=True,
+                vendor__is_active=True,
+            ).first()
+
+        if not product:
             return Response(
                 {'detail': 'Product not found or unavailable.'},
                 status=status.HTTP_404_NOT_FOUND

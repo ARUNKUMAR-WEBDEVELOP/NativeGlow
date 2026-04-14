@@ -903,6 +903,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
     vendor_upi = serializers.CharField(
         source='vendor.upi_id', read_only=True, default=None
     )
+    vendor_slug = serializers.CharField(source='vendor.vendor_slug', read_only=True, default='')
     category = serializers.CharField(source='category_type', read_only=True)
     discounted_price = serializers.SerializerMethodField()
     images = ProductImageSerializer(many=True, read_only=True)
@@ -919,7 +920,7 @@ class PublicProductDetailSerializer(serializers.ModelSerializer):
             'ingredients', 'ingredients_list',
             'product_attributes',
             'variants', 'color_options', 'size_options',
-            'category', 'category_name', 'vendor_business_name',
+            'category', 'category_name', 'vendor_slug', 'vendor_business_name',
             'vendor_whatsapp', 'vendor_upi',
             'images', 'created_at',
         )
