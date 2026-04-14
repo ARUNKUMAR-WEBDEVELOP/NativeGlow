@@ -97,16 +97,15 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
           <button
             type="button"
             onClick={usePreset}
-            className="rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+            className="rounded-2xl border border-black bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-900"
           >
             Load preset
           </button>
           <button
             type="button"
             onClick={addRow}
-            className="rounded-2xl border border-sage/30 bg-sage px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sage/90"
-          >
-            Add variant
+           className="rounded-2xl border border-black bg-black px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-900"
+          >  Add variant
           </button>
         </div>
       </div>
