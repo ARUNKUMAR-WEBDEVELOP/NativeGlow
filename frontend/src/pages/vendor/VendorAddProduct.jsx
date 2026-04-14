@@ -9,7 +9,6 @@ import {
   getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
-  getCategorySizeOptions,
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
@@ -32,7 +31,6 @@ function VendorAddProduct() {
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
     color_options: [],
-    size_options: getCategorySizeOptions('other'),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +48,6 @@ function VendorAddProduct() {
           ...prev.product_attributes,
         },
         variants: getDefaultVariantRows(mappedType),
-        size_options: getCategorySizeOptions(value),
       }));
       return;
     }
@@ -105,7 +102,6 @@ function VendorAddProduct() {
           product_attributes: productAttributes,
           variants_payload: variantsPayload,
           color_options: form.color_options || [],
-          size_options: form.size_options || [],
         }),
       });
 
@@ -178,9 +174,8 @@ function VendorAddProduct() {
           <ProductVariantOptionsEditor
             categoryType={form.category_type}
             colorOptions={form.color_options}
-            sizeOptions={form.size_options}
             onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
-            onSizeOptionsChange={(sizeOptions) => setForm((prev) => ({ ...prev, size_options: sizeOptions }))}
+            showSizeOptions={false}
           />
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <input type="checkbox" name="is_natural_certified" checked={form.is_natural_certified} onChange={onChange} className="h-4 w-4 rounded border-zinc-300 text-sage" />

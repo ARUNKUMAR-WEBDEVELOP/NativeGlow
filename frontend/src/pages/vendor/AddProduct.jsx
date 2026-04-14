@@ -9,7 +9,6 @@ import {
   getProductTypeForCategory,
   getDefaultVariantRows,
   getEmptyProductAttributes,
-  getCategorySizeOptions,
   sanitizeVariantRows,
   sanitizeProductAttributes,
 } from '../../components/vendor/productTemplates';
@@ -46,7 +45,6 @@ function AddProduct() {
     product_attributes: getEmptyProductAttributes('skincare'),
     variants: getDefaultVariantRows('skincare'),
     color_options: [],
-    size_options: getCategorySizeOptions('face_wash'),
   });
   const [previewUrls, setPreviewUrls] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -98,7 +96,6 @@ function AddProduct() {
           ...prev.product_attributes,
         },
         variants: getDefaultVariantRows(mappedType),
-        size_options: getCategorySizeOptions(value),
       }));
       return;
     }
@@ -159,7 +156,6 @@ function AddProduct() {
       formData.append('product_attributes', JSON.stringify(productAttributes));
       formData.append('variants_payload', JSON.stringify(variantsPayload));
       formData.append('color_options', JSON.stringify(form.color_options || []));
-      formData.append('size_options', JSON.stringify(form.size_options || []));
 
       formData.append('image', form.images[0]);
       form.images.slice(1, maxImages).forEach((image, index) => {
@@ -199,7 +195,6 @@ function AddProduct() {
         product_attributes: getEmptyProductAttributes('skincare'),
         variants: getDefaultVariantRows('skincare'),
         color_options: [],
-        size_options: getCategorySizeOptions('face_wash'),
       });
     } catch (err) {
       setError(err.message || 'Unable to add product.');
@@ -332,9 +327,8 @@ function AddProduct() {
           <ProductVariantOptionsEditor
             categoryType={form.category_type}
             colorOptions={form.color_options}
-            sizeOptions={form.size_options}
             onColorOptionsChange={(colorOptions) => setForm((prev) => ({ ...prev, color_options: colorOptions }))}
-            onSizeOptionsChange={(sizeOptions) => setForm((prev) => ({ ...prev, size_options: sizeOptions }))}
+            showSizeOptions={false}
           />
 
           <div>
