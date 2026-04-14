@@ -68,8 +68,8 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-zinc-200 bg-white p-4">
+    <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4">
         <div className="max-w-xl">
           <div className="inline-flex items-center rounded-full bg-sage/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sage">
             Variant setup
@@ -88,7 +88,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
               type="button"
               onClick={useClothingSelectionPreset}
               disabled={clothingPresetRows.length === 0}
-              className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
               title={clothingPresetRows.length === 0 ? 'Select Target Audience and Garment Type first' : 'Load sizes based on selected audience and garment'}
             >
               Use Garment Options
@@ -97,14 +97,14 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
           <button
             type="button"
             onClick={usePreset}
-            className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+            className="rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800"
           >
             Load preset
           </button>
           <button
             type="button"
             onClick={addRow}
-            className="rounded-xl border border-sage/30 bg-sage px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sage/90"
+            className="rounded-2xl border border-sage/30 bg-sage px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sage/90"
           >
             Add variant
           </button>
@@ -118,7 +118,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
           </div>
         ) : null}
         {rows.length > 0 ? rows.map((row, index) => (
-          <div key={`${row.option_name || 'variant'}-${index}`} className="rounded-xl border border-zinc-200 bg-white p-3">
+          <div key={`${row.option_name || 'variant'}-${index}`} className="rounded-2xl border border-zinc-200 bg-white p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Variant #{index + 1}</p>
               <button
@@ -137,7 +137,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   value={row.option_name || ''}
                   onChange={(event) => updateRow(index, 'option_name', event.target.value)}
                   placeholder="Size / Color / Flavor"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
                 />
               </label>
 
@@ -147,7 +147,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   value={row.option_value || ''}
                   onChange={(event) => updateRow(index, 'option_value', event.target.value)}
                   placeholder="M / Black / Mango"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
                 />
               </label>
 
@@ -157,7 +157,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   value={row.sku_suffix || ''}
                   onChange={(event) => updateRow(index, 'sku_suffix', event.target.value)}
                   placeholder="SIZE-M-BLACK"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
                 />
               </label>
 
@@ -170,7 +170,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   value={row.additional_price ?? ''}
                   onChange={(event) => updateRow(index, 'additional_price', event.target.value)}
                   placeholder="0"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
                 />
               </label>
 
@@ -182,7 +182,7 @@ function ProductVariantsEditor({ productType, variants, onChange, productAttribu
                   value={row.stock ?? ''}
                   onChange={(event) => updateRow(index, 'stock', event.target.value)}
                   placeholder="0"
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
                 />
               </label>
             </div>
