@@ -74,6 +74,12 @@ All requests require Bearer token in header:
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
+For the superadmin account, the frontend must also send the same stable device id on login and on every admin request:
+
+```
+X-Device-ID: web-device-001
+```
+
 ### Token Structure
 
 ```json
@@ -82,6 +88,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   "email": "admin@nativeglow.app",
   "role": "admin",              ← REQUIRED: all admin endpoints verify this
   "is_superadmin": true,        ← Privilege flag
+  "device_id": "web-device-001",
   "exp": 1711300200
 }
 ```
@@ -94,8 +101,15 @@ Content-Type: application/json
 
 {
   "email": "admin@nativeglow.app",
-  "password": "secure_password"
+  "password": "secure_password",
+  "device_id": "web-device-001"
 }
+```
+
+Headers:
+
+```
+X-Device-ID: web-device-001
 ```
 
 **Response:**
@@ -108,7 +122,8 @@ Content-Type: application/json
     "id": 1,
     "full_name": "Admin User",
     "email": "admin@nativeglow.app",
-    "is_superadmin": true
+    "is_superadmin": true,
+    "device_id": "web-device-001"
   }
 }
 ```
@@ -122,15 +137,18 @@ Content-Type: application/json
 ```bash
 # 1. Get list of pending vendors
 GET /api/admin/vendors/?status=pending
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 
 # 2. Review vendor details
 GET /api/admin/vendors/5/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 
 # 3. Approve or reject
 PATCH /api/admin/vendors/5/approve/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 Body: {
   "approved": true,
   "reason": "Company verified, documents approved"
@@ -167,7 +185,8 @@ Body: {
 ```bash
 # 1. Generate fees for current month (runs once per month)
 POST /api/admin/maintenance/generate/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 Body: {
   "month": "2025-03",
   "amount": 499
@@ -177,7 +196,8 @@ Body: {
 
 # 3. Record payment once received
 PATCH /api/admin/maintenance/5/mark-paid/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 Body: {
   "payment_reference": "UTR123456789",
   "paid_on": "2025-03-05"
@@ -185,7 +205,8 @@ Body: {
 
 # 4. View collection summary
 GET /api/admin/maintenance/summary/?month=2025-03
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 ```
 
 ### Workflow 4: Monitor Sales & Orders (READ-ONLY)
@@ -193,20 +214,24 @@ Header: Authorization: Bearer <token>
 ```bash
 # 1. Check dashboard overview
 GET /api/admin/dashboard/stats/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 
 # 2. Review monthly sales trends
 GET /api/admin/sales/monthly/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 
 # 3. Analyze specific vendor performance
 GET /api/admin/sales/vendor/5/monthly/
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 
 # 4. Investigate orders (filter by status/vendor/month)
 GET /api/admin/orders/?status=pending
 GET /api/admin/orders/?vendor_id=5&month=2025-03
-Header: Authorization: Bearer <token>
+Headers: Authorization: Bearer <token>
+Headers: X-Device-ID: <same-device-id-used-at-login>  # superadmin only
 ```
 
 ---
@@ -444,7 +469,7 @@ GET /api/admin/orders/?vendor_id=5&month=2025-03
 
 ### Sales Summary (READ-ONLY)
 
-```bash
+````bash
 # Monthly revenue trend (all vendors)
 GET /api/admin/sales/monthly/
 
@@ -526,7 +551,7 @@ System automatically sends emails to vendors at key approval points:
 409: {"error": "Maintenance fee already exists for vendor 5 in month 2025-03"}
 400: {"reason": ["Rejection reason required when rejecting"]}
 401: {"detail": "Invalid token or role not admin"}
-```
+````
 
 ---
 

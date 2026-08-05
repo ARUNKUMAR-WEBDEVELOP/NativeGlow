@@ -48,9 +48,22 @@ class AdminJWTAuthentication(JWTAuthentication):
         if not admin_id:
             raise AuthenticationFailed('No admin_id in token.')
 
+        token_device_id = validated_token.get('device_id', '')
+
         # Fetch AdminUser object and attach to request
         try:
             admin_user = AdminUser.objects.get(id=admin_id)
+            if admin_user.is_superadmin:
+                request_device_id = request.headers.get('X-Device-ID', '').strip() or request.META.get('HTTP_X_DEVICE_ID', '').strip()
+                if not request_device_id:
+                    raise AuthenticationFailed('Device ID is required for superadmin access.')
+
+                if not admin_user.login_device_id:
+                    raise AuthenticationFailed('Superadmin device is not registered.')
+
+                if request_device_id != admin_user.login_device_id or token_device_id != admin_user.login_device_id:
+                    raise AuthenticationFailed('This superadmin account is restricted to one device.')
+
             request.admin_user = admin_user
         except AdminUser.DoesNotExist:
             raise AuthenticationFailed('Admin user not found.')

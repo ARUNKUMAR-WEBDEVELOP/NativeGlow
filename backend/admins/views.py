@@ -62,7 +62,8 @@ class AdminLoginView(APIView):
 
     def post(self, request):
         """Authenticate admin and issue JWT tokens with role claim."""
-        serializer = AdminLoginSerializer(data=request.data)
+        device_id = request.headers.get('X-Device-ID', '').strip() or request.data.get('device_id', '').strip()
+        serializer = AdminLoginSerializer(data=request.data, context={'device_id': device_id})
         serializer.is_valid(raise_exception=True)
 
         admin_user = serializer.validated_data.get('admin_user')
@@ -73,6 +74,7 @@ class AdminLoginView(APIView):
         refresh['email'] = admin_user.email
         refresh['role'] = 'admin'
         refresh['is_superadmin'] = admin_user.is_superadmin
+        refresh['device_id'] = device_id
 
         return Response(
             {
@@ -83,6 +85,7 @@ class AdminLoginView(APIView):
                     'full_name': admin_user.full_name,
                     'email': admin_user.email,
                     'is_superadmin': admin_user.is_superadmin,
+                    'device_id': device_id,
                 }
             },
             status=status.HTTP_200_OK

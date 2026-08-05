@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getAdminDeviceId } from './adminDevice'
 
 function normalizeApiBase(url) {
   return String(url || '')
@@ -57,10 +58,15 @@ API.interceptors.request.use(
     }
     const buyerToken = localStorage.getItem('buyer_token')
     const adminToken = localStorage.getItem('admin_token')
+    const adminDeviceId = getAdminDeviceId()
 
     const token = vendorToken || buyerToken || adminToken
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    if (adminToken && adminDeviceId) {
+      config.headers['X-Device-ID'] = adminDeviceId
     }
 
     return config

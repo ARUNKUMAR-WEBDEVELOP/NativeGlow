@@ -1,3 +1,5 @@
+import { getAdminDeviceId } from './utils/adminDevice';
+
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.DEV
@@ -236,10 +238,17 @@ export const api = {
     requestWithBaseFallback(`/vendor/approval-status/?email=${encodeURIComponent(email || '')}`),
 
   // Admin
-  adminLogin: (data) => request('/admin/login/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  adminLogin: (data) => {
+    const adminDeviceId = getAdminDeviceId();
+    return request('/admin/login/', {
+      method: 'POST',
+      headers: adminDeviceId ? { 'X-Device-ID': adminDeviceId } : {},
+      body: JSON.stringify({
+        ...data,
+        device_id: data?.device_id || adminDeviceId,
+      }),
+    });
+  },
   getAdminProfile: async (tokens, onTokensUpdate, onAuthExpired) => {
     return authRequest('/admin/me/', {}, tokens, onTokensUpdate, onAuthExpired);
   },
@@ -491,12 +500,15 @@ async function adminRequest(path, options = {}) {
     throw new Error('Admin authentication required.');
   }
 
+  const adminDeviceId = getAdminDeviceId();
+
   try {
     return await request(path, {
       ...options,
       headers: {
         ...(options.headers || {}),
         Authorization: `Bearer ${adminTokens.access}`,
+        ...(adminDeviceId ? { 'X-Device-ID': adminDeviceId } : {}),
       },
     });
   } catch (error) {
@@ -529,6 +541,7 @@ async function adminRequest(path, options = {}) {
       headers: {
         ...(options.headers || {}),
         Authorization: `Bearer ${nextAccess}`,
+        ...(adminDeviceId ? { 'X-Device-ID': adminDeviceId } : {}),
       },
     });
   }

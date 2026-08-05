@@ -17,6 +17,7 @@ class AdminLoginSerializer(serializers.Serializer):
         """Validate admin credentials."""
         email = data.get('email', '').lower().strip()
         password = data.get('password', '')
+        device_id = self.context.get('device_id', '').strip()
 
         if not email or not password:
             raise serializers.ValidationError('Email and password are required.')
@@ -28,6 +29,17 @@ class AdminLoginSerializer(serializers.Serializer):
 
         if not admin_user.check_password(password):
             raise serializers.ValidationError('Invalid email or password.')
+
+        if admin_user.is_superadmin:
+            if not device_id:
+                raise serializers.ValidationError('Device ID is required for superadmin login.')
+
+            if admin_user.login_device_id and admin_user.login_device_id != device_id:
+                raise serializers.ValidationError('This superadmin account is restricted to one device.')
+
+            if not admin_user.login_device_id:
+                admin_user.login_device_id = device_id
+                admin_user.save(update_fields=['login_device_id'])
 
         data['admin_user'] = admin_user
         return data

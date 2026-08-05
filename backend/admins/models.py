@@ -32,6 +32,7 @@ class AdminUser(models.Model):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)
     is_superadmin = models.BooleanField(default=False)
+    login_device_id = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = AdminUserManager()

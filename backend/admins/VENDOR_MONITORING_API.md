@@ -1,6 +1,7 @@
 # Admin Vendor Monitoring API Documentation
 
 ## Overview
+
 Comprehensive vendor management APIs for admins. All endpoints require **AdminJWTAuthentication** (Bearer token with role="admin").
 
 ---
@@ -8,16 +9,19 @@ Comprehensive vendor management APIs for admins. All endpoints require **AdminJW
 ## Endpoints
 
 ### 1. List All Vendors
+
 **GET** `/api/admin/vendors/`
 
 List all vendors with optional filtering and search.
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Query Parameters:**
+
 - `status` (optional): Filter by status
   - `pending` — Not approved yet
   - `approved` — Approved and active
@@ -25,6 +29,7 @@ Authorization: Bearer <admin_access_token>
 - `search` (optional): Search vendors by business_name
 
 **Examples:**
+
 ```
 GET /api/admin/vendors/
 GET /api/admin/vendors/?status=pending
@@ -35,6 +40,7 @@ GET /api/admin/vendors/?status=pending&search=natural
 ```
 
 **Response (200):**
+
 ```json
 [
   {
@@ -50,7 +56,7 @@ GET /api/admin/vendors/?status=pending&search=natural
     "created_at": "2026-03-20T08:00:00Z",
     "total_products": 12,
     "total_orders": 45,
-    "this_month_revenue": 15500.00,
+    "this_month_revenue": 15500.0,
     "status": "approved"
   },
   {
@@ -66,29 +72,33 @@ GET /api/admin/vendors/?status=pending&search=natural
     "created_at": "2026-03-22T10:30:00Z",
     "total_products": 0,
     "total_orders": 0,
-    "this_month_revenue": 0.00,
+    "this_month_revenue": 0.0,
     "status": "pending"
   }
 ]
 ```
 
 **Error Examples:**
+
 - 401: `{"detail": "Authentication credentials were not provided."}`
 - 401: `{"detail": "Token is not an admin token."}`
 
 ---
 
 ### 2. Vendor Details
+
 **GET** `/api/admin/vendors/<id>/`
 
 Get full vendor profile with products, orders, and revenue metrics.
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "id": 1,
@@ -108,8 +118,8 @@ Authorization: Bearer <admin_access_token>
   "updated_at": "2026-03-23T10:30:00Z",
   "total_products": 12,
   "total_orders": 45,
-  "this_month_revenue": 15500.00,
-  "all_time_revenue": 125000.00,
+  "this_month_revenue": 15500.0,
+  "all_time_revenue": 125000.0,
   "avg_order_value": 2777.78,
   "status": "approved",
   "products": [
@@ -129,7 +139,7 @@ Authorization: Bearer <admin_access_token>
       "order_id": "550e8400-e29b-41d4-a716-446655440000",
       "buyer_name": "Rajesh Kumar",
       "quantity": 2,
-      "total_amount": 598.00,
+      "total_amount": 598.0,
       "status": "delivered",
       "created_at": "2026-03-22T14:30:00Z"
     }
@@ -138,21 +148,25 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Error Examples:**
+
 - 404: `{"detail": "Vendor with id 999 not found."}`
 
 ---
 
 ### 3. Approve/Reject Vendor
+
 **PATCH** `/api/admin/vendors/<id>/approve/`
 
 Approve or reject a vendor application. Sends confirmation/rejection email.
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body (Approve):**
+
 ```json
 {
   "approved": true
@@ -160,6 +174,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body (Reject):**
+
 ```json
 {
   "approved": false,
@@ -168,6 +183,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200) — Approval:**
+
 ```json
 {
   "message": "Vendor Organic Farms approved successfully.",
@@ -177,6 +193,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200) — Rejection:**
+
 ```json
 {
   "message": "Vendor Natural Skincare Co rejected.",
@@ -187,26 +204,31 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Actions:**
+
 - **On Approval**: Sends welcome email with dashboard link
 - **On Rejection**: Sends rejection email with reason
 
 **Error Examples:**
+
 - 400: `{"reason": ["Reason is required for rejection."]}`
 - 404: `{"detail": "Vendor with id 999 not found."}`
 
 ---
 
 ### 4. Deactivate Vendor
+
 **PATCH** `/api/admin/vendors/<id>/deactivate/`
 
 Deactivate vendor account (vendor cannot login but account exists).
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "reason": "Violation of natural product policy - selling synthetic products"
@@ -214,6 +236,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Vendor Organic Farms deactivated.",
@@ -224,27 +247,32 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Actions:**
+
 - Sets `is_active = False` (vendor cannot login)
 - Sends deactivation notification email with reason
 - Vendor's orders still visible but cannot create new products
 
 **Error Examples:**
+
 - 400: `{"reason": ["This field is required."]}`
 - 404: `{"detail": "Vendor with id 999 not found."}`
 
 ---
 
 ### 5. Maintenance Fee Management
+
 **PATCH** `/api/admin/vendors/<id>/maintenance/`
 
 Update vendor maintenance fee status (monthly subscription tracking).
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body (Mark as Paid):**
+
 ```json
 {
   "paid": true,
@@ -253,6 +281,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Request Body (Mark as Unpaid/Overdue):**
+
 ```json
 {
   "paid": false,
@@ -261,6 +290,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200) — Paid:**
+
 ```json
 {
   "message": "Maintenance fee for 2025-03 marked as PAID.",
@@ -272,6 +302,7 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Response (200) — Unpaid:**
+
 ```json
 {
   "message": "Maintenance fee for 2025-03 marked as PENDING/UNPAID.",
@@ -283,11 +314,13 @@ Authorization: Bearer <admin_access_token>
 ```
 
 **Actions:**
+
 - **On Payment**: Creates/updates MaintenancePayment record with status='paid'
 - **On Non-Payment**: Creates/updates MaintenancePayment record with status='pending'
 - **Sets Flag**: `maintenance_due` flag reflects current month payment status
 
 **Error Examples:**
+
 - 400: `{"month": ["Month must be in format YYYY-MM (e.g., 2025-03)"]}`
 - 404: `{"detail": "Vendor with id 999 not found."}`
 
@@ -305,17 +338,19 @@ All vendor monitoring endpoints use **AdminJWTAuthentication**:
    - `role == "admin"` in payload
    - Admin user exists in database
 
+If the admin is the superadmin account, the same `X-Device-ID` header used at login must be sent with every request so the account stays bound to one device.
+
 ---
 
 ## Response Status Codes
 
-| Status | Meaning |
-|--------|---------|
-| 200 | Success |
-| 400 | Bad request / validation error |
-| 401 | Unauthorized (missing/invalid token) |
-| 404 | Vendor not found |
-| 500 | Server error |
+| Status | Meaning                              |
+| ------ | ------------------------------------ |
+| 200    | Success                              |
+| 400    | Bad request / validation error       |
+| 401    | Unauthorized (missing/invalid token) |
+| 404    | Vendor not found                     |
+| 500    | Server error                         |
 
 ---
 
@@ -332,12 +367,14 @@ All vendor monitoring endpoints use **AdminJWTAuthentication**:
 ## Field Descriptions
 
 ### Vendor Listing Response Field
+
 - **total_products**: Count of all vendor's products
 - **total_orders**: Count of all vendor's orders
 - **this_month_revenue**: Sum of delivered order amounts this month
 - **status**: Calculated status (pending/approved/inactive)
 
 ### Vendor Detail Response Fields
+
 - **all_time_revenue**: Sum of ALL delivered orders (not month-limited)
 - **avg_order_value**: Total revenue ÷ Number of orders
 - **products**: Array of vendor's products with key fields
@@ -349,54 +386,54 @@ All vendor monitoring endpoints use **AdminJWTAuthentication**:
 
 ```javascript
 // Step 1: Admin Login
-const loginResponse = await fetch('/api/admin/login/', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const loginResponse = await fetch("/api/admin/login/", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    email: 'admin@nativeglow.app',
-    password: 'secure123'
-  })
+    email: "admin@nativeglow.app",
+    password: "secure123",
+  }),
 });
 
 const { access } = await loginResponse.json();
 
 // Step 2: List pending vendors
-const listResponse = await fetch('/api/admin/vendors/?status=pending', {
-  headers: { 'Authorization': `Bearer ${access}` }
+const listResponse = await fetch("/api/admin/vendors/?status=pending", {
+  headers: { Authorization: `Bearer ${access}` },
 });
 
 const vendors = await listResponse.json();
 console.log(vendors); // Array of pending vendors
 
 // Step 3: Get vendor details
-const detailResponse = await fetch('/api/admin/vendors/2/', {
-  headers: { 'Authorization': `Bearer ${access}` }
+const detailResponse = await fetch("/api/admin/vendors/2/", {
+  headers: { Authorization: `Bearer ${access}` },
 });
 
 const vendorDetail = await detailResponse.json();
 console.log(vendorDetail); // Full vendor profile + products + orders
 
 // Step 4: Approve vendor
-const approveResponse = await fetch('/api/admin/vendors/2/approve/', {
-  method: 'PATCH',
+const approveResponse = await fetch("/api/admin/vendors/2/approve/", {
+  method: "PATCH",
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${access}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${access}`,
   },
-  body: JSON.stringify({ approved: true })
+  body: JSON.stringify({ approved: true }),
 });
 
 const approval = await approveResponse.json();
 console.log(approval); // { message, vendor_id, is_approved }
 
 // Step 5: Update maintenance fee
-const maintenanceResponse = await fetch('/api/admin/vendors/1/maintenance/', {
-  method: 'PATCH',
+const maintenanceResponse = await fetch("/api/admin/vendors/1/maintenance/", {
+  method: "PATCH",
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${access}`
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${access}`,
   },
-  body: JSON.stringify({ paid: true, month: '2025-03' })
+  body: JSON.stringify({ paid: true, month: "2025-03" }),
 });
 
 const maintenance = await maintenanceResponse.json();
@@ -408,14 +445,17 @@ console.log(maintenance); // { message, vendor_id, month, status, maintenance_du
 ## Email Templates
 
 ### Vendor Approval Email
+
 - Subject: "Welcome to NativeGlow - Account Approved!"
 - Content: Business name, dashboard link, welcome message
 
 ### Vendor Rejection Email
+
 - Subject: "NativeGlow Vendor Application Decision"
 - Content: Rejection reason, support contact info
 
 ### Vendor Deactivation Email
+
 - Subject: "NativeGlow Vendor Account Deactivated"
 - Content: Deactivation reason, support contact info
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
+import { getAdminDeviceId } from '../../utils/adminDevice';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -27,16 +28,20 @@ export default function AdminLogin() {
         return;
       }
 
+      const deviceId = getAdminDeviceId();
+
       // Call admin login API
       const response = await api.adminLogin({
         email: form.email,
         password: form.password,
+        device_id: deviceId,
       });
 
       // Store admin token separately
       localStorage.setItem('admin_token', response.access);
       localStorage.setItem('admin_refresh_token', response.refresh);
       localStorage.setItem('admin_info', JSON.stringify(response.admin));
+      localStorage.setItem('nativeglow_admin_device_id', response?.admin?.device_id || deviceId);
 
       // Redirect to admin dashboard
       navigate('/admin/dashboard', { replace: true });
