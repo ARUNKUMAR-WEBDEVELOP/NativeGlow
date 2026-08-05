@@ -6,8 +6,42 @@ import { getAdminDeviceId } from '../../utils/adminDevice';
 function extractLoginErrorMessage(err) {
   const payload = err?.payload;
 
+  const extractText = (value) => {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const text = extractText(item);
+        if (text) {
+          return text;
+        }
+      }
+      return '';
+    }
+
+    if (value && typeof value === 'object') {
+      for (const nested of Object.values(value)) {
+        const text = extractText(nested);
+        if (text) {
+          return text;
+        }
+      }
+    }
+
+    return '';
+  };
+
   if (typeof payload?.detail === 'string' && payload.detail.trim()) {
     return payload.detail.trim();
+  }
+
+  if (payload?.detail && typeof payload.detail === 'object') {
+    const detailText = extractText(payload.detail);
+    if (detailText) {
+      return detailText;
+    }
   }
 
   if (Array.isArray(payload?.non_field_errors) && payload.non_field_errors.length > 0) {
@@ -18,17 +52,17 @@ function extractLoginErrorMessage(err) {
   }
 
   if (payload && typeof payload === 'object') {
-    for (const value of Object.values(payload)) {
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim();
-      }
-      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].trim()) {
-        return value[0].trim();
-      }
+    const payloadText = extractText(payload);
+    if (payloadText) {
+      return payloadText;
     }
   }
 
-  if (typeof err?.message === 'string' && err.message.trim()) {
+  if (
+    typeof err?.message === 'string' &&
+    err.message.trim() &&
+    err.message.trim().toLowerCase() !== '[object object]'
+  ) {
     return err.message.trim();
   }
 
