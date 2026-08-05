@@ -116,6 +116,21 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^https://[a-z0-9-]+\.vercel\.app$',
 ]
 
+CORS_ALLOW_HEADERS = list(
+    {
+        'accept',
+        'accept-encoding',
+        'authorization',
+        'content-type',
+        'dnt',
+        'origin',
+        'user-agent',
+        'x-csrftoken',
+        'x-requested-with',
+        'x-device-id',
+    }
+)
+
 extra_cors = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
 if extra_cors:
     CORS_ALLOWED_ORIGINS.extend(extra_cors)
