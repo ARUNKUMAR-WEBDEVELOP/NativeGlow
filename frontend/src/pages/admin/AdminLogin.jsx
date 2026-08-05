@@ -3,6 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { getAdminDeviceId } from '../../utils/adminDevice';
 
+function extractLoginErrorMessage(err) {
+  const payload = err?.payload;
+
+  if (typeof payload?.detail === 'string' && payload.detail.trim()) {
+    return payload.detail.trim();
+  }
+
+  if (Array.isArray(payload?.non_field_errors) && payload.non_field_errors.length > 0) {
+    const first = payload.non_field_errors[0];
+    if (typeof first === 'string' && first.trim()) {
+      return first.trim();
+    }
+  }
+
+  if (payload && typeof payload === 'object') {
+    for (const value of Object.values(payload)) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].trim()) {
+        return value[0].trim();
+      }
+    }
+  }
+
+  if (typeof err?.message === 'string' && err.message.trim()) {
+    return err.message.trim();
+  }
+
+  return 'Login failed. Please try again.';
+}
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -47,8 +79,12 @@ export default function AdminLogin() {
       navigate('/admin/dashboard', { replace: true });
     } catch (err) {
       console.error('Admin login error:', err);
-      const detail = err?.payload?.detail || err?.message || 'Login failed. Please try again.';
-      setError(detail);
+      const detail = extractLoginErrorMessage(err);
+      if (detail.toLowerCase().includes('restricted to one device')) {
+        setError('This superadmin account can only be used on its registered device.');
+      } else {
+        setError(detail);
+      }
     } finally {
       setIsSubmitting(false);
     }
