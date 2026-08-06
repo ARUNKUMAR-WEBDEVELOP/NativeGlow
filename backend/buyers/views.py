@@ -3,6 +3,7 @@ import json
 from urllib import parse, request as urllib_request
 
 from django.utils import timezone
+from django.conf import settings
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework import permissions, status, generics
@@ -214,7 +215,7 @@ class BuyerOTPRequestView(APIView):
 			send_mail(
 				subject=f'{vendor.business_name} - Login Code',
 				message=f'Your login code is {code}. It expires in 10 minutes.',
-				from_email='no-reply@nativeglow.store',
+				from_email=settings.DEFAULT_FROM_EMAIL,
 				recipient_list=[email],
 				fail_silently=False,
 			)

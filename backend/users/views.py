@@ -1,7 +1,9 @@
 import os
 import random
+import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -133,12 +135,18 @@ class OTPRequestView(APIView):
             send_mail(
                 subject='NativeGlow OTP Verification',
                 message=f'Your NativeGlow OTP is {code}. It expires in 10 minutes.',
-                from_email='no-reply@nativeglow.store',
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
-                fail_silently=True,
+                fail_silently=False,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send OTP email to {email}: {str(e)}")
+            return Response(
+                {'detail': 'Failed to send OTP email. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         response_payload = {'detail': 'OTP sent to email.'}
         if os.environ.get('DEBUG', '1') == '1':
