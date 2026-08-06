@@ -7,13 +7,16 @@ from django.core.mail.backends.smtp import EmailBackend as DjangoSmtpEmailBacken
 logger = logging.getLogger(__name__)
 
 
+_original_getaddrinfo = socket.getaddrinfo
+
+
 def force_ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
     """
     Helper to force socket DNS queries to IPv4 (AF_INET) only.
     Prevents IPv6 socket creation on cloud environments (like Render)
     which lack outbound IPv6 network routes, preventing [Errno 101] Network is unreachable.
     """
-    return socket.getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
 
 
 class IPv4SmtpEmailBackend(DjangoSmtpEmailBackend):
@@ -26,12 +29,11 @@ class IPv4SmtpEmailBackend(DjangoSmtpEmailBackend):
         if self.connection:
             return False
 
-        orig_getaddrinfo = socket.getaddrinfo
         socket.getaddrinfo = force_ipv4_getaddrinfo
         try:
             return super().open()
         finally:
-            socket.getaddrinfo = orig_getaddrinfo
+            socket.getaddrinfo = _original_getaddrinfo
 
 
 class EmailThread(threading.Thread):
@@ -41,7 +43,6 @@ class EmailThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        orig_getaddrinfo = socket.getaddrinfo
         socket.getaddrinfo = force_ipv4_getaddrinfo
         try:
             django_send_mail(*self.args, **self.kwargs)
@@ -53,7 +54,8 @@ class EmailThread(threading.Thread):
                     "Ensure EMAIL_HOST, EMAIL_PORT, and credentials (App Password) are correct."
                 )
         finally:
-            socket.getaddrinfo = orig_getaddrinfo
+            socket.getaddrinfo = _original_getaddrinfo
+
 
 
 def send_mail_async(*args, **kwargs):
