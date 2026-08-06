@@ -274,25 +274,44 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Email Configuration
-# Use console backend for development (prints emails to console)
-# For production, configure with SendGrid, AWS SES, or your email service
-EMAIL_BACKEND = config(
-    'EMAIL_BACKEND',
-    default='django.core.mail.backends.console.EmailBackend'
+# Uses IPv4 forced SMTP backend in production to fix Render container IPv6 socket unreachable errors ([Errno 101])
+_email_user = config('EMAIL_HOST_USER', default='').strip()
+_default_backend = (
+    'nativeglow_backend.utils.IPv4SmtpEmailBackend'
+    if _email_user
+    else 'django.core.mail.backends.console.EmailBackend'
 )
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@nativeglow.com')
-DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default='no-reply@nativeglow.store')
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+
+_configured_backend = config('EMAIL_BACKEND', default=_default_backend).strip()
+if _configured_backend in ('django.core.mail.backends.smtp.EmailBackend', ''):
+    EMAIL_BACKEND = 'nativeglow_backend.utils.IPv4SmtpEmailBackend'
+else:
+    EMAIL_BACKEND = _configured_backend
+
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default=_email_user if _email_user else 'noreply@nativeglow.com'
+)
+DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default=DEFAULT_FROM_EMAIL)
+
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com').strip()
 EMAIL_TIMEOUT = 10
+
 _email_port = config('EMAIL_PORT', default=587)
 try:
     EMAIL_PORT = int(str(_email_port).strip(' "\''))
 except (ValueError, TypeError):
     EMAIL_PORT = 587
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
+EMAIL_HOST_USER = _email_user
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='').strip()
+
 _email_use_tls = config('EMAIL_USE_TLS', default=True)
 EMAIL_USE_TLS = str(_email_use_tls).strip(' "\'').lower() in ['true', '1', 't', 'yes', 'y']
 
+_email_use_ssl = config('EMAIL_USE_SSL', default=False)
+EMAIL_USE_SSL = str(_email_use_ssl).strip(' "\'').lower() in ['true', '1', 't', 'yes', 'y']
+
 # Auth integrations
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+
