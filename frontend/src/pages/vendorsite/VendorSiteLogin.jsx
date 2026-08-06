@@ -1,5 +1,6 @@
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import BuyerGoogleLogin from '../../components/vendorsite/BuyerGoogleLogin';
+import BuyerEmailOTPLogin from '../../components/vendorsite/BuyerEmailOTPLogin';
 import { useBuyerAuth } from '../../components/vendorsite/BuyerAuthContext';
 
 export default function VendorSiteLogin() {
@@ -35,8 +36,10 @@ export default function VendorSiteLogin() {
         <BuyerGoogleLogin showLogout={false} />
       </div>
 
+      <BuyerEmailOTPLogin />
+
       <p className="text-xs opacity-70">
-        We only use your Google account to securely identify your buyer profile.
+        We use your login to securely identify your buyer profile and manage your orders.
       </p>
     </div>
   );

@@ -43,3 +43,14 @@ class BuyerUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Buyer
         fields = ('phone', 'default_address', 'default_pincode')
+
+
+class BuyerOTPRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    vendor_slug = serializers.CharField()
+
+
+class BuyerOTPVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    vendor_slug = serializers.CharField()
+    otp_code = serializers.CharField(max_length=6, min_length=6)

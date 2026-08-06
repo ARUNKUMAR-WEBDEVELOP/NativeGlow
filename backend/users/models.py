@@ -23,6 +23,7 @@ class UserProfile(models.Model):
 class EmailOTP(models.Model):
     PURPOSE_CHOICES = [
         ('vendor_apply', 'Vendor Apply'),
+        ('buyer_login', 'Buyer Login'),
     ]
 
     email = models.EmailField()

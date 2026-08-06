@@ -12,8 +12,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from vendors.models import Vendor
 from .authentication import BuyerJWTAuthentication
+import random
+from datetime import timedelta
+from django.core.mail import send_mail
+
+from users.models import EmailOTP
 from .models import Buyer
-from .serializers import BuyerGoogleLoginSerializer, BuyerProfileSerializer, BuyerUpdateSerializer
+from .serializers import BuyerGoogleLoginSerializer, BuyerProfileSerializer, BuyerUpdateSerializer, BuyerOTPRequestSerializer, BuyerOTPVerifySerializer
 from orders.models import Order
 from orders.serializers import BuyerOrderListSerializer
 
@@ -179,3 +184,111 @@ class BuyerOrderListView(generics.ListAPIView):
 			.prefetch_related('product__images')
 			.order_by('-created_at')
 		)
+
+
+class BuyerOTPRequestView(APIView):
+	"""POST /api/buyers/otp-request/"""
+	permission_classes = (permissions.AllowAny,)
+
+	def post(self, request):
+		serializer = BuyerOTPRequestSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		data = serializer.validated_data
+		email = data['email'].strip().lower()
+		vendor_slug = data['vendor_slug'].strip()
+
+		try:
+			vendor = Vendor.objects.get(vendor_slug=vendor_slug)
+		except Vendor.DoesNotExist:
+			return Response({'detail': 'Vendor site not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+		code = f"{random.randint(0, 999999):06d}"
+		otp = EmailOTP.objects.create(
+			email=email,
+			purpose='buyer_login',
+			otp_code=code,
+			expires_at=timezone.now() + timedelta(minutes=10),
+		)
+
+		try:
+			send_mail(
+				subject=f'{vendor.business_name} - Login Code',
+				message=f'Your login code is {code}. It expires in 10 minutes.',
+				from_email='no-reply@nativeglow.store',
+				recipient_list=[email],
+				fail_silently=True,
+			)
+		except Exception:
+			pass
+
+		response_payload = {'detail': 'OTP sent to email.'}
+		if os.environ.get('DEBUG', '1') == '1':
+			response_payload['otp_debug'] = otp.otp_code
+		return Response(response_payload, status=status.HTTP_201_CREATED)
+
+
+class BuyerOTPVerifyView(APIView):
+	"""POST /api/buyers/otp-verify/"""
+	permission_classes = (permissions.AllowAny,)
+
+	def post(self, request):
+		serializer = BuyerOTPVerifySerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		data = serializer.validated_data
+		email = data['email'].strip().lower()
+		vendor_slug = data['vendor_slug'].strip()
+
+		try:
+			vendor = Vendor.objects.get(vendor_slug=vendor_slug)
+		except Vendor.DoesNotExist:
+			return Response({'detail': 'Vendor site not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+		otp = EmailOTP.objects.filter(
+			email=email,
+			purpose='buyer_login',
+			otp_code=data['otp_code'],
+			is_verified=False,
+		).first()
+
+		if not otp:
+			return Response({'detail': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+		if timezone.now() > otp.expires_at:
+			return Response({'detail': 'OTP expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+		otp.is_verified = True
+		otp.save(update_fields=['is_verified'])
+
+		# Create or get buyer
+		# Since OTP doesn't provide a full name or profile picture, we set defaults if new
+		buyer, created = Buyer.objects.get_or_create(
+			vendor=vendor,
+			email=email,
+			defaults={
+				'full_name': email.split('@')[0],
+				'google_id': f'email_{email}', # Dummy google_id for email users, though it has unique constraint, so maybe just email is better
+				'profile_picture': '',
+				'last_login': timezone.now(),
+			},
+		)
+
+		if not created:
+			buyer.last_login = timezone.now()
+			buyer.save(update_fields=['last_login'])
+
+		refresh = RefreshToken()
+		refresh['buyer_id'] = buyer.id
+		refresh['vendor_slug'] = vendor.vendor_slug
+		refresh['email'] = buyer.email
+		refresh['role'] = 'buyer'
+
+		return Response(
+			{
+				'access_token': str(refresh.access_token),
+				'buyer_name': buyer.full_name,
+				'buyer_email': buyer.email,
+				'buyer_picture': buyer.profile_picture,
+				'is_new_buyer': created,
+			},
+			status=status.HTTP_200_OK,
+		)
+

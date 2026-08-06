@@ -26,7 +26,6 @@ class AdminUserManager(models.Manager):
         admin_user.save(using=self._db)
         return admin_user
 
-
 class AdminUser(models.Model):
     full_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
