@@ -280,12 +280,15 @@ EMAIL_BACKEND = config(
     'EMAIL_BACKEND',
     default='django.core.mail.backends.console.EmailBackend'
 )
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAILS', default=config('DEFAULT_FROM_EMAIL', default='noreply@nativeglow.com'))
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@nativeglow.com')
+DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default='no-reply@nativeglow.store')
 EMAIL_HOST = config('EMAIL_HOST', default='')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+_email_port = config('EMAIL_PORT', default=587)
+EMAIL_PORT = int(_email_port) if _email_port != '' else 587
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+_email_use_tls = config('EMAIL_USE_TLS', default=True)
+EMAIL_USE_TLS = str(_email_use_tls).lower() in ['true', '1', 't', 'yes', 'y'] if _email_use_tls != '' else True
 
 # Auth integrations
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')

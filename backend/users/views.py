@@ -135,7 +135,7 @@ class OTPRequestView(APIView):
             send_mail(
                 subject='NativeGlow OTP Verification',
                 message=f'Your NativeGlow OTP is {code}. It expires in 10 minutes.',
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=settings.DEFAULT_FROM_EMAILS,
                 recipient_list=[email],
                 fail_silently=False,
             )
