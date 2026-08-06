@@ -282,7 +282,8 @@ EMAIL_BACKEND = config(
 )
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@nativeglow.com')
 DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default='no-reply@nativeglow.store')
-EMAIL_HOST = config('EMAIL_HOST', default='')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_TIMEOUT = 10
 _email_port = config('EMAIL_PORT', default=587)
 try:
     EMAIL_PORT = int(str(_email_port).strip(' "\''))
