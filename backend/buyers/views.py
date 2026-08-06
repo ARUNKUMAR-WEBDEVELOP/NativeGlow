@@ -216,10 +216,16 @@ class BuyerOTPRequestView(APIView):
 				message=f'Your login code is {code}. It expires in 10 minutes.',
 				from_email='no-reply@nativeglow.store',
 				recipient_list=[email],
-				fail_silently=True,
+				fail_silently=False,
 			)
-		except Exception:
-			pass
+		except Exception as e:
+			import logging
+			logger = logging.getLogger(__name__)
+			logger.error(f"Failed to send OTP email to {email}: {str(e)}")
+			return Response(
+				{'detail': 'Failed to send OTP email. Please try again later.'},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR
+			)
 
 		response_payload = {'detail': 'OTP sent to email.'}
 		if os.environ.get('DEBUG', '1') == '1':

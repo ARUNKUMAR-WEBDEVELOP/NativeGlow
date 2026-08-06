@@ -77,7 +77,11 @@ async function handleResponse(res) {
     let detail = `API request failed: ${res.status}`;
     try {
       payload = await res.json();
-      detail = payload.detail || JSON.stringify(payload);
+      if (payload.detail) {
+        detail = typeof payload.detail === 'string' ? payload.detail : JSON.stringify(payload.detail);
+      } else {
+        detail = JSON.stringify(payload);
+      }
     } catch {
       try {
         const text = await res.text();
