@@ -284,11 +284,14 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@nativeglow.co
 DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default='no-reply@nativeglow.store')
 EMAIL_HOST = config('EMAIL_HOST', default='')
 _email_port = config('EMAIL_PORT', default=587)
-EMAIL_PORT = int(_email_port) if _email_port != '' else 587
+try:
+    EMAIL_PORT = int(str(_email_port).strip(' "\''))
+except (ValueError, TypeError):
+    EMAIL_PORT = 587
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 _email_use_tls = config('EMAIL_USE_TLS', default=True)
-EMAIL_USE_TLS = str(_email_use_tls).lower() in ['true', '1', 't', 'yes', 'y'] if _email_use_tls != '' else True
+EMAIL_USE_TLS = str(_email_use_tls).strip(' "\'').lower() in ['true', '1', 't', 'yes', 'y']
 
 # Auth integrations
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
