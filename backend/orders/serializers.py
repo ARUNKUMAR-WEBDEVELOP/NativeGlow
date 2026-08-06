@@ -3,7 +3,7 @@ from urllib.parse import quote
 from django.utils import timezone
 
 from rest_framework import serializers
-from django.core.mail import send_mail
+from nativeglow_backend.utils import send_mail_async as send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 

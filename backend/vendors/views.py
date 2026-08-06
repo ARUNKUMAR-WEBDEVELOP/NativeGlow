@@ -8,7 +8,7 @@ import logging
 import os
 from uuid import uuid4
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
+from nativeglow_backend.utils import send_mail_async as send_mail
 from django.conf import settings
 from rest_framework import generics, permissions, status, exceptions
 from rest_framework.exceptions import APIException

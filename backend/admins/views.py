@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.core.mail import send_mail
+from nativeglow_backend.utils import send_mail_async as send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.db import DatabaseError

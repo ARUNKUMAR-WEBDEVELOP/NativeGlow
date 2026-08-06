@@ -58,11 +58,12 @@ class AdminJWTAuthentication(JWTAuthentication):
                 if not request_device_id:
                     raise AuthenticationFailed('Device ID is required for superadmin access.')
 
-                if not admin_user.login_device_id:
+                devices = [d.strip() for d in admin_user.login_device_id.split(',') if d.strip()]
+                if not devices:
                     raise AuthenticationFailed('Superadmin device is not registered.')
-
-                if request_device_id != admin_user.login_device_id or token_device_id != admin_user.login_device_id:
-                    raise AuthenticationFailed('This superadmin account is restricted to one device.')
+                
+                if request_device_id not in devices or token_device_id not in devices:
+                    raise AuthenticationFailed('This superadmin account is restricted to a maximum of two registered devices.')
 
             request.admin_user = admin_user
         except AdminUser.DoesNotExist:

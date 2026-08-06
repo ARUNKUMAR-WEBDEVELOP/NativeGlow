@@ -34,11 +34,15 @@ class AdminLoginSerializer(serializers.Serializer):
             if not device_id:
                 raise serializers.ValidationError('Device ID is required for superadmin login.')
 
-            if admin_user.login_device_id and admin_user.login_device_id != device_id:
-                raise serializers.ValidationError('This superadmin account is restricted to one device.')
-
-            if not admin_user.login_device_id:
-                admin_user.login_device_id = device_id
+            # Support up to 2 devices without database migration using comma separation
+            devices = [d.strip() for d in admin_user.login_device_id.split(',') if d.strip()]
+            
+            if device_id not in devices:
+                if len(devices) >= 2:
+                    raise serializers.ValidationError('This superadmin account is restricted to a maximum of two devices.')
+                
+                devices.append(device_id)
+                admin_user.login_device_id = ','.join(devices)
                 admin_user.save(update_fields=['login_device_id'])
 
         data['admin_user'] = admin_user

@@ -15,7 +15,7 @@ from vendors.models import Vendor
 from .authentication import BuyerJWTAuthentication
 import random
 from datetime import timedelta
-from django.core.mail import send_mail
+from nativeglow_backend.utils import send_mail_async as send_mail
 
 from users.models import EmailOTP
 from .models import Buyer

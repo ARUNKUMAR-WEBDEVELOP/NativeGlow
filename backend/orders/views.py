@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.utils import timezone
-from django.core.mail import send_mail
+from nativeglow_backend.utils import send_mail_async as send_mail
 from django.conf import settings
 
 from .models import Order
