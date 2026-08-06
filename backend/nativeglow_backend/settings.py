@@ -274,11 +274,14 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Email Configuration
-# Uses IPv4 forced SMTP backend in production to fix Render container IPv6 socket unreachable errors ([Errno 101])
+# Uses IPv4 forced SMTP backend & HTTP API fallback in production
 _email_user = config('EMAIL_HOST_USER', default='').strip()
+_has_http_key = bool(
+    os.environ.get('RESEND_API_KEY') or os.environ.get('SENDGRID_API_KEY') or os.environ.get('BREVO_API_KEY')
+)
 _default_backend = (
     'nativeglow_backend.utils.IPv4SmtpEmailBackend'
-    if _email_user
+    if (_email_user or _has_http_key)
     else 'django.core.mail.backends.console.EmailBackend'
 )
 
@@ -295,7 +298,7 @@ DEFAULT_FROM_EMAIL = config(
 DEFAULT_FROM_EMAILS = config('DEFAULT_FROM_EMAILS', default=DEFAULT_FROM_EMAIL)
 
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com').strip()
-EMAIL_TIMEOUT = 10
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
 
 _email_port = config('EMAIL_PORT', default=587)
 try:
@@ -314,4 +317,5 @@ EMAIL_USE_SSL = str(_email_use_ssl).strip(' "\'').lower() in ['true', '1', 't', 
 
 # Auth integrations
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+
 
