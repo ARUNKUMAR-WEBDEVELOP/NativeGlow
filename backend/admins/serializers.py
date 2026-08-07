@@ -63,22 +63,36 @@ class AdminGoogleLoginSerializer(serializers.Serializer):
         if not device_id:
             raise serializers.ValidationError('Device ID is required for superadmin login.')
 
-        # ── 1. Verify access_token via Google userinfo endpoint ────────────────
+        # ── 1. Verify token (supports both access_token and id_token) ────────
+        idinfo = None
+        # Try verifying as access_token via Google userinfo endpoint
         try:
             userinfo_res = http_requests.get(
                 'https://www.googleapis.com/oauth2/v3/userinfo',
                 headers={'Authorization': f'Bearer {google_token}'},
                 timeout=10,
             )
-        except http_requests.RequestException as exc:
-            raise serializers.ValidationError(f'Could not contact Google to verify token: {exc}')
+            if userinfo_res.status_code == 200:
+                idinfo = userinfo_res.json()
+        except http_requests.RequestException:
+            pass
 
-        if userinfo_res.status_code != 200:
+        # If userinfo failed, try verifying as id_token via Google tokeninfo endpoint
+        if not idinfo:
+            try:
+                tokeninfo_res = http_requests.get(
+                    f'https://oauth2.googleapis.com/tokeninfo?id_token={google_token}',
+                    timeout=10,
+                )
+                if tokeninfo_res.status_code == 200:
+                    idinfo = tokeninfo_res.json()
+            except http_requests.RequestException:
+                pass
+
+        if not idinfo:
             raise serializers.ValidationError(
-                'Invalid or expired Google access token. Please sign in again.'
+                'Invalid or expired Google token. Please sign in again.'
             )
-
-        idinfo = userinfo_res.json()
 
         # ── 2. Enforce authorized domain restriction ───────────────────────────
         allowed_domain = getattr(settings, 'GOOGLE_ALLOWED_DOMAIN', '').strip()

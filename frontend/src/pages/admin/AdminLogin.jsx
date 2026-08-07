@@ -10,13 +10,17 @@ import { getAdminDeviceId } from '../../utils/adminDevice';
 
 function extractError(err) {
   const payload = err?.payload;
+  if (typeof payload === 'string' && payload.trim()) return payload.trim();
+  if (typeof payload?.detail === 'string') return payload.detail.trim();
+  if (Array.isArray(payload?.non_field_errors) && payload.non_field_errors.length > 0) {
+    return payload.non_field_errors.join(' ').trim();
+  }
   const dig = (v) => {
     if (typeof v === 'string' && v.trim()) return v.trim();
     if (Array.isArray(v)) { for (const i of v) { const t = dig(i); if (t) return t; } }
     if (v && typeof v === 'object') { for (const i of Object.values(v)) { const t = dig(i); if (t) return t; } }
     return '';
   };
-  if (typeof payload?.detail === 'string') return payload.detail.trim();
   const fromPayload = dig(payload);
   if (fromPayload) return fromPayload;
   if (typeof err?.message === 'string' && err.message.toLowerCase() !== '[object object]') return err.message.trim();
@@ -42,16 +46,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
 
   // ── Google OAuth2 ──────────────────────────────────────────────────────────
-  // We use useGoogleLogin with implicit flow so we get an access_token directly
-  // in the browser without a popup. Then we exchange it for user info + ID via
-  // Google's userinfo endpoint and send the access_token to our backend.
-  //
-  // NOTE: Our backend uses `id_token.verify_oauth2_token` which requires an
-  // ID token (JWT). So we use the tokeninfo endpoint to get the id_token.
-  // Alternatively, the backend can be updated to accept access_token and fetch
-  // userinfo itself. We do the latter here for reliability.
   const googleLogin = useGoogleLogin({
-    // 'implicit' flow — avoids popup blocker entirely (uses redirect within iframe).
     flow: 'implicit',
     onSuccess: useCallback(async (tokenResponse) => {
       setIsGoogleLoading(true);
@@ -60,14 +55,6 @@ export default function AdminLogin() {
         const accessToken = tokenResponse.access_token;
         if (!accessToken) throw new Error('No access token from Google.');
 
-        // Fetch user info to get the ID token / user details
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!userInfoRes.ok) throw new Error('Failed to fetch Google user info.');
-        const userInfo = await userInfoRes.json();
-
-        // Send the access_token to our backend for verification
         const deviceId = getAdminDeviceId();
         const response = await api.adminGoogleLogin(accessToken);
         storeSession(response, deviceId);
@@ -89,7 +76,7 @@ export default function AdminLogin() {
       if (err?.type === 'popup_closed') {
         setError('Google sign-in window was closed. Please try again.');
       } else if (err?.type === 'popup_failed_to_open') {
-        setError('Could not open Google sign-in. Please allow popups for this site, or use password login below.');
+        setError('Google sign-in popup was blocked by browser. Please allow popups or use direct Google sign-in.');
       } else {
         setError('Google sign-in was cancelled. Please try again.');
       }
@@ -101,7 +88,7 @@ export default function AdminLogin() {
   const handleGoogleClick = () => {
     if (isGoogleLoading || isSubmitting) return;
     setError('');
-    setIsGoogleLoading(true);
+    // Call googleLogin synchronously inside event handler to avoid popup blocker
     googleLogin();
   };
 
