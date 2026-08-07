@@ -253,6 +253,17 @@ export const api = {
       }),
     });
   },
+  adminGoogleLogin: (googleToken) => {
+    const adminDeviceId = getAdminDeviceId();
+    return request('/admin/auth/google/', {
+      method: 'POST',
+      headers: { 'X-Device-ID': adminDeviceId },
+      body: JSON.stringify({
+        google_token: googleToken,
+        device_id: adminDeviceId,
+      }),
+    });
+  },
   getAdminProfile: async (tokens, onTokensUpdate, onAuthExpired) => {
     return authRequest('/admin/me/', {}, tokens, onTokensUpdate, onAuthExpired);
   },
