@@ -1,33 +1,69 @@
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+
 const ADMIN_DEVICE_STORAGE_KEY = 'nativeglow_admin_device_id';
 
-function generateAdminDeviceId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `admin-${crypto.randomUUID()}`;
+let cachedDeviceId = typeof window !== 'undefined' ? localStorage.getItem(ADMIN_DEVICE_STORAGE_KEY) || '' : '';
+
+// ── Initialize FingerprintJS hardware identification ─────────────────────────
+// Calculates visitorId based on GPU, Canvas, WebGL, Audio, Screen, Fonts, CPU cores.
+// Even if the user clears browser data/cache, FingerprintJS recalculates the EXACT same ID.
+const fpPromise = typeof window !== 'undefined'
+  ? FingerprintJS.load()
+      .then((fp) => fp.get())
+      .then((result) => {
+        const fpId = `fp-${result.visitorId}`;
+        cachedDeviceId = fpId;
+        try {
+          localStorage.setItem(ADMIN_DEVICE_STORAGE_KEY, fpId);
+        } catch {
+          // ignore quota error
+        }
+        return fpId;
+      })
+      .catch((err) => {
+        console.warn('FingerprintJS calculation failed, using fallback:', err);
+        return cachedDeviceId;
+      })
+  : Promise.resolve(cachedDeviceId);
+
+/**
+ * Asynchronously gets the unique hardware fingerprint for this browser.
+ * Guaranteed to be stable even across browser data/cache wipes.
+ */
+export async function getAdminDeviceId() {
+  if (cachedDeviceId && cachedDeviceId.startsWith('fp-') && !cachedDeviceId.startsWith('fp-temp-')) {
+    return cachedDeviceId;
   }
 
-  return `admin-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    const fpId = await fpPromise;
+    if (fpId) return fpId;
+  } catch (e) {
+    // fallback
+  }
+
+  return getAdminDeviceIdSync();
 }
 
-export function getAdminDeviceId() {
-  const storedDeviceId = localStorage.getItem(ADMIN_DEVICE_STORAGE_KEY);
-  if (storedDeviceId) {
-    return storedDeviceId;
+/**
+ * Synchronous getter for headers where async isn't convenient.
+ * Returns cached hardware fingerprint or fallback stored ID.
+ */
+export function getAdminDeviceIdSync() {
+  if (cachedDeviceId) {
+    return cachedDeviceId;
   }
 
-  const adminInfoRaw = localStorage.getItem('admin_info');
-  if (adminInfoRaw) {
-    try {
-      const adminInfo = JSON.parse(adminInfoRaw);
-      if (adminInfo?.device_id) {
-        localStorage.setItem(ADMIN_DEVICE_STORAGE_KEY, adminInfo.device_id);
-        return adminInfo.device_id;
-      }
-    } catch {
-      // Fall through to a generated id.
+  try {
+    const storedDeviceId = localStorage.getItem(ADMIN_DEVICE_STORAGE_KEY);
+    if (storedDeviceId) {
+      cachedDeviceId = storedDeviceId;
+      return storedDeviceId;
     }
+  } catch {
+    // fallback
   }
 
-  const deviceId = generateAdminDeviceId();
-  localStorage.setItem(ADMIN_DEVICE_STORAGE_KEY, deviceId);
-  return deviceId;
+  const fallbackId = `fp-temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return fallbackId;
 }

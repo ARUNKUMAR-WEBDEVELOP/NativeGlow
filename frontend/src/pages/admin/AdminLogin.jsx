@@ -57,8 +57,8 @@ export default function AdminLogin() {
         const accessToken = tokenResponse.access_token;
         if (!accessToken) throw new Error('No access token from Google.');
 
-        const deviceId = getAdminDeviceId();
-        const response = await api.adminGoogleLogin(accessToken);
+        const deviceId = await getAdminDeviceId();
+        const response = await api.adminGoogleLogin(accessToken, deviceId);
         storeSession(response, deviceId);
         navigate('/admin/dashboard', { replace: true });
       } catch (err) {
@@ -113,7 +113,7 @@ export default function AdminLogin() {
     setIsDeviceLocked(false);
     setIsSubmitting(true);
     try {
-      const deviceId = getAdminDeviceId();
+      const deviceId = await getAdminDeviceId();
       const response = await api.adminLogin({ email: form.email, password: form.password, device_id: deviceId });
       storeSession(response, deviceId);
       navigate('/admin/dashboard', { replace: true });
@@ -192,8 +192,8 @@ export default function AdminLogin() {
                   try {
                     const googleToken = credentialResponse.credential;
                     if (!googleToken) throw new Error('No credential received from Google.');
-                    const deviceId = getAdminDeviceId();
-                    const response = await api.adminGoogleLogin(googleToken);
+                    const deviceId = await getAdminDeviceId();
+                    const response = await api.adminGoogleLogin(googleToken, deviceId);
                     storeSession(response, deviceId);
                     navigate('/admin/dashboard', { replace: true });
                   } catch (err) {

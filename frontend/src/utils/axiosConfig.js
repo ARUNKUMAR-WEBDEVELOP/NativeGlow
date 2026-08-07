@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getAdminDeviceId } from './adminDevice'
+import { getAdminDeviceIdSync } from './adminDevice'
 
 function normalizeApiBase(url) {
   return String(url || '')
@@ -58,7 +58,7 @@ API.interceptors.request.use(
     }
     const buyerToken = localStorage.getItem('buyer_token')
     const adminToken = localStorage.getItem('admin_token')
-    const adminDeviceId = getAdminDeviceId()
+    const adminDeviceId = getAdminDeviceIdSync()
 
     const token = vendorToken || buyerToken || adminToken
     if (token) {

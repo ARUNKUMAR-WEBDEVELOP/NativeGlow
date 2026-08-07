@@ -242,19 +242,19 @@ export const api = {
     requestWithBaseFallback(`/vendor/approval-status/?email=${encodeURIComponent(email || '')}`),
 
   // Admin
-  adminLogin: (data) => {
-    const adminDeviceId = getAdminDeviceId();
+  adminLogin: async (data) => {
+    const adminDeviceId = data?.device_id || (await getAdminDeviceId());
     return request('/admin/login/', {
       method: 'POST',
       headers: adminDeviceId ? { 'X-Device-ID': adminDeviceId } : {},
       body: JSON.stringify({
         ...data,
-        device_id: data?.device_id || adminDeviceId,
+        device_id: adminDeviceId,
       }),
     });
   },
-  adminGoogleLogin: (googleToken) => {
-    const adminDeviceId = getAdminDeviceId();
+  adminGoogleLogin: async (googleToken, overrideDeviceId) => {
+    const adminDeviceId = overrideDeviceId || (await getAdminDeviceId());
     return request('/admin/auth/google/', {
       method: 'POST',
       headers: { 'X-Device-ID': adminDeviceId },
@@ -515,7 +515,7 @@ async function adminRequest(path, options = {}) {
     throw new Error('Admin authentication required.');
   }
 
-  const adminDeviceId = getAdminDeviceId();
+  const adminDeviceId = await getAdminDeviceId();
 
   try {
     return await request(path, {
