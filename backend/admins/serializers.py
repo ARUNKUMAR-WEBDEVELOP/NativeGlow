@@ -3,8 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
 from django.conf import settings
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+import requests as http_requests
 from .models import AdminUser, MaintenanceFee, PlatformPaymentDetails
 from vendors.models import Vendor
 from products.models import Product, Category
@@ -41,19 +40,16 @@ class AdminLoginSerializer(serializers.Serializer):
 
         data['admin_user'] = admin_user
         return data
-
-
 class AdminGoogleLoginSerializer(serializers.Serializer):
     """
-    Verify a Google ID token for Super Admin login.
+    Verify a Google OAuth2 access_token for Super Admin login.
 
     Flow:
-    1. Frontend receives a Google credential (ID token) via Google Identity Services.
-    2. Frontend POSTs it here along with a device_id.
-    3. We verify the token with Google, check the hosted domain, and
-       auto-create or fetch the AdminUser record.
-    4. Single-device: the new device becomes the only active device,
-       evicting any previous session automatically.
+    1. Frontend gets an access_token via useGoogleLogin(flow='implicit').
+    2. Frontend POSTs it here along with a device_id (from X-Device-ID header).
+    3. We verify the token by calling Google's userinfo endpoint.
+    4. We enforce the allowed domain, auto-create/fetch the AdminUser, and
+       enforce single-device: the new device evicts any existing session.
     """
     google_token = serializers.CharField(write_only=True)
 
@@ -67,15 +63,22 @@ class AdminGoogleLoginSerializer(serializers.Serializer):
         if not device_id:
             raise serializers.ValidationError('Device ID is required for superadmin login.')
 
-        # ── 1. Verify the ID token signature with Google ──────────────────────
+        # ── 1. Verify access_token via Google userinfo endpoint ────────────────
         try:
-            idinfo = id_token.verify_oauth2_token(
-                google_token,
-                google_requests.Request(),
-                settings.GOOGLE_CLIENT_ID,
+            userinfo_res = http_requests.get(
+                'https://www.googleapis.com/oauth2/v3/userinfo',
+                headers={'Authorization': f'Bearer {google_token}'},
+                timeout=10,
             )
-        except ValueError as exc:
-            raise serializers.ValidationError(f'Invalid Google token: {exc}')
+        except http_requests.RequestException as exc:
+            raise serializers.ValidationError(f'Could not contact Google to verify token: {exc}')
+
+        if userinfo_res.status_code != 200:
+            raise serializers.ValidationError(
+                'Invalid or expired Google access token. Please sign in again.'
+            )
+
+        idinfo = userinfo_res.json()
 
         # ── 2. Enforce authorized domain restriction ───────────────────────────
         allowed_domain = getattr(settings, 'GOOGLE_ALLOWED_DOMAIN', '').strip()
@@ -96,7 +99,7 @@ class AdminGoogleLoginSerializer(serializers.Serializer):
                     'Access denied. Only accounts from the authorized organization may log in.'
                 )
 
-        # ── 3. Fetch or auto-create AdminUser ─────────────────────────────────
+        # ── 3. Fetch pre-registered AdminUser ─────────────────────────────────
         google_id: str = idinfo.get('sub', '')
         full_name: str = idinfo.get('name', email.split('@')[0])
 
@@ -108,26 +111,29 @@ class AdminGoogleLoginSerializer(serializers.Serializer):
 
         if admin_user is None:
             try:
-                # Account may have been created manually (email/password) — link Google ID
+                # Account pre-registered in DB by email — link Google ID
                 admin_user = AdminUser.objects.get(email__iexact=email)
-                admin_user.google_id = google_id
-                admin_user.auth_provider = 'google'
-                admin_user.save(update_fields=['google_id', 'auth_provider'])
+                update_fields = []
+                if not admin_user.google_id:
+                    admin_user.google_id = google_id
+                    update_fields.append('google_id')
+                if admin_user.auth_provider != 'google':
+                    admin_user.auth_provider = 'google'
+                    update_fields.append('auth_provider')
+                if update_fields:
+                    admin_user.save(update_fields=update_fields)
             except AdminUser.DoesNotExist:
-                # First-ever sign-in — auto-provision Super Admin account
-                admin_user = AdminUser.objects.create_superadmin_from_google(
-                    full_name=full_name,
-                    email=email,
-                    google_id=google_id,
+                # Strictly reject accounts not pre-registered in the DB
+                raise serializers.ValidationError(
+                    f"Access denied. Google account '{email}' is not pre-registered in the database as a Super Admin."
                 )
 
         if not admin_user.is_superadmin:
             raise serializers.ValidationError(
-                'Access denied. This Google account is not associated with a Super Admin role.'
+                'Access denied. This account does not have Super Admin privileges.'
             )
 
         # ── 4. Single-device enforcement ──────────────────────────────────────
-        # Atomically evicts any existing session on any other device.
         admin_user.set_active_device(device_id)
 
         data['admin_user'] = admin_user
