@@ -37,7 +37,15 @@ class AdminLoginSerializer(serializers.Serializer):
         if admin_user.is_superadmin:
             if not device_id:
                 raise serializers.ValidationError('Device ID is required for superadmin login.')
-            # Single-device: overwrite previous device (kicks old session out)
+            # ── Single-device lock: if a session is already active on a different device, block login ──
+            active_device = admin_user.active_device_id.strip()
+            if active_device and active_device != device_id:
+                raise serializers.ValidationError(
+                    'DEVICE_LOCKED: This Super Admin account is already active on another device. '
+                    'Only one device can access the Super Admin portal at a time. '
+                    'Please log out from the other device first, or contact support.'
+                )
+            # Register this device as the sole active device
             admin_user.set_active_device(device_id)
 
         data['admin_user'] = admin_user
@@ -149,7 +157,14 @@ class AdminGoogleLoginSerializer(serializers.Serializer):
                 'Access denied. This account does not have Super Admin privileges.'
             )
 
-        # ── 4. Single-device enforcement ──────────────────────────────────────
+        # ── 4. Single-device lock: block login from a second device ────────────
+        active_device = admin_user.active_device_id.strip()
+        if active_device and active_device != device_id:
+            raise serializers.ValidationError(
+                'DEVICE_LOCKED: This Super Admin account is already active on another device. '
+                'Only one device can access the Super Admin portal at a time. '
+                'Please log out from the other device first, or contact support.'
+            )
         admin_user.set_active_device(device_id)
 
         data['admin_user'] = admin_user

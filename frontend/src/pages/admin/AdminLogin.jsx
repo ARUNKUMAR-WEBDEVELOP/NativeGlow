@@ -44,6 +44,7 @@ export default function AdminLogin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isDeviceLocked, setIsDeviceLocked] = useState(false);
 
   // ── Google OAuth2 ──────────────────────────────────────────────────────────
   const googleLogin = useGoogleLogin({
@@ -51,6 +52,7 @@ export default function AdminLogin() {
     onSuccess: useCallback(async (tokenResponse) => {
       setIsGoogleLoading(true);
       setError('');
+      setIsDeviceLocked(false);
       try {
         const accessToken = tokenResponse.access_token;
         if (!accessToken) throw new Error('No access token from Google.');
@@ -61,7 +63,13 @@ export default function AdminLogin() {
         navigate('/admin/dashboard', { replace: true });
       } catch (err) {
         console.error('Google admin login error:', err);
-        setError(extractError(err) || 'Google sign-in failed. Please try again.');
+        const msg = extractError(err) || 'Google sign-in failed. Please try again.';
+        if (msg.startsWith('DEVICE_LOCKED:')) {
+          setIsDeviceLocked(true);
+          setError('');
+        } else {
+          setError(msg);
+        }
       } finally {
         setIsGoogleLoading(false);
       }
@@ -102,6 +110,7 @@ export default function AdminLogin() {
     e.preventDefault();
     if (!form.email || !form.password) { setError('Please enter both email and password.'); return; }
     setError('');
+    setIsDeviceLocked(false);
     setIsSubmitting(true);
     try {
       const deviceId = getAdminDeviceId();
@@ -110,7 +119,13 @@ export default function AdminLogin() {
       navigate('/admin/dashboard', { replace: true });
     } catch (err) {
       console.error('Admin login error:', err);
-      setError(extractError(err));
+      const msg = extractError(err);
+      if (msg.startsWith('DEVICE_LOCKED:')) {
+        setIsDeviceLocked(true);
+        setError('');
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -136,9 +151,26 @@ export default function AdminLogin() {
             <p className="text-slate-400 text-xs font-semibold tracking-widest uppercase">Super Admin Portal</p>
           </div>
 
-          {/* Error banner */}
+          {/* Device locked banner */}
+          {isDeviceLocked && (
+            <div className="mb-5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-4 flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-300 mb-1">Account Locked to Another Device</p>
+                <p className="text-xs text-amber-200/80 leading-relaxed">
+                  This Super Admin account is currently active on another device.
+                  Only <span className="font-semibold">one device</span> can access the Super Admin portal at a time.
+                  Please log out from the other device first, or contact support.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Generic error banner */}
           {error && (
-            <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-3 animate-pulse-once">
+            <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-3">
               <svg className="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
