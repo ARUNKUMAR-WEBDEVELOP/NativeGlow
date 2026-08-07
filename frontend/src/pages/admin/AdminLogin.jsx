@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 import { api } from '../../api';
 import { getAdminDeviceId } from '../../utils/adminDevice';
 
@@ -152,31 +152,35 @@ export default function AdminLogin() {
               Sign in with Google
             </p>
 
-            <button
-              id="admin-google-login-btn"
-              type="button"
-              onClick={handleGoogleClick}
-              disabled={busy}
-              className="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-600/60 bg-white hover:bg-gray-50 active:bg-gray-100 px-5 py-3 text-sm font-semibold text-slate-800 transition-all duration-150 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed select-none"
-            >
-              {isGoogleLoading ? (
-                <>
-                  <svg className="animate-spin w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <span className="text-slate-600">Signing in with Google...</span>
-                </>
-              ) : (
-                <>
-                  {/* Google G logo */}
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 488 512" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#4285F4" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"/>
-                  </svg>
-                  <span>Continue with Google</span>
-                </>
-              )}
-            </button>
+            <div className="w-full flex justify-center min-h-[44px]">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  setIsGoogleLoading(true);
+                  setError('');
+                  try {
+                    const googleToken = credentialResponse.credential;
+                    if (!googleToken) throw new Error('No credential received from Google.');
+                    const deviceId = getAdminDeviceId();
+                    const response = await api.adminGoogleLogin(googleToken);
+                    storeSession(response, deviceId);
+                    navigate('/admin/dashboard', { replace: true });
+                  } catch (err) {
+                    console.error('Google admin login error:', err);
+                    setError(extractError(err) || 'Google sign-in failed. Please try again.');
+                  } finally {
+                    setIsGoogleLoading(false);
+                  }
+                }}
+                onError={() => {
+                  setError('Google sign-in failed. Please try again or use password login.');
+                }}
+                theme="filled_black"
+                shape="rectangular"
+                size="large"
+                width="340"
+                text="continue_with"
+              />
+            </div>
 
             <p className="text-center text-xs text-slate-500 mt-2.5">
               Only authorized accounts can access this portal
