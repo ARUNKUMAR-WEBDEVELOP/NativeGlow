@@ -15,7 +15,7 @@ import secrets
 
 from .models import AdminUser, MaintenanceFee, PlatformPaymentDetails
 from .serializers import (
-    AdminLoginSerializer, AdminProfileSerializer,
+    AdminLoginSerializer, AdminGoogleLoginSerializer, AdminProfileSerializer,
     AdminVendorListSerializer, AdminVendorDetailSerializer,
     AdminVendorApprovalSerializer, AdminVendorDeactivateSerializer,
     AdminVendorMaintenanceSerializer,
@@ -86,6 +86,75 @@ class AdminLoginView(APIView):
                     'email': admin_user.email,
                     'is_superadmin': admin_user.is_superadmin,
                     'device_id': device_id,
+                }
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class AdminGoogleLoginView(APIView):
+    """
+    POST /api/admin/auth/google/
+    Authenticate a Super Admin via Google OAuth2 and return JWT tokens.
+
+    Request body:
+    {
+        "google_token": "<Google ID token from frontend>"
+    }
+    Headers:
+        X-Device-ID: <unique device fingerprint>
+
+    Response (200):
+    {
+        "access": "eyJ...",
+        "refresh": "eyJ...",
+        "admin": {
+            "id": 1,
+            "full_name": "Admin Name",
+            "email": "admin@yourdomain.com",
+            "is_superadmin": true,
+            "auth_provider": "google",
+            "device_id": "abc123"
+        }
+    }
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        """Verify Google ID token and issue admin JWT tokens."""
+        device_id = (
+            request.headers.get('X-Device-ID', '').strip()
+            or request.data.get('device_id', '').strip()
+        )
+        serializer = AdminGoogleLoginSerializer(
+            data=request.data,
+            context={'device_id': device_id}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        admin_user = serializer.validated_data['admin_user']
+        active_device_id = serializer.validated_data['device_id']
+
+        # Issue JWT tokens with the same claims as email login
+        refresh = RefreshToken()
+        refresh['admin_id'] = admin_user.id
+        refresh['email'] = admin_user.email
+        refresh['role'] = 'admin'
+        refresh['is_superadmin'] = admin_user.is_superadmin
+        refresh['device_id'] = active_device_id
+        refresh['auth_provider'] = 'google'
+
+        return Response(
+            {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'admin': {
+                    'id': admin_user.id,
+                    'full_name': admin_user.full_name,
+                    'email': admin_user.email,
+                    'is_superadmin': admin_user.is_superadmin,
+                    'auth_provider': admin_user.auth_provider,
+                    'device_id': active_device_id,
                 }
             },
             status=status.HTTP_200_OK

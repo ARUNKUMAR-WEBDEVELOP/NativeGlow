@@ -317,5 +317,9 @@ EMAIL_USE_SSL = str(_email_use_ssl).strip(' "\'').lower() in ['true', '1', 't', 
 
 # Auth integrations
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 
-
+# Restrict Google OAuth2 admin login to this domain only.
+# Set to your organization domain e.g. 'nativeglow.com'
+# Leave blank to allow any verified Google account (not recommended for production).
+GOOGLE_ALLOWED_DOMAIN = config('GOOGLE_ALLOWED_DOMAIN', default='')

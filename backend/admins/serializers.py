@@ -2,6 +2,9 @@ from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
+from django.conf import settings
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from .models import AdminUser, MaintenanceFee, PlatformPaymentDetails
 from vendors.models import Vendor
 from products.models import Product, Category
@@ -14,7 +17,7 @@ class AdminLoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        """Validate admin credentials."""
+        """Validate admin credentials and enforce single-device session."""
         email = data.get('email', '').lower().strip()
         password = data.get('password', '')
         device_id = self.context.get('device_id', '').strip()
@@ -33,19 +36,102 @@ class AdminLoginSerializer(serializers.Serializer):
         if admin_user.is_superadmin:
             if not device_id:
                 raise serializers.ValidationError('Device ID is required for superadmin login.')
-
-            # Support up to 2 devices without database migration using comma separation
-            devices = [d.strip() for d in admin_user.login_device_id.split(',') if d.strip()]
-            
-            if device_id not in devices:
-                if len(devices) >= 2:
-                    raise serializers.ValidationError('This superadmin account is restricted to a maximum of two devices.')
-                
-                devices.append(device_id)
-                admin_user.login_device_id = ','.join(devices)
-                admin_user.save(update_fields=['login_device_id'])
+            # Single-device: overwrite previous device (kicks old session out)
+            admin_user.set_active_device(device_id)
 
         data['admin_user'] = admin_user
+        return data
+
+
+class AdminGoogleLoginSerializer(serializers.Serializer):
+    """
+    Verify a Google ID token for Super Admin login.
+
+    Flow:
+    1. Frontend receives a Google credential (ID token) via Google Identity Services.
+    2. Frontend POSTs it here along with a device_id.
+    3. We verify the token with Google, check the hosted domain, and
+       auto-create or fetch the AdminUser record.
+    4. Single-device: the new device becomes the only active device,
+       evicting any previous session automatically.
+    """
+    google_token = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        google_token = data.get('google_token', '').strip()
+        device_id = self.context.get('device_id', '').strip()
+
+        if not google_token:
+            raise serializers.ValidationError('Google token is required.')
+
+        if not device_id:
+            raise serializers.ValidationError('Device ID is required for superadmin login.')
+
+        # ── 1. Verify the ID token signature with Google ──────────────────────
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                google_token,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError(f'Invalid Google token: {exc}')
+
+        # ── 2. Enforce authorized domain restriction ───────────────────────────
+        allowed_domain = getattr(settings, 'GOOGLE_ALLOWED_DOMAIN', '').strip()
+        email: str = idinfo.get('email', '').lower().strip()
+        email_verified: bool = idinfo.get('email_verified', False)
+
+        if not email:
+            raise serializers.ValidationError('Google account has no email address.')
+
+        if not email_verified:
+            raise serializers.ValidationError('Google account email is not verified.')
+
+        if allowed_domain:
+            hd_claim = idinfo.get('hd', '')
+            email_domain = email.split('@')[-1]
+            if hd_claim != allowed_domain and email_domain != allowed_domain:
+                raise serializers.ValidationError(
+                    'Access denied. Only accounts from the authorized organization may log in.'
+                )
+
+        # ── 3. Fetch or auto-create AdminUser ─────────────────────────────────
+        google_id: str = idinfo.get('sub', '')
+        full_name: str = idinfo.get('name', email.split('@')[0])
+
+        admin_user = None
+        try:
+            admin_user = AdminUser.objects.get(google_id=google_id)
+        except AdminUser.DoesNotExist:
+            pass
+
+        if admin_user is None:
+            try:
+                # Account may have been created manually (email/password) — link Google ID
+                admin_user = AdminUser.objects.get(email__iexact=email)
+                admin_user.google_id = google_id
+                admin_user.auth_provider = 'google'
+                admin_user.save(update_fields=['google_id', 'auth_provider'])
+            except AdminUser.DoesNotExist:
+                # First-ever sign-in — auto-provision Super Admin account
+                admin_user = AdminUser.objects.create_superadmin_from_google(
+                    full_name=full_name,
+                    email=email,
+                    google_id=google_id,
+                )
+
+        if not admin_user.is_superadmin:
+            raise serializers.ValidationError(
+                'Access denied. This Google account is not associated with a Super Admin role.'
+            )
+
+        # ── 4. Single-device enforcement ──────────────────────────────────────
+        # Atomically evicts any existing session on any other device.
+        admin_user.set_active_device(device_id)
+
+        data['admin_user'] = admin_user
+        data['device_id'] = device_id
         return data
 
 
@@ -54,7 +140,7 @@ class AdminProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AdminUser
-        fields = ('id', 'full_name', 'email', 'is_superadmin', 'created_at')
+        fields = ('id', 'full_name', 'email', 'is_superadmin', 'auth_provider', 'created_at')
         read_only_fields = ('id', 'created_at')
 
 
@@ -475,10 +561,6 @@ class PlatformPaymentDetailsSerializer(serializers.ModelSerializer):
             'account_holder_name',
         )
         read_only_fields = fields
-    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
-    payment_reference = serializers.CharField(allow_blank=True, allow_null=True)
-    order_status = serializers.CharField()
-    created_at = serializers.DateTimeField()
 
 
 class AdminOrderDetailSerializer(serializers.Serializer):
@@ -546,16 +628,16 @@ class AdminDashboardStatsSerializer(serializers.Serializer):
     total_vendors = serializers.IntegerField()
     active_vendors = serializers.IntegerField()
     pending_vendor_approvals = serializers.IntegerField()
-    
+
     # Product metrics
     total_products = serializers.IntegerField()
     pending_product_approvals = serializers.IntegerField()
     active_products = serializers.IntegerField()
-    
+
     # Order metrics (this month)
     total_orders_this_month = serializers.IntegerField()
     revenue_this_month = serializers.DecimalField(max_digits=12, decimal_places=2)
-    
+
     # Maintenance fee metrics (this month)
     maintenance_collected_this_month = serializers.DecimalField(max_digits=12, decimal_places=2)
     maintenance_pending_count = serializers.IntegerField()

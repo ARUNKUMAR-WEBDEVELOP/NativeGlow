@@ -9,6 +9,7 @@ from django.urls import path
 from .views import (
     # Authentication
     AdminLoginView,
+    AdminGoogleLoginView,
     AdminProfileView,
     # Vendor Management
     AdminVendorListView,
@@ -42,6 +43,7 @@ from .views import (
 urlpatterns = [
     # Authentication Endpoints
     path('login/', AdminLoginView.as_view(), name='admin-login'),
+    path('auth/google/', AdminGoogleLoginView.as_view(), name='admin-google-login'),
     path('me/', AdminProfileView.as_view(), name='admin-profile'),
 
     # Vendor Management Endpoints
